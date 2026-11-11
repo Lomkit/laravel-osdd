@@ -17,16 +17,19 @@ class ListenerMakeCommand extends \Illuminate\Foundation\Console\ListenerMakeCom
      */
     protected $name = 'osdd:listener';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Listeners';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
@@ -37,6 +40,7 @@ class ListenerMakeCommand extends \Illuminate\Foundation\Console\ListenerMakeCom
         return $layer->path.'/src/Listeners/'.str_replace('\\', '/', $relative).'.php';
     }
 
+    #[\Override]
     protected function buildClass($name): string
     {
         $event = $this->option('event') ?? '';

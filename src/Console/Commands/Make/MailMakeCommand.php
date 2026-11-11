@@ -12,16 +12,19 @@ class MailMakeCommand extends \Illuminate\Foundation\Console\MailMakeCommand
 
     protected $name = 'osdd:mail';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Mail';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

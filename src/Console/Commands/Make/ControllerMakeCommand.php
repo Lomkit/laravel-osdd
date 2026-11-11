@@ -17,16 +17,19 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
      */
     protected $name = 'osdd:controller';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Http\\Controllers';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
@@ -37,9 +40,14 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
         return $layer->path.'/src/Http/Controllers/'.str_replace('\\', '/', $relative).'.php';
     }
 
+    /**
+     * @param  array<string, string>  $replace
+     * @return array<string, string>
+     */
+    #[\Override]
     protected function buildModelReplacements(array $replace): array
     {
-        $modelClass = $this->parseModel($this->option('model'));
+        $modelClass = $this->parseModel((string) $this->option('model'));
 
         $replace = $this->buildFormRequestReplacements($replace, $modelClass);
 
@@ -56,6 +64,11 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
         ]);
     }
 
+    /**
+     * @param  array<string, string>  $replace
+     * @return array<string, string>
+     */
+    #[\Override]
     protected function buildFormRequestReplacements(array $replace, $modelClass): array
     {
         [$namespace, $storeRequestClass, $updateRequestClass] = [
@@ -91,6 +104,10 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
         ]);
     }
 
+    /**
+     * @return array{string, string}
+     */
+    #[\Override]
     protected function generateFormRequests($modelClass, $storeRequestClass, $updateRequestClass): array
     {
         $storeRequestClass = 'Store'.class_basename($modelClass).'Request';

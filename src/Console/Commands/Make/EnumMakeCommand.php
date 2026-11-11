@@ -12,16 +12,19 @@ class EnumMakeCommand extends \Illuminate\Foundation\Console\EnumMakeCommand
 
     protected $name = 'osdd:enum';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Enums';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

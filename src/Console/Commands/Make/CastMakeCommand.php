@@ -12,16 +12,19 @@ class CastMakeCommand extends \Illuminate\Foundation\Console\CastMakeCommand
 
     protected $name = 'osdd:cast';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Casts';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

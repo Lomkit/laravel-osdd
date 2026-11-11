@@ -12,16 +12,19 @@ class ObserverMakeCommand extends \Illuminate\Foundation\Console\ObserverMakeCom
 
     protected $name = 'osdd:observer';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Observers';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

@@ -34,7 +34,7 @@ trait RegistersInLayerProvider
         $pattern = '/(\n[ \t]*\})(\s+)([ \t]*public\s+function\s+register\b)/';
         $updated = preg_replace($pattern, "\n        {$statement}$1$2$3", $content, 1);
 
-        if ($updated === $content) {
+        if ($updated === null || $updated === $content) {
             $this->components->warn("Could not register [{$label}] in [{$providerPath}]: unexpected formatting.");
 
             return;

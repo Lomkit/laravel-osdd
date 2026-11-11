@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use DOMDocument;
+use DOMElement;
 use DOMXPath;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
@@ -30,7 +31,7 @@ class PhpunitCommand extends Command
     {
         $xmlPath = $this->laravel->basePath('phpunit.xml');
 
-        if (! $this->laravel['files']->exists($xmlPath)) {
+        if (! $this->laravel->make('files')->exists($xmlPath)) {
             $this->error('phpunit.xml not found at '.$xmlPath);
 
             return self::FAILURE;
@@ -42,7 +43,7 @@ class PhpunitCommand extends Command
         $dom->load($xmlPath);
 
         $xpath = new DOMXPath($dom);
-        $testSuites = $xpath->query('//testsuites')->item(0);
+        $testSuites = $this->firstElement($xpath, '//testsuites');
 
         if (! $testSuites) {
             $this->error('<testsuites> element not found in phpunit.xml.');
@@ -58,7 +59,7 @@ class PhpunitCommand extends Command
             $this->warn('No OSDD layers discovered.');
 
             if ($changed) {
-                $this->laravel['files']->put($xmlPath, $dom->saveXML());
+                $this->laravel->make('files')->put($xmlPath, (string) $dom->saveXML());
                 $this->info('phpunit.xml updated successfully.');
             }
 
@@ -71,7 +72,7 @@ class PhpunitCommand extends Command
         foreach ($layers as $layer) {
             $layerName = $layer->manifest->name();
 
-            $existing = $xpath->query('//testsuites/testsuite[@name="'.$layerName.'"]')->item(0);
+            $existing = $this->firstElement($xpath, '//testsuites/testsuite[@name="'.$layerName.'"]');
 
             if ($existing) {
                 $this->line("Testsuite <comment>{$layerName}</comment> already present, skipping.");
@@ -100,7 +101,7 @@ class PhpunitCommand extends Command
         }
 
         if ($added > 0 || $changed) {
-            $this->laravel['files']->put($xmlPath, $dom->saveXML());
+            $this->laravel->make('files')->put($xmlPath, (string) $dom->saveXML());
             $this->info('phpunit.xml updated successfully.');
         }
 
@@ -119,22 +120,20 @@ class PhpunitCommand extends Command
     {
         $migrationsPath = '**/database/migrations';
 
-        $alreadyExcluded = $xpath
-            ->query('//source/exclude/directory[normalize-space()="'.$migrationsPath.'"]')
-            ->item(0);
+        $alreadyExcluded = $this->firstElement($xpath, '//source/exclude/directory[normalize-space()="'.$migrationsPath.'"]');
 
         if ($alreadyExcluded) {
             return false;
         }
 
-        $source = $xpath->query('//source')->item(0);
+        $source = $this->firstElement($xpath, '//source');
 
         if (! $source) {
             $source = $dom->createElement('source');
-            $dom->documentElement->appendChild($source);
+            $dom->documentElement?->appendChild($source);
         }
 
-        $exclude = $xpath->query('//source/exclude')->item(0);
+        $exclude = $this->firstElement($xpath, '//source/exclude');
 
         if (! $exclude) {
             $exclude = $dom->createElement('exclude');
@@ -148,5 +147,13 @@ class PhpunitCommand extends Command
         $this->info("Excluded <comment>{$migrationsPath}</comment> from code coverage.");
 
         return true;
+    }
+
+    private function firstElement(DOMXPath $xpath, string $expression): ?DOMElement
+    {
+        $node = $xpath->query($expression) ?: null;
+        $first = $node?->item(0);
+
+        return $first instanceof DOMElement ? $first : null;
     }
 }

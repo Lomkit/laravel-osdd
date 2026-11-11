@@ -15,11 +15,13 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
 
     protected $aliases = [];
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
@@ -27,6 +29,7 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
         return $layer->path.'/config/'.Str::finish($this->argument('name'), '.php');
     }
 
+    #[\Override]
     public function handle(): ?bool
     {
         $result = parent::handle();

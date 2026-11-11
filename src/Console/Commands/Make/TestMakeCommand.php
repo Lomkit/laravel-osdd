@@ -17,11 +17,13 @@ class TestMakeCommand extends \Illuminate\Foundation\Console\TestMakeCommand
      */
     protected $name = 'osdd:test';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         $suffix = $this->option('unit') ? 'Tests\\Unit' : 'Tests\\Feature';
@@ -29,6 +31,7 @@ class TestMakeCommand extends \Illuminate\Foundation\Console\TestMakeCommand
         return rtrim($rootNamespace, '\\').'\\'.$suffix;
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

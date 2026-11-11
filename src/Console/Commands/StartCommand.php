@@ -19,11 +19,11 @@ class StartCommand extends Command
 
     protected $description = 'Prepare a fresh Laravel project for OSDD';
 
-    private const USERS_LAYER_NAME = 'functional/users';
+    private const string USERS_LAYER_NAME = 'functional/users';
 
-    private const USERS_LAYER_NAMESPACE = 'Functional\\Users';
+    private const string USERS_LAYER_NAMESPACE = 'Functional\\Users';
 
-    private const OSDD_LAYER_NAME = 'technical/osdd';
+    private const string OSDD_LAYER_NAME = 'technical/osdd';
 
     protected Filesystem $files;
 
@@ -57,6 +57,7 @@ class StartCommand extends Command
 
     private function resolveLayerBasePath(): string
     {
+        /** @var array<string, string> $paths */
         $paths = config('osdd.layers.paths', []);
 
         return $paths['functional'] ?? $this->laravel->basePath('functional');
@@ -64,6 +65,7 @@ class StartCommand extends Command
 
     private function resolveTechnicalBasePath(): string
     {
+        /** @var array<string, string> $paths */
         $paths = config('osdd.layers.paths', []);
 
         return $paths['technical'] ?? $this->laravel->basePath('technical');
@@ -137,15 +139,23 @@ class StartCommand extends Command
             return;
         }
 
-        $composer = json_decode($this->files->get($composerPath), true, 512, JSON_THROW_ON_ERROR);
+        $composer = $this->decodeComposerJson($composerPath);
 
         // Keep the `App\` mapping so Laravel can still detect an application
         // namespace (getNamespace() otherwise throws once app/ is gone). Only
         // the database factory/seeder namespaces are dropped — those live in
         // layers under OSDD.
-        foreach (['Database\\Factories\\', 'Database\\Seeders\\'] as $key) {
-            unset($composer['autoload']['psr-4'][$key]);
-            unset($composer['autoload-dev']['psr-4'][$key]);
+        foreach (['autoload', 'autoload-dev'] as $section) {
+            $autoload = $composer[$section] ?? null;
+
+            if (! is_array($autoload) || ! is_array($autoload['psr-4'] ?? null)) {
+                continue;
+            }
+
+            $psr4 = $autoload['psr-4'];
+            unset($psr4['Database\\Factories\\'], $psr4['Database\\Seeders\\']);
+            $autoload['psr-4'] = $psr4;
+            $composer[$section] = $autoload;
         }
 
         $this->normalizeComposerPsr4($composer);
@@ -186,13 +196,16 @@ class StartCommand extends Command
             $this->laravel->basePath(),
         );
         $process->setTimeout(null);
-        $process->run(fn ($type, $buffer) => $this->output->write($buffer));
+        $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
 
         if (! $process->isSuccessful()) {
             $this->components->error('composer update failed. You may need to run it manually.');
         }
     }
 
+    /**
+     * @param  array<string, string>  $replacements
+     */
     private function createFile(string $path, string $contents, array $replacements = []): void
     {
         $directory = dirname($path);

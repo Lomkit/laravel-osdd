@@ -12,16 +12,19 @@ class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeComma
 
     protected $name = 'osdd:command';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Console\\Commands';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

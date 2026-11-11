@@ -12,16 +12,19 @@ class ChannelMakeCommand extends \Illuminate\Foundation\Console\ChannelMakeComma
 
     protected $name = 'osdd:channel';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Broadcasting';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

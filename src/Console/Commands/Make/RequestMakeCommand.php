@@ -17,16 +17,19 @@ class RequestMakeCommand extends \Illuminate\Foundation\Console\RequestMakeComma
      */
     protected $name = 'osdd:request';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Http\\Requests';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

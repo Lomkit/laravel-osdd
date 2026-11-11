@@ -6,6 +6,9 @@ use Illuminate\Database\Seeder;
 
 class SeederRegistry
 {
+    /**
+     * @var list<array{priority: int, class: class-string<Seeder>}>
+     */
     private array $seeders = [];
 
     /**
@@ -20,12 +23,12 @@ class SeederRegistry
     }
 
     /**
-     * @return class-string<Seeder>[]
+     * @return list<class-string<Seeder>>
      */
     public function seeders(): array
     {
         $sorted = $this->seeders;
-        usort($sorted, fn ($a, $b) => $a['priority'] <=> $b['priority']);
+        usort($sorted, fn (array $a, array $b): int => $a['priority'] <=> $b['priority']);
 
         return array_column($sorted, 'class');
     }

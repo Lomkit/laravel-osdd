@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerNotFoundException;
 use Lomkit\Osdd\Layers\LayersCollection;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -27,22 +28,24 @@ trait ChoosesOsddLayer
 
             if ($layer === null) {
                 $this->components->error("Layer '{$layerOption}' not found.");
-                throw new \RuntimeException("Layer '{$layerOption}' not found.");
+                throw new LayerNotFoundException($layerOption);
             }
 
             return $this->resolvedLayer = $layer;
         }
 
-        $chosen = search(
+        $chosen = (string) search(
             label: 'Which layer should this be generated in?',
-            options: fn (string $value) => $layers
+            options: fn (string $value): array => $layers
+                ->toBase()
                 ->filter(fn (Layer $l) => str_contains($l->manifest->name(), $value))
                 ->mapWithKeys(fn (Layer $l) => [$l->manifest->name() => $l->manifest->name()])
                 ->sort()
                 ->all(),
         );
 
-        return $this->resolvedLayer = $layers->first(fn (Layer $l) => $l->manifest->name() === $chosen);
+        return $this->resolvedLayer = $layers->first(fn (Layer $l) => $l->manifest->name() === $chosen)
+            ?? throw new LayerNotFoundException($chosen);
     }
 
     protected function interact(InputInterface $input, OutputInterface $output): void
@@ -69,6 +72,9 @@ trait ChoosesOsddLayer
         $this->addLayerOption();
     }
 
+    /**
+     * @return array<mixed>
+     */
     protected function getOptions(): array
     {
         return array_merge(parent::getOptions(), [$this->layerOption()]);

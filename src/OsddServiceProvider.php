@@ -2,6 +2,7 @@
 
 namespace Lomkit\Osdd;
 
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
 use Lomkit\Osdd\Console\Commands\LayerCommand;
 use Lomkit\Osdd\Console\Commands\Make\CastMakeCommand;
@@ -50,6 +51,7 @@ class OsddServiceProvider extends ServiceProvider
         $this->publishConfig();
 
         $this->app->booted(function () {
+            /** @var list<string> $argv */
             $argv = $_SERVER['argv'] ?? [];
 
             if (in_array('tinker', $argv)) {
@@ -62,15 +64,17 @@ class OsddServiceProvider extends ServiceProvider
         });
     }
 
+    #[\Override]
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/osdd.php', 'osdd');
 
         $this->app->singleton(SeederRegistry::class, fn () => new SeederRegistry);
 
-        $this->app->singleton(MigrateMakeCommand::class, function ($app) {
-            return new MigrateMakeCommand($app['migration.creator'], $app['composer']);
-        });
+        $this->app->singleton(MigrateMakeCommand::class, fn (Application $app): MigrateMakeCommand => new MigrateMakeCommand(
+            $app->make('migration.creator'),
+            $app->make('composer'),
+        ));
     }
 
     private function registerCommands(): void
@@ -123,12 +127,14 @@ class OsddServiceProvider extends ServiceProvider
     {
         [$namespaces, $map] = $this->buildLayerClassMap();
 
-        $this->app['config']->set('tinker.alias', array_merge(
-            $this->app['config']->get('tinker.alias', []),
-            $namespaces,
-        ));
+        $config = $this->app->make('config');
 
-        spl_autoload_register(function (string $class) use ($map) {
+        /** @var array<int, string> $aliases */
+        $aliases = $config->get('tinker.alias', []);
+
+        $config->set('tinker.alias', array_merge($aliases, $namespaces));
+
+        spl_autoload_register(function (string $class) use ($map): void {
             if (str_contains($class, '\\') || ! isset($map[$class])) {
                 return;
             }
@@ -140,12 +146,13 @@ class OsddServiceProvider extends ServiceProvider
 
     private function registerIdeHelperModelLocations(): void
     {
-        $config = $this->app['config'];
+        $config = $this->app->make('config');
 
         if (! $config->has('ide-helper.model_locations')) {
             return;
         }
 
+        /** @var list<string> $locations */
         $locations = $config->get('ide-helper.model_locations', []);
 
         foreach (LayersCollection::fromConfig() as $layer) {
@@ -159,6 +166,9 @@ class OsddServiceProvider extends ServiceProvider
         $config->set('ide-helper.model_locations', array_values(array_unique($locations)));
     }
 
+    /**
+     * @return array{list<string>, array<string, array{fqcn: string, path: string}>}
+     */
     private function buildLayerClassMap(): array
     {
         $namespaces = [];

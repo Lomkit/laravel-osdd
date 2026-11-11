@@ -17,16 +17,19 @@ class NotificationMakeCommand extends \Illuminate\Foundation\Console\Notificatio
      */
     protected $name = 'osdd:notification';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Notifications';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

@@ -12,16 +12,19 @@ class RuleMakeCommand extends \Illuminate\Foundation\Console\RuleMakeCommand
 
     protected $name = 'osdd:rule';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Rules';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

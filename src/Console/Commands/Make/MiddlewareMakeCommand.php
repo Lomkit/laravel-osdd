@@ -12,16 +12,19 @@ class MiddlewareMakeCommand extends \Illuminate\Routing\Console\MiddlewareMakeCo
 
     protected $name = 'osdd:middleware';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Http\\Middleware';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

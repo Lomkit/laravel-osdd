@@ -17,6 +17,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
      */
     protected $name = 'osdd:model';
 
+    #[\Override]
     protected function getStub(): string
     {
         if ($this->option('factory')) {
@@ -26,6 +27,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         return parent::getStub();
     }
 
+    #[\Override]
     protected function buildClass($name): string
     {
         $stub = parent::buildClass($name);
@@ -44,6 +46,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         return $stub;
     }
 
+    #[\Override]
     public function handle(): ?bool
     {
         // Bypass ModelMakeCommand::handle()'s interactive "additional components" prompt
@@ -94,16 +97,19 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         return null;
     }
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Models';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
@@ -114,6 +120,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         return $layer->path.'/src/Models/'.str_replace('\\', '/', $relative).'.php';
     }
 
+    #[\Override]
     protected function createFactory(): void
     {
         $factory = Str::studly($this->argument('name'));
@@ -125,6 +132,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         ]);
     }
 
+    #[\Override]
     protected function createController(): void
     {
         $controller = Str::studly($this->argument('name'));
@@ -138,6 +146,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         ]));
     }
 
+    #[\Override]
     protected function createFormRequests(): void
     {
         $request = Str::studly($this->argument('name'));
@@ -153,6 +162,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         ]);
     }
 
+    #[\Override]
     protected function createPolicy(): void
     {
         $policy = Str::studly($this->argument('name'));
@@ -164,6 +174,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         ]);
     }
 
+    #[\Override]
     protected function createSeeder(): void
     {
         $seeder = Str::studly($this->argument('name'));
@@ -174,6 +185,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         ]);
     }
 
+    #[\Override]
     protected function createMigration(): void
     {
         $table = Str::snake(Str::pluralStudly(class_basename($this->argument('name'))));

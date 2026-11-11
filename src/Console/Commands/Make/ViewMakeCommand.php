@@ -11,11 +11,13 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
 
     protected $name = 'osdd:view';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

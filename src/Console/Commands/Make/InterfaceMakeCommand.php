@@ -12,16 +12,19 @@ class InterfaceMakeCommand extends \Illuminate\Foundation\Console\InterfaceMakeC
 
     protected $name = 'osdd:interface';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Contracts';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

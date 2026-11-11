@@ -18,9 +18,10 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
      */
     protected $name = 'osdd:seeder';
 
-    public function handle()
+    #[\Override]
+    public function handle(): void
     {
-        $result = parent::handle();
+        parent::handle();
 
         $seederClass = $this->qualifyClass($this->getNameInput());
 
@@ -28,20 +29,21 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
             "\$this->loadSeeders([\\{$seederClass}::class]);",
             $seederClass,
         );
-
-        return $result;
     }
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Database\\Seeders';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

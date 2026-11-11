@@ -17,16 +17,19 @@ class ExceptionMakeCommand extends \Illuminate\Foundation\Console\ExceptionMakeC
      */
     protected $name = 'osdd:exception';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Exceptions';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

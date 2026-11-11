@@ -26,7 +26,7 @@ class LayerCommand extends Command
 
     protected $description = 'Create a new OSDD layer';
 
-    private const GENERATORS = [
+    private const array GENERATORS = [
         'migration',
         'model',
         'factory',
@@ -38,9 +38,9 @@ class LayerCommand extends Command
         'routes',
     ];
 
-    private const DEFAULT_GENERATORS = ['migration', 'model', 'factory', 'service-provider', 'test'];
+    private const array DEFAULT_GENERATORS = ['migration', 'model', 'factory', 'service-provider', 'test'];
 
-    protected $files;
+    protected Filesystem $files;
 
     public function __construct(Filesystem $files)
     {
@@ -72,15 +72,19 @@ class LayerCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * @return array{string, string}
+     */
     private function askForVendorAndPath(): array
     {
+        /** @var array<string, string> $paths */
         $paths = config('osdd.layers.paths');
 
         if (count($paths) === 1) {
-            return [array_key_first($paths), reset($paths)];
+            return [(string) array_key_first($paths), (string) reset($paths)];
         }
 
-        $key = select(
+        $key = (string) select(
             label: 'Where should the layer be created?',
             options: array_keys($paths),
         );
@@ -105,6 +109,9 @@ class LayerCommand extends Command
         );
     }
 
+    /**
+     * @return array<int|string>
+     */
     private function askForGenerators(): array
     {
         return multiselect(
@@ -114,6 +121,9 @@ class LayerCommand extends Command
         );
     }
 
+    /**
+     * @param  array<int|string|null>  $generators
+     */
     private function generate(string $name, string $targetPath, array $generators): void
     {
         [$vendor, $package] = explode('/', $name);
@@ -192,6 +202,9 @@ class LayerCommand extends Command
         );
     }
 
+    /**
+     * @param  array<string, string>  $replacements
+     */
     private function createFile(string $path, string $contents, array $replacements = []): void
     {
         $directory = dirname($path);
@@ -232,7 +245,7 @@ class LayerCommand extends Command
             $this->laravel->basePath(),
         );
         $process->setTimeout(null);
-        $process->run(fn ($type, $buffer) => $this->output->write($buffer));
+        $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
 
         if (! $process->isSuccessful()) {
             $this->components->error('composer update failed. You may need to run it manually.');

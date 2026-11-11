@@ -17,29 +17,32 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
      */
     protected $name = 'osdd:policy';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Policies';
     }
 
+    #[\Override]
     protected function qualifyModel(string $model): string
     {
         $model = ltrim($model, '\\/');
         $model = str_replace('/', '\\', $model);
         $rootNamespace = $this->rootNamespace();
 
-        if (Str::startsWith($model, $rootNamespace)) {
-            return $model;
-        }
+        /** @var class-string $qualified */
+        $qualified = Str::startsWith($model, $rootNamespace) ? $model : $rootNamespace.'Models\\'.$model;
 
-        return $rootNamespace.'Models\\'.$model;
+        return $qualified;
     }
 
+    #[\Override]
     protected function replaceUserNamespace($stub): string
     {
         $model = $this->userProviderModel();
@@ -55,6 +58,7 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
         );
     }
 
+    #[\Override]
     protected function getStub(): string
     {
         if ($this->option('model')) {
@@ -64,6 +68,7 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
         return __DIR__.'/../../stubs/make/policy.stub';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

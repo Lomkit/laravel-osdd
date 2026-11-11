@@ -12,16 +12,19 @@ class ScopeMakeCommand extends \Illuminate\Foundation\Console\ScopeMakeCommand
 
     protected $name = 'osdd:scope';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Models\\Scopes';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

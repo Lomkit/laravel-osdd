@@ -12,11 +12,13 @@ class ClassMakeCommand extends \Illuminate\Foundation\Console\ClassMakeCommand
 
     protected $name = 'osdd:class';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

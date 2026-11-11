@@ -12,16 +12,19 @@ class ResourceMakeCommand extends \Illuminate\Foundation\Console\ResourceMakeCom
 
     protected $name = 'osdd:resource';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Http\\Resources';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();

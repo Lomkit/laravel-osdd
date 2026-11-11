@@ -18,16 +18,19 @@ class ServiceProviderMakeCommand extends ProviderMakeCommand
      */
     protected $name = 'osdd:provider';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Providers';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
@@ -38,6 +41,7 @@ class ServiceProviderMakeCommand extends ProviderMakeCommand
         return $layer->path.'/src/Providers/'.str_replace('\\', '/', $relative).'.php';
     }
 
+    #[\Override]
     public function handle(): ?bool
     {
         $result = parent::handle();
@@ -56,14 +60,24 @@ class ServiceProviderMakeCommand extends ProviderMakeCommand
         $layer = $this->resolveLayer();
         $composerPath = $layer->path.'/composer.json';
 
+        /** @var array<string, mixed> $composer */
         $composer = json_decode($this->files->get($composerPath), true);
 
         $providerClass = $this->qualifyClass($this->getNameInput());
 
-        $existing = $composer['extra']['laravel']['providers'] ?? [];
+        /** @var array<string, mixed> $extra */
+        $extra = $composer['extra'] ?? [];
+
+        /** @var array<string, mixed> $laravel */
+        $laravel = $extra['laravel'] ?? [];
+
+        /** @var list<string> $existing */
+        $existing = $laravel['providers'] ?? [];
         $existing[] = $providerClass;
 
-        $composer['extra']['laravel']['providers'] = array_values(array_unique($existing));
+        $laravel['providers'] = array_values(array_unique($existing));
+        $extra['laravel'] = $laravel;
+        $composer['extra'] = $extra;
 
         $this->files->put(
             $composerPath,
