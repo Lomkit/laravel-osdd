@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
+use Lomkit\Osdd\Console\LayerComposerJson;
 use Lomkit\Osdd\Console\LayerGenerator;
 use Lomkit\Osdd\Console\LayerGeneratorRunner;
 use Lomkit\Osdd\Console\MissingLayerNameException;
@@ -61,9 +62,7 @@ class LayerCommand extends Command
 
         $this->components->info("Layer <options=bold>{$name->toString()}</> created at <options=bold>{$targetPath}</>.");
 
-        $this->offerComposerUpdate($name->toString());
-
-        return self::SUCCESS;
+        return $this->offerComposerUpdate($name->toString()) ? self::SUCCESS : self::FAILURE;
     }
 
     /**
@@ -174,10 +173,7 @@ class LayerCommand extends Command
      */
     private function generate(LayerName $name, string $layerPath, array $generators): void
     {
-        $this->stubs->write('layer/composer', $layerPath.'/composer.json', [
-            '{{ name }}' => $name->toString(),
-            '{{ namespace }}' => str_replace('\\', '\\\\', $name->namespace()),
-        ]);
+        (new LayerComposerJson($this->files, $this->stubs))->write($name, $layerPath.'/composer.json');
 
         (new LayerGeneratorRunner(
             command: $this,
