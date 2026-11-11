@@ -2,17 +2,29 @@
 
 namespace Lomkit\Osdd\Tests;
 
-use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Tests\Fixtures\TemporaryProject;
 
 class TinkerLayerAliasTest extends TestCase
 {
     private string $tmpPath;
 
+    /**
+     * @var list<callable>
+     */
+    private array $autoloadersBeforeBoot = [];
+
+    #[\Override]
+    protected function createProject(): TemporaryProject
+    {
+        return TemporaryProject::withoutLayers();
+    }
+
     protected function getEnvironmentSetUp($app): void
     {
         $_SERVER['argv'][] = 'tinker';
+        $this->autoloadersBeforeBoot = spl_autoload_functions();
 
-        $this->tmpPath = sys_get_temp_dir().'/osdd-tinker-test-'.uniqid();
+        $this->tmpPath = $this->project()->root;
 
         mkdir($this->tmpPath.'/functional/billing/src', 0755, true);
 
@@ -27,7 +39,6 @@ class TinkerLayerAliasTest extends TestCase
             "<?php\nnamespace Functional\\Billing;\nclass Invoice {}"
         );
 
-        $app->setBasePath($this->tmpPath);
         $app['config']->set('osdd.layers.paths', [
             'functional' => $this->tmpPath.'/functional',
         ]);
@@ -36,7 +47,12 @@ class TinkerLayerAliasTest extends TestCase
     protected function tearDown(): void
     {
         parent::tearDown();
-        (new Filesystem)->deleteDirectory($this->tmpPath);
+
+        foreach (spl_autoload_functions() as $autoloader) {
+            if (! in_array($autoloader, $this->autoloadersBeforeBoot, true)) {
+                spl_autoload_unregister($autoloader);
+            }
+        }
 
         $_SERVER['argv'] = array_filter($_SERVER['argv'], fn ($v) => $v !== 'tinker');
     }

@@ -34,14 +34,6 @@ class PhpunitCommandTest extends TestCase
         );
     }
 
-    protected function tearDown(): void
-    {
-        $this->app['files']->put($this->xmlPath, $this->originalXml);
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/tests'));
-
-        parent::tearDown();
-    }
-
     public function test_it_adds_testsuite_for_discovered_layers(): void
     {
         $this->artisan('osdd:phpunit')
@@ -80,13 +72,7 @@ class PhpunitCommandTest extends TestCase
 
     public function test_it_skips_layers_without_tests_directory(): void
     {
-        $layerPath = $this->app->basePath('functional/no-tests-layer');
-        $this->app['files']->makeDirectory($layerPath, 0755, true, true);
-        $this->app['files']->put($layerPath.'/composer.json', json_encode([
-            'name' => 'functional/no-tests-layer',
-            'type' => 'layer',
-            'autoload' => ['psr-4' => ['Functional\\NoTestsLayer\\' => 'src/']],
-        ]));
+        $this->layerFixture()->layer('functional/no-tests-layer', ['autoload' => ['psr-4' => ['Functional\\NoTestsLayer\\' => 'src/']]]);
 
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
@@ -98,8 +84,6 @@ class PhpunitCommandTest extends TestCase
         $suite = $xpath->query('//testsuites/testsuite[@name="functional/no-tests-layer"]')->item(0);
 
         $this->assertNull($suite);
-
-        $this->app['files']->deleteDirectory($layerPath);
     }
 
     public function test_it_excludes_layer_migrations_from_coverage(): void
@@ -136,7 +120,7 @@ class PhpunitCommandTest extends TestCase
 
     public function test_it_syncs_the_coverage_source_of_laravels_default_phpunit_xml(): void
     {
-        $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
+        $this->layerFixture()->bucket('technical');
         $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
         $this->app['files']->put($this->xmlPath, <<<'XML'
             <?xml version="1.0" encoding="UTF-8"?>
@@ -175,6 +159,7 @@ class PhpunitCommandTest extends TestCase
 
     public function test_prune_removes_suites_of_removed_layers_and_missing_source_directories(): void
     {
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
         $this->app['files']->put($this->xmlPath, <<<'XML'
             <?xml version="1.0" encoding="UTF-8"?>
             <phpunit>

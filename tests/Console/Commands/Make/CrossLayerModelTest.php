@@ -2,9 +2,9 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\Fixtures\GeneratedClass;
 use Lomkit\Osdd\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
-use Symfony\Component\Process\Process;
 
 class CrossLayerModelTest extends TestCase
 {
@@ -14,57 +14,40 @@ class CrossLayerModelTest extends TestCase
     {
         parent::setUp();
 
-        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/users'));
-        $this->app['files']->put($this->app->basePath('functional/users/composer.json'), json_encode([
-            'name' => 'functional/users',
-            'type' => 'layer',
-            'autoload' => ['psr-4' => ['Functional\\Users\\' => 'src/']],
-        ]));
-
+        $this->layerFixture()->layer('functional/users', ['autoload' => ['psr-4' => ['Functional\\Users\\' => 'src/']]]);
         $this->app['config']->set('auth.providers.users.model', self::USER_MODEL);
     }
 
-    protected function tearDown(): void
-    {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/users'));
-
-        foreach (['src/Policies', 'src/Http', 'src/Observers', 'database'] as $directory) {
-            $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/'.$directory));
-        }
-
-        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/database/migrations'));
-        $this->app['files']->put($this->app->basePath('functional/test-layer/database/migrations/.gitkeep'), '');
-        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src/Http'));
-
-        parent::tearDown();
-    }
-
     /**
-     * @return array<string, array{string, string, string}>
+     * @return array<string, array{string, string, string, string, string, int}>
      */
     public static function generators(): array
     {
         return [
-            'policy' => ['osdd:policy', 'UserPolicy', 'src/Policies/UserPolicy.php'],
-            'controller' => ['osdd:controller', 'UserController', 'src/Http/Controllers/UserController.php'],
-            'observer' => ['osdd:observer', 'UserObserver', 'src/Observers/UserObserver.php'],
-            'factory' => ['osdd:factory', 'UserFactory', 'database/factories/UserFactory.php'],
+            'policy' => ['osdd:policy', 'MemberPolicy', 'src/Policies/MemberPolicy.php', 'Functional\TestLayer\Policies\MemberPolicy', 'view', 1],
+            'controller' => ['osdd:controller', 'MemberController', 'src/Http/Controllers/MemberController.php', 'Functional\TestLayer\Http\Controllers\MemberController', 'show', 0],
+            'observer' => ['osdd:observer', 'MemberObserver', 'src/Observers/MemberObserver.php', 'Functional\TestLayer\Observers\MemberObserver', 'created', 0],
         ];
     }
 
     #[DataProvider('generators')]
-    public function test_a_model_of_another_layer_is_kept_as_is(string $command, string $name, string $file): void
+    public function test_a_model_of_another_layer_is_typed_as_is(string $command, string $name, string $file, string $class, string $method, int $position): void
     {
-        $this->artisan($command, ['name' => $name, '--model' => self::USER_MODEL, '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
+        $this->artisan($command, ['name' => $name, '--model' => self::USER_MODEL, '--layer' => 'functional/test-layer'])->assertExitCode(0);
 
-        $path = $this->app->basePath('functional/test-layer/'.$file);
-        $contents = (string) file_get_contents($path);
+        $generated = GeneratedClass::load($this->layerPath($file), $class);
 
-        $this->assertStringContainsString('use '.self::USER_MODEL.';', $contents);
-        $this->assertStringNotContainsString('Functional\\TestLayer\\Models\\Functional', $contents);
-        $this->assertSame(1, substr_count($contents, 'use '.self::USER_MODEL.';'));
-        $this->assertCompiles($path);
+        $this->assertSame(self::USER_MODEL, $this->parameterType($generated->getMethod($method), $position));
+    }
+
+    public function test_a_factory_of_a_model_of_another_layer_imports_it_once(): void
+    {
+        $this->artisan('osdd:factory', ['name' => 'MemberFactory', '--model' => self::USER_MODEL, '--layer' => 'functional/test-layer'])->assertExitCode(0);
+
+        $factory = GeneratedClass::load($this->layerPath('database/factories/MemberFactory.php'), 'Functional\TestLayer\Database\Factories\MemberFactory');
+
+        $this->assertSame(1, substr_count((string) file_get_contents((string) $factory->getFileName()), 'use '.self::USER_MODEL.';'));
+        $this->assertStringContainsString('@extends Factory<User>', (string) $factory->getDocComment());
     }
 
     public function test_an_existing_class_is_kept_as_is(): void
@@ -72,28 +55,29 @@ class CrossLayerModelTest extends TestCase
         $this->artisan('osdd:policy', ['name' => 'NotificationPolicy', '--model' => 'Illuminate/Notifications/DatabaseNotification', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
 
-        $this->assertStringContainsString(
-            'use Illuminate\\Notifications\\DatabaseNotification;',
-            (string) file_get_contents($this->app->basePath('functional/test-layer/src/Policies/NotificationPolicy.php')),
-        );
+        $policy = GeneratedClass::load($this->layerPath('src/Policies/NotificationPolicy.php'), 'Functional\TestLayer\Policies\NotificationPolicy');
+
+        $this->assertSame('Illuminate\Notifications\DatabaseNotification', $this->parameterType($policy->getMethod('view'), 1));
     }
 
     public function test_a_short_model_name_is_qualified_under_the_current_layer(): void
     {
-        $this->artisan('osdd:policy', ['name' => 'OrderPolicy', '--model' => 'Order', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
+        $this->artisan('osdd:policy', ['name' => 'OrderPolicy', '--model' => 'Order', '--layer' => 'functional/test-layer'])->assertExitCode(0);
 
-        $this->assertStringContainsString(
-            'use Functional\\TestLayer\\Models\\Order;',
-            (string) file_get_contents($this->app->basePath('functional/test-layer/src/Policies/OrderPolicy.php')),
-        );
+        $policy = GeneratedClass::load($this->layerPath('src/Policies/OrderPolicy.php'), 'Functional\TestLayer\Policies\OrderPolicy');
+
+        $this->assertSame('Functional\TestLayer\Models\Order', $this->parameterType($policy->getMethod('view'), 1));
     }
 
-    private function assertCompiles(string $path): void
+    private function layerPath(string $file): string
     {
-        $lint = new Process([PHP_BINARY, '-l', $path]);
-        $lint->run();
+        return $this->project()->path('functional/test-layer/'.$file);
+    }
 
-        $this->assertTrue($lint->isSuccessful(), $lint->getOutput().$lint->getErrorOutput());
+    private function parameterType(\ReflectionMethod $method, int $position): string
+    {
+        $type = $method->getParameters()[$position]->getType();
+
+        return $type instanceof \ReflectionNamedType ? $type->getName() : '';
     }
 }

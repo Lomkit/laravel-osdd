@@ -16,7 +16,7 @@ class FakeThirdPartyProvider extends ServiceProvider
 
     public function register(): void
     {
-        $path = sys_get_temp_dir().'/osdd-3p-default.php';
+        $path = $this->app->basePath('osdd-3p-default.php');
         file_put_contents($path, "<?php return ['path' => 'horizon', 'use' => 'redis'];");
 
         $this->mergeConfigFrom($path, 'horizon');
@@ -33,7 +33,7 @@ class FakeLayerProvider extends LayerServiceProvider
 {
     public function register(): void
     {
-        $path = sys_get_temp_dir().'/osdd-3p-layer.php';
+        $path = $this->app->basePath('osdd-3p-layer.php');
         file_put_contents($path, "<?php return ['path' => 'my-horizon'];");
 
         $this->overrideConfigFrom($path, 'horizon');

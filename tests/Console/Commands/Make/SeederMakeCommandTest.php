@@ -2,140 +2,52 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Seeders\SeederRegistry;
+use Lomkit\Osdd\Tests\Fixtures\LayerFixture;
 use Lomkit\Osdd\Tests\TestCase;
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class SeederMakeCommandTest extends TestCase
 {
-    use InteractsWithPublishedFiles;
-
-    private string $providerPath;
-
-    protected function setUp(): void
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function seeders(): array
     {
-        parent::setUp();
-
-        $this->providerPath = $this->app->basePath('functional/test-layer/src/Providers/TestLayerServiceProvider.php');
-
-        $this->app['files']->ensureDirectoryExists(dirname($this->providerPath));
-
-        file_put_contents($this->providerPath, <<<'PHP'
-<?php
-
-namespace Functional\TestLayer\Providers;
-
-use Lomkit\Osdd\LayerServiceProvider;
-
-class TestLayerServiceProvider extends LayerServiceProvider
-{
-    public function boot(): void
-    {
-        //
+        return [
+            'seeder' => ['UserSeeder', 'Functional\ProviderLayer\Database\Seeders\UserSeeder'],
+            'nested seeder' => ['Admin/AdminSeeder', 'Functional\ProviderLayer\Database\Seeders\Admin\AdminSeeder'],
+        ];
     }
 
-    public function register(): void
+    #[DataProvider('seeders')]
+    public function test_the_seeder_is_registered_by_the_layer_provider(string $name, string $seeder): void
     {
-        //
-    }
-}
-PHP);
+        $provider = $this->layerFixture()->providerLayer(LayerFixture::bootMethod());
+
+        $this->artisan('osdd:seeder', ['name' => $name, '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+        $provider->register($this->app);
+
+        $this->assertSame([$seeder], $this->app->make(SeederRegistry::class)->seeders());
     }
 
-    protected function tearDown(): void
+    public function test_a_seeder_generated_twice_is_registered_once(): void
     {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/database/seeders'));
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/src/Providers'));
+        $provider = $this->layerFixture()->providerLayer(LayerFixture::bootMethod());
 
-        parent::tearDown();
+        $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+        $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => LayerFixture::PROVIDER_LAYER]);
+
+        $this->assertSame(1, substr_count($provider->source(), 'UserSeeder::class'));
     }
 
-    public function test_it_generates_seeder_file_in_correct_path(): void
+    public function test_without_a_provider_it_writes_the_seeder_and_prints_the_line_to_add(): void
     {
         $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => 'functional/test-layer'])
+            ->expectsOutputToContain('Layer [functional/test-layer] has no service provider.')
+            ->expectsOutputToContain('$this->loadSeeders([\Functional\TestLayer\Database\Seeders\UserSeeder::class]);')
             ->assertExitCode(0);
 
-        $this->assertFilenameExists('functional/test-layer/database/seeders/UserSeeder.php');
-    }
-
-    public function test_it_generates_seeder_with_correct_namespace(): void
-    {
-        $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'namespace Functional\TestLayer\Database\Seeders;',
-            'class UserSeeder extends Seeder',
-        ], 'functional/test-layer/database/seeders/UserSeeder.php');
-    }
-
-    public function test_it_prompts_for_layer_when_not_provided(): void
-    {
-        $this->artisan('osdd:seeder', ['name' => 'UserSeeder'])
-            ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/database/seeders/UserSeeder.php');
-    }
-
-    public function test_it_generates_nested_seeder_in_correct_path(): void
-    {
-        $this->artisan('osdd:seeder', ['name' => 'Admin/AdminSeeder', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/database/seeders/Admin/AdminSeeder.php');
-    }
-
-    public function test_it_generates_nested_seeder_with_correct_namespace(): void
-    {
-        $this->artisan('osdd:seeder', ['name' => 'Admin/AdminSeeder', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'namespace Functional\TestLayer\Database\Seeders\Admin;',
-            'class AdminSeeder extends Seeder',
-        ], 'functional/test-layer/database/seeders/Admin/AdminSeeder.php');
-    }
-
-    public function test_it_registers_seeder_in_service_provider(): void
-    {
-        $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains(
-            ['$this->loadSeeders([\Functional\TestLayer\Database\Seeders\UserSeeder::class]);'],
-            'functional/test-layer/src/Providers/TestLayerServiceProvider.php',
-        );
-    }
-
-    public function test_it_registers_nested_seeder_with_qualified_class(): void
-    {
-        $this->artisan('osdd:seeder', ['name' => 'Admin/AdminSeeder', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains(
-            ['$this->loadSeeders([\Functional\TestLayer\Database\Seeders\Admin\AdminSeeder::class]);'],
-            'functional/test-layer/src/Providers/TestLayerServiceProvider.php',
-        );
-    }
-
-    public function test_registration_is_idempotent(): void
-    {
-        $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => 'functional/test-layer']);
-        $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => 'functional/test-layer']);
-
-        $content = file_get_contents($this->providerPath);
-        $count = substr_count($content, 'Database\Seeders\UserSeeder::class');
-
-        $this->assertSame(1, $count);
-    }
-
-    public function test_it_skips_registration_when_service_provider_does_not_exist(): void
-    {
-        $this->app['files']->delete($this->providerPath);
-
-        $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/database/seeders/UserSeeder.php');
+        $this->assertFileExists($this->project()->path('functional/test-layer/database/seeders/UserSeeder.php'));
     }
 }

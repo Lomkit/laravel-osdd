@@ -5,33 +5,34 @@ namespace Lomkit\Osdd\Tests\Console\Commands;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Tests\Fixtures\TemporaryProject;
 use Lomkit\Osdd\Tests\TestCase;
 
 class ListCommandTest extends TestCase
 {
+    private static int $providers = 0;
+
     private string $projectPath;
 
     private string $providerClass;
 
+    #[\Override]
+    protected function createProject(): TemporaryProject
+    {
+        return TemporaryProject::withoutLayers();
+    }
+
     protected function getEnvironmentSetUp($app): void
     {
-        $this->projectPath = sys_get_temp_dir().'/osdd-list-'.Str::random(8);
-        $this->providerClass = 'Functional\\Orders\\Providers\\Orders'.Str::random(8).'ServiceProvider';
+        $this->projectPath = $this->project()->root;
+        $this->providerClass = 'Functional\\Orders\\Providers\\Orders'.++self::$providers.'ServiceProvider';
 
         $this->writeProject();
 
-        $app->setBasePath($this->projectPath);
         $app['config']->set('osdd.layers.paths', [
             'functional' => $this->projectPath.'/functional',
             'technical' => $this->projectPath.'/technical',
         ]);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        (new Filesystem)->deleteDirectory($this->projectPath);
     }
 
     public function test_the_json_output_describes_each_layer(): void

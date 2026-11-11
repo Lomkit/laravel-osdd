@@ -10,13 +10,6 @@ use Lomkit\Osdd\Tests\TestCase;
 
 class LayerTargetResolverTest extends TestCase
 {
-    protected function tearDown(): void
-    {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/broken-layer'));
-
-        parent::tearDown();
-    }
-
     public function test_it_targets_the_requested_layer(): void
     {
         $target = $this->resolver()->resolve('test-layer', false);

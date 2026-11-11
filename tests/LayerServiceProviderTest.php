@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Tests;
 
-use Illuminate\Filesystem\Filesystem;
 use Illuminate\Routing\Route;
 use Lomkit\Osdd\LayerServiceProvider;
 
@@ -14,15 +13,8 @@ class LayerServiceProviderTest extends TestCase
     {
         parent::setUp();
 
-        $this->tmpDir = sys_get_temp_dir().'/osdd-config-test-'.uniqid();
+        $this->tmpDir = $this->project()->path('config-test');
         mkdir($this->tmpDir, 0755, true);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        (new Filesystem)->deleteDirectory($this->tmpDir);
     }
 
     private function writeConfig(string $filename, array $values): string

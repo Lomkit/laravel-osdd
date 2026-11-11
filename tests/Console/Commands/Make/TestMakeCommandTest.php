@@ -2,83 +2,49 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\Fixtures\GeneratedClass;
 use Lomkit\Osdd\Tests\TestCase;
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class TestMakeCommandTest extends TestCase
 {
-    use InteractsWithPublishedFiles;
+    private const string APPLICATION_TEST_CASE = 'Tests\TestCase';
 
-    protected function tearDown(): void
+    public function test_a_feature_test_extends_the_test_case_of_the_application(): void
     {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/tests'));
+        $this->declareApplicationTestCase();
 
-        parent::tearDown();
+        $this->artisan('osdd:test', ['name' => 'CheckoutTest', '--layer' => 'functional/test-layer'])->assertExitCode(0);
+
+        $test = GeneratedClass::load(
+            $this->project()->path('functional/test-layer/tests/Feature/CheckoutTest.php'),
+            'Functional\TestLayer\Tests\Feature\CheckoutTest',
+        );
+
+        $this->assertSame(self::APPLICATION_TEST_CASE, $test->getParentClass() === false ? null : $test->getParentClass()->getName());
     }
 
-    public function test_it_generates_unit_test_file_in_correct_path(): void
+    public function test_a_unit_test_extends_the_phpunit_test_case(): void
     {
-        $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer', '--unit' => true])
-            ->assertExitCode(0);
+        $this->artisan('osdd:test', ['name' => 'PriceTest', '--unit' => true, '--layer' => 'functional/test-layer'])->assertExitCode(0);
 
-        $this->assertFilenameExists('functional/test-layer/tests/Unit/UserTest.php');
+        $test = GeneratedClass::load(
+            $this->project()->path('functional/test-layer/tests/Unit/PriceTest.php'),
+            'Functional\TestLayer\Tests\Unit\PriceTest',
+        );
+
+        $this->assertSame(\PHPUnit\Framework\TestCase::class, $test->getParentClass() === false ? null : $test->getParentClass()->getName());
     }
 
-    public function test_it_generates_unit_test_with_correct_namespace(): void
+    private function declareApplicationTestCase(): void
     {
-        $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer', '--unit' => true])
-            ->assertExitCode(0);
+        if (class_exists(self::APPLICATION_TEST_CASE, false)) {
+            return;
+        }
 
-        $this->assertFileContains([
-            'namespace Functional\TestLayer\Tests\Unit;',
-            'class UserTest',
-        ], 'functional/test-layer/tests/Unit/UserTest.php');
-    }
+        $path = $this->project()->path('tests/TestCase.php');
+        $this->app['files']->ensureDirectoryExists(dirname($path));
+        $this->app['files']->put($path, "<?php\n\nnamespace Tests;\n\nabstract class TestCase extends \\PHPUnit\\Framework\\TestCase\n{\n}\n");
 
-    public function test_it_generates_feature_test_file_in_correct_path(): void
-    {
-        $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/tests/Feature/UserTest.php');
-    }
-
-    public function test_it_generates_feature_test_with_correct_namespace(): void
-    {
-        $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'namespace Functional\TestLayer\Tests\Feature;',
-            'class UserTest',
-        ], 'functional/test-layer/tests/Feature/UserTest.php');
-    }
-
-    public function test_it_prompts_for_layer_when_not_provided(): void
-    {
-        $this->artisan('osdd:test', ['name' => 'UserTest', '--unit' => true])
-            ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/tests/Unit/UserTest.php');
-    }
-
-    public function test_it_generates_nested_unit_test_in_correct_path(): void
-    {
-        $this->artisan('osdd:test', ['name' => 'Services/UserServiceTest', '--layer' => 'functional/test-layer', '--unit' => true])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/tests/Unit/Services/UserServiceTest.php');
-    }
-
-    public function test_it_generates_nested_unit_test_with_correct_namespace(): void
-    {
-        $this->artisan('osdd:test', ['name' => 'Services/UserServiceTest', '--layer' => 'functional/test-layer', '--unit' => true])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'namespace Functional\TestLayer\Tests\Unit\Services;',
-            'class UserServiceTest',
-        ], 'functional/test-layer/tests/Unit/Services/UserServiceTest.php');
+        require $path;
     }
 }

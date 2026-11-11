@@ -3,7 +3,6 @@
 namespace Lomkit\Osdd\Tests\Layers;
 
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Str;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerDiscovery;
 use Lomkit\Osdd\Layers\Layers;
@@ -17,14 +16,7 @@ class LayerDiscoveryTest extends TestCase
     {
         parent::setUp();
 
-        $this->root = sys_get_temp_dir().'/osdd-discovery-'.Str::random(8);
-    }
-
-    protected function tearDown(): void
-    {
-        (new Filesystem)->deleteDirectory($this->root);
-
-        parent::tearDown();
+        $this->root = $this->project()->path('discovery');
     }
 
     public function test_it_finds_layers_in_every_bucket_and_in_plain_subdirectories(): void

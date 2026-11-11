@@ -7,25 +7,21 @@ use Lomkit\Osdd\Console\Providers\LayerProvider;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayerDirectory;
 use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Tests\Fixtures\UsesTemporaryProject;
 use PHPUnit\Framework\TestCase;
 
 class LayerProviderTest extends TestCase
 {
+    use UsesTemporaryProject;
+
     private string $directory;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->directory = sys_get_temp_dir().'/osdd-layer-provider-'.uniqid();
+        $this->directory = $this->project()->path('layer-provider');
         (new Filesystem)->ensureDirectoryExists($this->directory.'/src/Providers');
-    }
-
-    protected function tearDown(): void
-    {
-        (new Filesystem)->deleteDirectory($this->directory);
-
-        parent::tearDown();
     }
 
     public function test_it_finds_the_conventional_provider_of_a_dotted_package_name(): void

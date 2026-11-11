@@ -13,14 +13,6 @@ use Symfony\Component\Console\Command\Command;
 
 class GeneratesInLayerTest extends TestCase
 {
-    protected function tearDown(): void
-    {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/src/Enums'));
-        $this->app['files']->deleteDirectory($this->app->basePath('technical'));
-
-        parent::tearDown();
-    }
-
     public function test_every_generator_is_a_final_class_on_the_adapter(): void
     {
         $generators = $this->generators();
@@ -90,13 +82,8 @@ class GeneratesInLayerTest extends TestCase
 
     private function createTechnicalLayer(string $name, string $namespace): void
     {
-        $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
+        $this->layerFixture()->bucket('technical');
 
-        $this->app['files']->ensureDirectoryExists($this->app->basePath($name.'/src'));
-        $this->app['files']->put($this->app->basePath($name.'/composer.json'), json_encode([
-            'name' => $name,
-            'type' => 'layer',
-            'autoload' => ['psr-4' => [$namespace => 'src/']],
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $this->layerFixture()->layer($name, ['autoload' => ['psr-4' => [$namespace => 'src/']]]);
     }
 }

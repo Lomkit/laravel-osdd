@@ -19,14 +19,7 @@ class LayerCyclesTest extends TestCase
     {
         parent::setUp();
 
-        $this->root = sys_get_temp_dir().'/osdd-cycles-'.Str::random(8);
-    }
-
-    protected function tearDown(): void
-    {
-        (new Filesystem)->deleteDirectory($this->root);
-
-        parent::tearDown();
+        $this->root = $this->project()->path('cycles');
     }
 
     public function test_it_finds_one_shortest_cycle_per_group_of_layers(): void

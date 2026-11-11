@@ -2,113 +2,74 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\Fixtures\LayerFixture;
 use Lomkit\Osdd\Tests\TestCase;
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class ConfigMakeCommandTest extends TestCase
 {
-    use InteractsWithPublishedFiles;
+    private const string PROVIDER_METHODS = <<<'PHP'
+            public function boot(): void
+            {
+                //
+            }
 
-    private string $providerPath;
+            public function register(): void
+            {
+                //
+            }
+        PHP;
 
-    private string $providerOriginal;
-
-    protected function setUp(): void
+    public function test_the_layer_provider_overrides_the_config_with_the_generated_file(): void
     {
-        parent::setUp();
+        $provider = $this->layerFixture()->providerLayer(self::PROVIDER_METHODS);
 
-        $this->providerPath = $this->app->basePath('functional/test-layer/src/Providers/TestLayerServiceProvider.php');
+        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+        file_put_contents($this->configPath('payments.php'), "<?php\n\nreturn ['driver' => 'layer'];\n");
+        $this->app['config']->set('payments', ['driver' => 'default', 'currency' => 'EUR']);
+        $provider->register($this->app);
 
-        $this->app['files']->ensureDirectoryExists(dirname($this->providerPath));
-
-        $this->providerOriginal = <<<'PHP'
-<?php
-
-namespace Functional\TestLayer\Providers;
-
-use Lomkit\Osdd\LayerServiceProvider;
-
-class TestLayerServiceProvider extends LayerServiceProvider
-{
-    public function boot(): void
-    {
-        //
+        $this->assertSame(['driver' => 'layer', 'currency' => 'EUR'], $this->app['config']->get('payments'));
     }
 
-    public function register(): void
+    public function test_the_php_extension_is_not_doubled(): void
     {
-        //
-    }
-}
-PHP;
+        $this->artisan('osdd:config', ['name' => 'payments.php', '--layer' => 'functional/test-layer'])->assertExitCode(0);
 
-        file_put_contents($this->providerPath, $this->providerOriginal);
+        $this->assertFileExists($this->project()->path('functional/test-layer/config/payments.php'));
+        $this->assertFileDoesNotExist($this->project()->path('functional/test-layer/config/payments.php.php'));
     }
 
-    protected function tearDown(): void
+    public function test_a_config_generated_twice_is_registered_once(): void
     {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/config'));
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/src/Providers'));
+        $provider = $this->layerFixture()->providerLayer(self::PROVIDER_METHODS);
 
-        parent::tearDown();
+        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => LayerFixture::PROVIDER_LAYER, '--force' => true])->assertExitCode(0);
+
+        $this->assertSame(1, substr_count($provider->source(), 'overrideConfigFrom('));
     }
 
-    public function test_it_generates_config_file_in_correct_path(): void
+    public function test_without_a_provider_it_writes_the_config_and_prints_the_line_to_add(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
+            ->expectsOutputToContain('Layer [functional/test-layer] has no service provider.')
+            ->expectsOutputToContain("\$this->overrideConfigFrom(__DIR__ . '/../../config/payments.php', 'payments');")
             ->assertExitCode(0);
 
-        $this->assertFilenameExists('functional/test-layer/config/payments.php');
+        $this->assertFileExists($this->project()->path('functional/test-layer/config/payments.php'));
     }
 
-    public function test_it_appends_php_extension_when_missing(): void
-    {
-        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/config/payments.php');
-        $this->assertFilenameNotExists('functional/test-layer/config/payments.php.php');
-    }
-
-    public function test_it_prompts_for_layer_when_not_provided(): void
+    public function test_it_asks_for_the_layer_when_none_is_given(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
             ->assertExitCode(0);
 
-        $this->assertFilenameExists('functional/test-layer/config/payments.php');
+        $this->assertFileExists($this->project()->path('functional/test-layer/config/payments.php'));
     }
 
-    public function test_it_injects_override_config_from_into_service_provider(): void
+    private function configPath(string $file): string
     {
-        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains(
-            ["\$this->overrideConfigFrom(__DIR__ . '/../../config/payments.php', 'payments');"],
-            'functional/test-layer/src/Providers/TestLayerServiceProvider.php',
-        );
-    }
-
-    public function test_injection_is_idempotent(): void
-    {
-        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer', '--force' => true]);
-        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer', '--force' => true]);
-
-        $content = file_get_contents($this->providerPath);
-        $count = substr_count($content, "overrideConfigFrom(__DIR__ . '/../../config/payments.php'");
-
-        $this->assertSame(1, $count);
-    }
-
-    public function test_it_skips_injection_when_service_provider_does_not_exist(): void
-    {
-        $this->app['files']->delete($this->providerPath);
-
-        $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        // Config file still generated; no crash without a provider
-        $this->assertFilenameExists('functional/test-layer/config/payments.php');
+        return $this->project()->path(LayerFixture::PROVIDER_LAYER.'/config/'.$file);
     }
 }

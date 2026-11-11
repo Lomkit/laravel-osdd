@@ -7,24 +7,13 @@ use Illuminate\Support\Facades\Artisan;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerCache;
 use Lomkit\Osdd\Layers\Layers;
-use Lomkit\Osdd\Tests\Concerns\CreatesLayers;
 use Lomkit\Osdd\Tests\TestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\NullOutput;
 
 class LayerCacheTest extends TestCase
 {
-    use CreatesLayers;
-
     private const string OPTIMIZE_TASKS_OF_THE_FRAMEWORK = 'config,events,routes,views';
-
-    protected function tearDown(): void
-    {
-        $this->app['files']->delete($this->cacheFile());
-        $this->deleteCreatedLayers();
-
-        parent::tearDown();
-    }
 
     public function test_osdd_cache_writes_the_discovered_layers_to_bootstrap_cache(): void
     {
@@ -39,14 +28,14 @@ class LayerCacheTest extends TestCase
     public function test_the_next_process_reads_the_cache_instead_of_scanning(): void
     {
         $this->artisan('osdd:cache')->assertExitCode(0);
-        $this->createLayer($this->app->basePath('functional/added-later'), 'functional/added-later');
+        $this->layerFixture()->layer('functional/added-later');
 
         $this->assertSame(['functional/test-layer'], $this->layersOfANewProcess()->names());
     }
 
     public function test_the_cached_layers_keep_everything_the_manifest_declared(): void
     {
-        $this->createLayer($this->app->basePath('functional/orders'), 'functional/orders', [
+        $this->layerFixture()->layer('functional/orders', [
             'require' => ['functional/test-layer' => '*'],
             'require-dev' => ['functional/users' => '*'],
             'autoload' => ['psr-4' => ['Functional\\Orders\\' => 'app/']],
@@ -56,7 +45,7 @@ class LayerCacheTest extends TestCase
         $discovered = $this->app->make(Layers::class)->find('functional/orders');
 
         $this->artisan('osdd:cache')->assertExitCode(0);
-        $this->createLayer($this->app->basePath('functional/added-later'), 'functional/added-later');
+        $this->layerFixture()->layer('functional/added-later');
 
         $this->assertEquals($discovered, $this->layersOfANewProcess()->find('functional/orders'));
     }
@@ -64,7 +53,7 @@ class LayerCacheTest extends TestCase
     public function test_osdd_clear_removes_the_cache(): void
     {
         $this->artisan('osdd:cache')->assertExitCode(0);
-        $this->createLayer($this->app->basePath('functional/added-later'), 'functional/added-later');
+        $this->layerFixture()->layer('functional/added-later');
 
         $this->artisan('osdd:clear')
             ->expectsOutputToContain('Layer cache cleared successfully.')
@@ -77,10 +66,9 @@ class LayerCacheTest extends TestCase
     public function test_a_cache_built_for_other_layer_paths_is_ignored(): void
     {
         $this->artisan('osdd:cache')->assertExitCode(0);
-        $this->createLayer($this->app->basePath('technical/mail'), 'technical/mail');
-        $this->createdLayerPaths[] = $this->app->basePath('technical');
+        $this->layerFixture()->layer('technical/mail');
 
-        $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
+        $this->layerFixture()->bucket('technical');
 
         $this->assertSame(['functional/test-layer', 'technical/mail'], $this->layersOfANewProcess()->names());
     }
@@ -95,7 +83,7 @@ class LayerCacheTest extends TestCase
     public function test_osdd_cache_refuses_invalid_manifests_and_leaves_no_cache(): void
     {
         $this->artisan('osdd:cache')->assertExitCode(0);
-        $this->createLayer($this->app->basePath('functional/broken'), 'functional/broken');
+        $this->layerFixture()->layer('functional/broken');
         $this->app['files']->put($this->app->basePath('functional/broken/composer.json'), '{');
 
         $this->assertSame(1, Artisan::call('osdd:cache'));
@@ -107,7 +95,6 @@ class LayerCacheTest extends TestCase
     {
         $this->artisan('osdd:cache')->assertExitCode(0);
 
-        $this->createdLayerPaths[] = $this->app->basePath('functional/invoices');
         $this->artisan('osdd:layer', ['name' => 'functional/invoices', '--generators' => ['model'], '--no-composer-update' => true])->assertExitCode(0);
 
         $this->assertSame(['functional/invoices', 'functional/test-layer'], $this->layersOfANewProcess()->names());
@@ -116,7 +103,7 @@ class LayerCacheTest extends TestCase
     public function test_package_discovery_refreshes_an_existing_cache(): void
     {
         $this->artisan('osdd:cache')->assertExitCode(0);
-        $this->createLayer($this->app->basePath('functional/added-later'), 'functional/added-later');
+        $this->layerFixture()->layer('functional/added-later');
 
         $this->app['events']->dispatch(new CommandFinished('package:discover', new ArrayInput([]), new NullOutput, 0));
 

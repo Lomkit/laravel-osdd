@@ -15,10 +15,13 @@ use Lomkit\Osdd\Console\Providers\Wiring\StatementAlreadyPresent;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayerDirectory;
 use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Tests\Fixtures\UsesTemporaryProject;
 use PHPUnit\Framework\TestCase;
 
 class ProviderWiringTest extends TestCase
 {
+    use UsesTemporaryProject;
+
     private const string PROVIDER = 'Functional\Orders\Providers\OrdersServiceProvider';
 
     private const string SEEDER = 'Functional\Orders\Database\Seeders\OrdersSeeder';
@@ -32,15 +35,8 @@ class ProviderWiringTest extends TestCase
         parent::setUp();
 
         $this->files = new Filesystem;
-        $this->directory = sys_get_temp_dir().'/osdd-wiring-'.uniqid();
+        $this->directory = $this->project()->path('wiring');
         $this->files->ensureDirectoryExists($this->directory.'/src/Providers');
-    }
-
-    protected function tearDown(): void
-    {
-        $this->files->deleteDirectory($this->directory);
-
-        parent::tearDown();
     }
 
     public function test_it_appends_the_statement_to_its_method(): void

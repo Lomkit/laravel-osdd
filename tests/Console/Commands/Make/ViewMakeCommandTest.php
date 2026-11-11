@@ -3,41 +3,37 @@
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
 use Lomkit\Osdd\Tests\TestCase;
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class ViewMakeCommandTest extends TestCase
 {
-    use InteractsWithPublishedFiles;
-
-    protected function tearDown(): void
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function views(): array
     {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/resources'));
-
-        parent::tearDown();
+        return [
+            'view' => ['index', 'resources/views/index.blade.php'],
+            'nested view' => ['orders/index', 'resources/views/orders/index.blade.php'],
+        ];
     }
 
-    public function test_it_generates_view_file_in_correct_path(): void
+    #[DataProvider('views')]
+    public function test_the_view_is_written_in_the_layer(string $name, string $file): void
     {
-        $this->artisan('osdd:view', ['name' => 'index', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
+        $this->artisan('osdd:view', ['name' => $name, '--layer' => 'functional/test-layer'])->assertExitCode(0);
 
-        $this->assertFilenameExists('functional/test-layer/resources/views/index.blade.php');
+        $this->assertFileExists($this->project()->path('functional/test-layer/'.$file));
+        $this->assertDirectoryDoesNotExist($this->project()->path('resources/views/orders'));
+        $this->assertFileDoesNotExist($this->project()->path('resources/views/index.blade.php'));
     }
 
-    public function test_it_generates_nested_view_in_correct_path(): void
-    {
-        $this->artisan('osdd:view', ['name' => 'users/index', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/resources/views/users/index.blade.php');
-    }
-
-    public function test_it_prompts_for_layer_when_not_provided(): void
+    public function test_it_asks_for_the_layer_when_none_is_given(): void
     {
         $this->artisan('osdd:view', ['name' => 'index'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
             ->assertExitCode(0);
 
-        $this->assertFilenameExists('functional/test-layer/resources/views/index.blade.php');
+        $this->assertFileExists($this->project()->path('functional/test-layer/resources/views/index.blade.php'));
     }
 }

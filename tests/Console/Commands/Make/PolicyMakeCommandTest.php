@@ -2,101 +2,47 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\Fixtures\GeneratedClass;
 use Lomkit\Osdd\Tests\TestCase;
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class PolicyMakeCommandTest extends TestCase
 {
-    use InteractsWithPublishedFiles;
-
-    protected function tearDown(): void
+    public function test_a_model_policy_has_the_abilities_typed_on_the_layer_model_and_the_user_model(): void
     {
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/src/Policies'));
+        $this->app['config']->set('auth.providers.users.model', 'Functional\Users\Models\User');
 
-        parent::tearDown();
-    }
-
-    public function test_it_generates_policy_file_in_correct_path(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'UserPolicy', '--layer' => 'functional/test-layer'])
+        $this->artisan('osdd:policy', ['name' => 'ShipmentPolicy', '--model' => 'Shipment', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
 
-        $this->assertFilenameExists('functional/test-layer/src/Policies/UserPolicy.php');
-    }
-
-    public function test_it_generates_policy_with_correct_namespace(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'UserPolicy', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'namespace Functional\TestLayer\Policies;',
-            'class UserPolicy',
-        ], 'functional/test-layer/src/Policies/UserPolicy.php');
-    }
-
-    public function test_it_prompts_for_layer_when_not_provided(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'UserPolicy'])
-            ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/src/Policies/UserPolicy.php');
-    }
-
-    public function test_it_generates_nested_policy_in_correct_path(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'Admin/AdminPolicy', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFilenameExists('functional/test-layer/src/Policies/Admin/AdminPolicy.php');
-    }
-
-    public function test_it_generates_nested_policy_with_correct_namespace(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'Admin/AdminPolicy', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'namespace Functional\TestLayer\Policies\Admin;',
-            'class AdminPolicy',
-        ], 'functional/test-layer/src/Policies/Admin/AdminPolicy.php');
-    }
-
-    public function test_it_generates_policy_with_model_methods(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'UserPolicy', '--layer' => 'functional/test-layer', '--model' => 'User'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'public function viewAny(',
-            'public function view(',
-            'public function create(',
-            'public function update(',
-            'public function delete(',
-        ], 'functional/test-layer/src/Policies/UserPolicy.php');
-    }
-
-    public function test_it_qualifies_model_with_models_sub_namespace(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'UserPolicy', '--layer' => 'functional/test-layer', '--model' => 'User'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains([
-            'use Functional\TestLayer\Models\User;',
-        ], 'functional/test-layer/src/Policies/UserPolicy.php');
-    }
-
-    public function test_it_replaces_user_model_placeholder_in_policy_stub(): void
-    {
-        $this->artisan('osdd:policy', ['name' => 'UserPolicy', '--layer' => 'functional/test-layer', '--model' => 'User'])
-            ->assertExitCode(0);
-
-        $contents = $this->app['files']->get(
-            $this->app->basePath('functional/test-layer/src/Policies/UserPolicy.php')
+        $policy = GeneratedClass::load(
+            $this->project()->path('functional/test-layer/src/Policies/ShipmentPolicy.php'),
+            'Functional\TestLayer\Policies\ShipmentPolicy',
         );
 
-        $this->assertStringNotContainsString('{{ namespacedUserModel }}', $contents);
-        $this->assertStringNotContainsString('{{namespacedUserModel}}', $contents);
+        foreach (['viewAny', 'view', 'create', 'update', 'delete', 'restore', 'forceDelete'] as $ability) {
+            $this->assertTrue($policy->hasMethod($ability), "The policy has no [{$ability}] ability.");
+            $this->assertSame('Functional\Users\Models\User', $this->parameterType($policy->getMethod($ability), 0));
+        }
+
+        $this->assertSame('Functional\TestLayer\Models\Shipment', $this->parameterType($policy->getMethod('view'), 1));
+    }
+
+    public function test_a_policy_without_a_model_has_no_ability(): void
+    {
+        $this->artisan('osdd:policy', ['name' => 'ReportingPolicy', '--layer' => 'functional/test-layer'])->assertExitCode(0);
+
+        $policy = GeneratedClass::load(
+            $this->project()->path('functional/test-layer/src/Policies/ReportingPolicy.php'),
+            'Functional\TestLayer\Policies\ReportingPolicy',
+        );
+
+        $this->assertFalse($policy->hasMethod('viewAny'));
+    }
+
+    private function parameterType(\ReflectionMethod $method, int $position): string
+    {
+        $type = $method->getParameters()[$position]->getType();
+
+        return $type instanceof \ReflectionNamedType ? $type->getName() : '';
     }
 }
