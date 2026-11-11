@@ -8,6 +8,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 class ObserverMakeCommand extends \Illuminate\Foundation\Console\ObserverMakeCommand
 {
     use ChoosesOsddLayer;
+    use QualifiesModelsAcrossLayers;
 
     protected $name = 'osdd:observer';
 

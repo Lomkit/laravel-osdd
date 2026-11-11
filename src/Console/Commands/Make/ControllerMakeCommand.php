@@ -8,6 +8,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCommand
 {
     use ChoosesOsddLayer;
+    use QualifiesModelsAcrossLayers;
 
     /**
      * The console command name.
