@@ -2,6 +2,7 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Illuminate\Support\Facades\Artisan;
 use Lomkit\Osdd\Tests\TestCase;
 use Symfony\Component\Process\Process;
 
@@ -13,6 +14,18 @@ class LayerOptionTest extends TestCase
         $this->app['files']->deleteDirectory($this->app->basePath('technical'));
 
         parent::tearDown();
+    }
+
+    public function test_a_second_run_of_the_same_command_targets_its_own_layer(): void
+    {
+        $this->createTechnicalLayer('technical/other-layer');
+
+        Artisan::call('osdd:enum', ['name' => 'First', '--layer' => 'functional/test-layer']);
+        Artisan::call('osdd:enum', ['name' => 'Second', '--layer' => 'technical/other-layer']);
+
+        $this->assertFileExists($this->app->basePath('functional/test-layer/src/Enums/First.php'));
+        $this->assertFileExists($this->app->basePath('technical/other-layer/src/Enums/Second.php'));
+        $this->assertFileDoesNotExist($this->app->basePath('functional/test-layer/src/Enums/Second.php'));
     }
 
     public function test_it_accepts_the_package_name_of_a_layer(): void

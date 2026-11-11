@@ -54,6 +54,8 @@ trait ChoosesOsddLayer
     #[\Override]
     public function run(InputInterface $input, OutputInterface $output): int
     {
+        $this->resolvedLayer = null;
+
         try {
             return parent::run($input, $output);
         } catch (LayerNotFoundException|AmbiguousLayerNameException|MissingLayerOptionException $exception) {
