@@ -2,18 +2,16 @@
 
 namespace Lomkit\Osdd\Tests\Fakes;
 
-use Illuminate\Filesystem\Filesystem;
-
 final class FakeComposerBinary
 {
     public readonly string $path;
 
-    private readonly string $directory;
-
-    public function __construct(int $exitCode = 0, string $output = '')
+    public function __construct(private readonly string $directory, int $exitCode = 0, string $output = '')
     {
-        $this->directory = sys_get_temp_dir().'/osdd-fake-composer-'.uniqid();
-        mkdir($this->directory, 0755, true);
+        if (! is_dir($this->directory)) {
+            mkdir($this->directory, 0755, true);
+        }
+
         $this->path = $this->directory.'/composer';
 
         file_put_contents($this->path, '<?php'.PHP_EOL
@@ -28,11 +26,6 @@ final class FakeComposerBinary
     public function calls(): array
     {
         return is_file($this->callsFile()) ? file($this->callsFile(), FILE_IGNORE_NEW_LINES) ?: [] : [];
-    }
-
-    public function delete(): void
-    {
-        (new Filesystem)->deleteDirectory($this->directory);
     }
 
     private function callsFile(): string

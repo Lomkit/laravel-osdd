@@ -19,13 +19,6 @@ class InvalidLayerManifestTest extends TestCase
         $this->app['files']->put($this->brokenLayer.'/composer.json', '{"name": "functional/broken", "type": "layer",');
     }
 
-    protected function tearDown(): void
-    {
-        $this->app['files']->deleteDirectory($this->brokenLayer);
-
-        parent::tearDown();
-    }
-
     /**
      * @return array<string, array{string, array<string, mixed>}>
      */

@@ -7,10 +7,13 @@ use Lomkit\Osdd\Composer\LayerComposerJson;
 use Lomkit\Osdd\Composer\LayerComposerManifest;
 use Lomkit\Osdd\Layers\LayerManifest;
 use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Tests\Fixtures\UsesTemporaryProject;
 use PHPUnit\Framework\TestCase;
 
 class LayerComposerManifestTest extends TestCase
 {
+    use UsesTemporaryProject;
+
     private const string LAYER_COMPOSER_JSON = <<<'JSON'
         {
             "name": "functional/sales-orders",
@@ -39,14 +42,7 @@ class LayerComposerManifestTest extends TestCase
     {
         parent::setUp();
 
-        $this->directory = sys_get_temp_dir().'/osdd-layer-manifest-'.uniqid();
-    }
-
-    protected function tearDown(): void
-    {
-        (new Filesystem)->deleteDirectory($this->directory);
-
-        parent::tearDown();
+        $this->directory = $this->project()->path('layer-manifest');
     }
 
     public function test_a_new_layer_gets_the_composer_json_of_2x_byte_for_byte(): void

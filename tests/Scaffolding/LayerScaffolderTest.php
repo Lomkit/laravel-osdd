@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Tests\Scaffolding;
 
 use Illuminate\Console\OutputStyle;
 use Illuminate\Contracts\Console\Kernel;
-use Illuminate\Filesystem\Filesystem;
+use Illuminate\Database\Eloquent\Model;
 use Lomkit\Osdd\Composer\LayerComposerManifest;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\Layers;
@@ -16,6 +16,8 @@ use Lomkit\Osdd\Scaffolding\LayerScaffolds;
 use Lomkit\Osdd\Scaffolding\ScaffoldConsole;
 use Lomkit\Osdd\Scaffolding\ScaffoldDependencyCycleException;
 use Lomkit\Osdd\Seeders\SeederRegistry;
+use Lomkit\Osdd\Tests\Fixtures\GeneratedClass;
+use Lomkit\Osdd\Tests\Fixtures\TemporaryProject;
 use Lomkit\Osdd\Tests\Scaffolding\Fixtures\KeyedScaffold;
 use Lomkit\Osdd\Tests\Scaffolding\Fixtures\UnregisteredCommand;
 use Lomkit\Osdd\Tests\TestCase;
@@ -29,12 +31,16 @@ class LayerScaffolderTest extends TestCase
 
     private BufferedOutput $output;
 
+    #[\Override]
+    protected function createProject(): TemporaryProject
+    {
+        return TemporaryProject::withoutLayers();
+    }
+
     protected function getEnvironmentSetUp($app): void
     {
-        $this->projectPath = sys_get_temp_dir().'/osdd-scaffolder-'.uniqid();
-        mkdir($this->projectPath, 0755, true);
+        $this->projectPath = $this->project()->root;
 
-        $app->setBasePath($this->projectPath);
         $app['config']->set('osdd.layers.paths', ['functional' => $this->projectPath.'/functional']);
     }
 
@@ -47,13 +53,6 @@ class LayerScaffolderTest extends TestCase
         KeyedScaffold::$runs = [];
     }
 
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        (new Filesystem)->deleteDirectory($this->projectPath);
-    }
-
     public function test_it_scaffolds_a_working_layer_without_a_console_command(): void
     {
         $this->scaffold('functional/scaffolded-orders', LayerScaffolds::standard()->parse(['routes', 'policy', 'model', 'seeder', 'provider']));
@@ -64,10 +63,10 @@ class LayerScaffolderTest extends TestCase
         $root = $layer->directory->root;
         $this->assertFileExists($root.'/src/Models/ScaffoldedOrder.php');
         $this->assertFileExists($root.'/routes/web.php');
-        $this->assertStringContainsString('use Functional\\ScaffoldedOrders\\Models\\ScaffoldedOrder;', (string) file_get_contents($root.'/src/Policies/ScaffoldedOrdersPolicy.php'));
+        $policy = GeneratedClass::load($root.'/src/Policies/ScaffoldedOrdersPolicy.php', 'Functional\ScaffoldedOrders\Policies\ScaffoldedOrdersPolicy');
+        $this->assertSame('Functional\ScaffoldedOrders\Models\ScaffoldedOrder', (string) $policy->getMethod('view')->getParameters()[1]->getType());
 
-        require_once $root.'/src/Providers/ScaffoldedOrdersServiceProvider.php';
-        $this->app->register('Functional\\ScaffoldedOrders\\Providers\\ScaffoldedOrdersServiceProvider');
+        $this->app->register(GeneratedClass::load($root.'/src/Providers/ScaffoldedOrdersServiceProvider.php', 'Functional\ScaffoldedOrders\Providers\ScaffoldedOrdersServiceProvider')->getName());
         $this->assertSame(['Functional\\ScaffoldedOrders\\Database\\Seeders\\ScaffoldedOrdersSeeder'], $this->app->make(SeederRegistry::class)->seeders());
 
         $composer = json_decode((string) file_get_contents($this->projectPath.'/composer.json'), true);
@@ -116,7 +115,7 @@ class LayerScaffolderTest extends TestCase
 
         $this->scaffold('functional/forced-orders', $scaffolds, force: true);
 
-        $this->assertStringContainsString('class ForcedOrder extends Model', (string) file_get_contents($model));
+        $this->assertTrue(GeneratedClass::load($model, 'Functional\ForcedOrders\Models\ForcedOrder')->isSubclassOf(Model::class));
         $this->assertCount(1, (array) glob($this->projectPath.'/functional/forced-orders/database/migrations/*_create_forced_orders_table.php'));
         $this->assertStringContainsString('A create_forced_orders_table migration already exists, skipping the migration generator.', $this->output->fetch());
     }

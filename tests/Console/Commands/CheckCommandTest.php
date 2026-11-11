@@ -4,31 +4,29 @@ namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Str;
+use Lomkit\Osdd\Tests\Fixtures\TemporaryProject;
 use Lomkit\Osdd\Tests\TestCase;
 
 class CheckCommandTest extends TestCase
 {
     private string $projectPath;
 
+    #[\Override]
+    protected function createProject(): TemporaryProject
+    {
+        return TemporaryProject::withoutLayers();
+    }
+
     protected function getEnvironmentSetUp($app): void
     {
-        $this->projectPath = sys_get_temp_dir().'/osdd-check-'.Str::random(8);
+        $this->projectPath = $this->project()->root;
 
         $this->writeProject();
 
-        $app->setBasePath($this->projectPath);
         $app['config']->set('osdd.layers.paths', [
             'functional' => $this->projectPath.'/functional',
             'technical' => $this->projectPath.'/technical',
         ]);
-    }
-
-    protected function tearDown(): void
-    {
-        parent::tearDown();
-
-        (new Filesystem)->deleteDirectory($this->projectPath);
     }
 
     public function test_it_reports_undeclared_dependencies_and_unused_requirements_as_json(): void

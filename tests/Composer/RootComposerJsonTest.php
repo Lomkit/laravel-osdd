@@ -7,26 +7,22 @@ use Lomkit\Osdd\Composer\MalformedComposerJsonException;
 use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Layers\LayerDirectory;
 use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Tests\Fixtures\UsesTemporaryProject;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class RootComposerJsonTest extends TestCase
 {
+    use UsesTemporaryProject;
+
     private string $basePath;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->basePath = sys_get_temp_dir().'/osdd-root-composer-'.uniqid().'/project';
+        $this->basePath = $this->project()->path('root-composer/project');
         mkdir($this->basePath, 0755, true);
-    }
-
-    protected function tearDown(): void
-    {
-        (new Filesystem)->deleteDirectory(dirname($this->basePath));
-
-        parent::tearDown();
     }
 
     public function test_it_tells_whether_the_project_has_a_composer_json(): void

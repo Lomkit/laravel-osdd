@@ -2,114 +2,62 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Illuminate\Support\Facades\Schema;
+use Lomkit\Osdd\Tests\Fixtures\LayerFixture;
 use Lomkit\Osdd\Tests\TestCase;
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class MigrateMakeCommandTest extends TestCase
 {
-    use InteractsWithPublishedFiles;
-
-    private string $providerPath;
-
-    protected function setUp(): void
+    public function test_the_layer_provider_loads_the_migration_and_it_migrates(): void
     {
-        parent::setUp();
+        $provider = $this->layerFixture()->providerLayer(LayerFixture::bootMethod());
 
-        $this->providerPath = $this->app->basePath('functional/test-layer/src/Providers/TestLayerServiceProvider.php');
+        $this->artisan('osdd:migration', ['name' => 'create_parcels_table', '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+        $provider->register($this->app);
+        $this->artisan('migrate')->assertExitCode(0);
 
-        $this->app['files']->ensureDirectoryExists(dirname($this->providerPath));
-
-        file_put_contents($this->providerPath, <<<'PHP'
-<?php
-
-namespace Functional\TestLayer\Providers;
-
-use Lomkit\Osdd\LayerServiceProvider;
-
-class TestLayerServiceProvider extends LayerServiceProvider
-{
-    public function boot(): void
-    {
-        //
+        $this->assertTrue(Schema::hasTable('parcels'));
+        $this->assertCount(1, glob($this->project()->path(LayerFixture::PROVIDER_LAYER.'/database/migrations/*_create_parcels_table.php')) ?: []);
+        $this->assertSame([], glob($this->project()->path('database/migrations/*.php')) ?: []);
     }
 
-    public function register(): void
+    public function test_the_create_option_names_the_table(): void
     {
-        //
-    }
-}
-PHP);
-    }
+        $provider = $this->layerFixture()->providerLayer(LayerFixture::bootMethod());
 
-    protected function tearDown(): void
-    {
-        foreach (glob($this->app->basePath('functional/test-layer/database/migrations/*.php')) as $file) {
-            $this->app['files']->delete($file);
-        }
+        $this->artisan('osdd:migration', ['name' => 'add_carriers', '--create' => 'carriers', '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+        $provider->register($this->app);
+        $this->artisan('migrate')->assertExitCode(0);
 
-        $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/src/Providers'));
-
-        parent::tearDown();
+        $this->assertTrue(Schema::hasTable('carriers'));
     }
 
-    public function test_it_generates_migration_file_in_correct_path(): void
+    public function test_a_second_migration_does_not_register_the_folder_again(): void
     {
-        $this->artisan('osdd:migration', ['name' => 'create_users_table', '--layer' => 'functional/test-layer'])
+        $provider = $this->layerFixture()->providerLayer(LayerFixture::bootMethod());
+
+        $this->artisan('osdd:migration', ['name' => 'create_parcels_table', '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+        $this->artisan('osdd:migration', ['name' => 'create_carriers_table', '--layer' => LayerFixture::PROVIDER_LAYER])->assertExitCode(0);
+
+        $this->assertSame(1, substr_count($provider->source(), 'loadMigrationsFrom('));
+    }
+
+    public function test_without_a_provider_it_writes_the_migration_and_prints_the_line_to_add(): void
+    {
+        $this->artisan('osdd:migration', ['name' => 'create_parcels_table', '--layer' => 'functional/test-layer'])
+            ->expectsOutputToContain('Layer [functional/test-layer] has no service provider.')
+            ->expectsOutputToContain("\$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');")
             ->assertExitCode(0);
 
-        $files = glob($this->app->basePath('functional/test-layer/database/migrations/*_create_users_table.php'));
-        $this->assertNotEmpty($files);
+        $this->assertCount(1, glob($this->project()->path('functional/test-layer/database/migrations/*_create_parcels_table.php')) ?: []);
     }
 
-    public function test_it_prompts_for_layer_when_not_provided(): void
+    public function test_it_asks_for_the_layer_when_none_is_given(): void
     {
-        $this->artisan('osdd:migration', ['name' => 'create_users_table'])
+        $this->artisan('osdd:migration', ['name' => 'create_parcels_table'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
             ->assertExitCode(0);
 
-        $files = glob($this->app->basePath('functional/test-layer/database/migrations/*_create_users_table.php'));
-        $this->assertNotEmpty($files);
-    }
-
-    public function test_it_generates_migration_with_create_option(): void
-    {
-        $this->artisan('osdd:migration', ['name' => 'create_posts_table', '--create' => 'posts', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $files = glob($this->app->basePath('functional/test-layer/database/migrations/*_create_posts_table.php'));
-        $this->assertNotEmpty($files);
-    }
-
-    public function test_it_registers_migrations_path_in_service_provider(): void
-    {
-        $this->artisan('osdd:migration', ['name' => 'create_users_table', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $this->assertFileContains(
-            ["\$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');"],
-            'functional/test-layer/src/Providers/TestLayerServiceProvider.php',
-        );
-    }
-
-    public function test_registration_is_idempotent(): void
-    {
-        $this->artisan('osdd:migration', ['name' => 'create_users_table', '--layer' => 'functional/test-layer'])->assertExitCode(0);
-        $this->artisan('osdd:migration', ['name' => 'create_posts_table', '--layer' => 'functional/test-layer'])->assertExitCode(0);
-
-        $content = file_get_contents($this->providerPath);
-        $count = substr_count($content, 'loadMigrationsFrom(__DIR__');
-
-        $this->assertSame(1, $count);
-    }
-
-    public function test_it_skips_registration_when_service_provider_does_not_exist(): void
-    {
-        $this->app['files']->delete($this->providerPath);
-
-        $this->artisan('osdd:migration', ['name' => 'create_users_table', '--layer' => 'functional/test-layer'])
-            ->assertExitCode(0);
-
-        $files = glob($this->app->basePath('functional/test-layer/database/migrations/*_create_users_table.php'));
-        $this->assertNotEmpty($files);
+        $this->assertCount(1, glob($this->project()->path('functional/test-layer/database/migrations/*_create_parcels_table.php')) ?: []);
     }
 }

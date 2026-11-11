@@ -2,10 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Seeders;
 
-use Illuminate\Support\Str;
 use Lomkit\Osdd\Seeders\LayersSeeder;
 use Lomkit\Osdd\Seeders\SeederRegistry;
-use Lomkit\Osdd\Tests\Concerns\CreatesLayers;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\Billing\BillingSeeder;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\LoggingSeeder;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\Orders\OrdersSeeder;
@@ -14,43 +12,27 @@ use Lomkit\Osdd\Tests\TestCase;
 
 class SeedLayerOptionTest extends TestCase
 {
-    use CreatesLayers;
-
-    private string $layersPath;
-
     protected function setUp(): void
     {
         parent::setUp();
 
         LoggingSeeder::$runs = [];
-        $this->layersPath = sys_get_temp_dir().'/osdd-seed-layers-'.Str::random(8);
-        $this->app['config']->set('osdd.layers.paths', [
-            'functional' => $this->layersPath.'/functional',
-            'technical' => $this->layersPath.'/technical',
-        ]);
+        $this->layerFixture()->bucket('technical');
 
-        $this->createLayer($this->layersPath.'/functional/orders', 'functional/orders', [
+        $this->layerFixture()->layer('functional/orders', [
             'autoload' => ['psr-4' => ['Lomkit\\Osdd\\Tests\\Seeders\\Fixtures\\Orders\\' => 'src/']],
         ]);
-        $this->createLayer($this->layersPath.'/functional/billing', 'functional/billing', [
+        $this->layerFixture()->layer('functional/billing', [
             'autoload' => ['psr-4' => ['Lomkit\\Osdd\\Tests\\Seeders\\Fixtures\\Billing\\' => 'src/']],
         ]);
-        $this->createLayer($this->layersPath.'/technical/archive', 'technical/archive', [
+        $this->layerFixture()->layer('technical/archive', [
             'autoload' => ['psr-4' => ['Technical\\Archive\\' => 'src/']],
         ]);
-        $this->createdLayerPaths[] = $this->layersPath;
 
         $registry = $this->app->make(SeederRegistry::class);
         $registry->push(10, OrdersSeeder::class);
         $registry->push(0, BillingSeeder::class);
         $registry->push(5, UsersLayerSeeder::class);
-    }
-
-    protected function tearDown(): void
-    {
-        $this->deleteCreatedLayers();
-
-        parent::tearDown();
     }
 
     public function test_it_seeds_only_the_given_layer(): void
@@ -90,7 +72,7 @@ class SeedLayerOptionTest extends TestCase
 
     public function test_an_ambiguous_package_name_fails(): void
     {
-        $this->createLayer($this->layersPath.'/technical/orders', 'technical/orders');
+        $this->layerFixture()->layer('technical/orders');
 
         $this->artisan('osdd:seed', ['--layer' => ['orders']])
             ->expectsOutputToContain('Layer [orders] is ambiguous')

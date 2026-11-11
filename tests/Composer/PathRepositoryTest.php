@@ -2,29 +2,24 @@
 
 namespace Lomkit\Osdd\Tests\Composer;
 
-use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Composer\PathRepository;
 use Lomkit\Osdd\Layers\LayerDirectory;
+use Lomkit\Osdd\Tests\Fixtures\UsesTemporaryProject;
 use PHPUnit\Framework\TestCase;
 
 class PathRepositoryTest extends TestCase
 {
+    use UsesTemporaryProject;
+
     private string $basePath;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->basePath = sys_get_temp_dir().'/osdd-path-repository-'.uniqid();
+        $this->basePath = $this->project()->path('path-repository');
         mkdir($this->basePath.'/functional/orders', 0755, true);
         mkdir($this->basePath.'/technical/billing', 0755, true);
-    }
-
-    protected function tearDown(): void
-    {
-        (new Filesystem)->deleteDirectory($this->basePath);
-
-        parent::tearDown();
     }
 
     public function test_urls_naming_the_same_directory_are_the_same_repository(): void

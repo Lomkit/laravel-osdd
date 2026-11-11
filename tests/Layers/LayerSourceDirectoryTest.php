@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Tests\Layers;
 
 use Lomkit\Osdd\Layers\Layers;
+use Lomkit\Osdd\Tests\Fixtures\GeneratedClass;
 use Lomkit\Osdd\Tests\TestCase;
 
 class LayerSourceDirectoryTest extends TestCase
@@ -25,13 +26,6 @@ class LayerSourceDirectoryTest extends TestCase
         ]));
     }
 
-    protected function tearDown(): void
-    {
-        $this->app['files']->deleteDirectory($this->layerPath);
-
-        parent::tearDown();
-    }
-
     public function test_the_manifest_takes_the_source_mapping_not_the_first_entry(): void
     {
         $layer = $this->app->make(Layers::class)->find('functional/app-layer');
@@ -45,8 +39,7 @@ class LayerSourceDirectoryTest extends TestCase
         $this->artisan('osdd:model', ['name' => 'Order', '--layer' => 'functional/app-layer'])->assertExitCode(0);
         $this->artisan('osdd:controller', ['name' => 'Admin/OrderController', '--layer' => 'functional/app-layer'])->assertExitCode(0);
 
-        $this->assertFileExists($this->layerPath.'/app/Models/Order.php');
-        $this->assertStringContainsString('namespace Functional\\AppLayer\\Models;', (string) file_get_contents($this->layerPath.'/app/Models/Order.php'));
+        GeneratedClass::load($this->layerPath.'/app/Models/Order.php', 'Functional\AppLayer\Models\Order');
         $this->assertFileExists($this->layerPath.'/app/Http/Controllers/Admin/OrderController.php');
         $this->assertDirectoryDoesNotExist($this->layerPath.'/src');
     }

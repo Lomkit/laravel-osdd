@@ -2,17 +2,23 @@
 
 namespace Lomkit\Osdd\Tests;
 
-use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Tests\Fixtures\TemporaryProject;
 
 class IdeHelperModelLocationsTest extends TestCase
 {
     private string $tmpPath;
 
+    #[\Override]
+    protected function createProject(): TemporaryProject
+    {
+        return TemporaryProject::withoutLayers();
+    }
+
     protected function getEnvironmentSetUp($app): void
     {
         $_SERVER['argv'][] = 'ide-helper:models';
 
-        $this->tmpPath = sys_get_temp_dir().'/osdd-ide-helper-test-'.uniqid();
+        $this->tmpPath = $this->project()->root;
 
         mkdir($this->tmpPath.'/functional/billing/src/Models', 0755, true);
 
@@ -22,7 +28,6 @@ class IdeHelperModelLocationsTest extends TestCase
             'autoload' => ['psr-4' => ['Functional\\Billing\\' => 'src/']],
         ]));
 
-        $app->setBasePath($this->tmpPath);
         $app['config']->set('osdd.layers.paths', [
             'functional' => $this->tmpPath.'/functional',
         ]);
@@ -34,7 +39,6 @@ class IdeHelperModelLocationsTest extends TestCase
     protected function tearDown(): void
     {
         parent::tearDown();
-        (new Filesystem)->deleteDirectory($this->tmpPath);
 
         $_SERVER['argv'] = array_filter($_SERVER['argv'], fn ($v) => $v !== 'ide-helper:models');
     }

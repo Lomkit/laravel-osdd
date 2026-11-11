@@ -7,10 +7,13 @@ use Lomkit\Osdd\Composer\ComposerJsonFile;
 use Lomkit\Osdd\Composer\InvalidComposerJsonException;
 use Lomkit\Osdd\Composer\MalformedComposerJsonException;
 use Lomkit\Osdd\Composer\PathRepository;
+use Lomkit\Osdd\Tests\Fixtures\UsesTemporaryProject;
 use PHPUnit\Framework\TestCase;
 
 class ComposerJsonFileTest extends TestCase
 {
+    use UsesTemporaryProject;
+
     private string $directory;
 
     private string $path;
@@ -19,16 +22,9 @@ class ComposerJsonFileTest extends TestCase
     {
         parent::setUp();
 
-        $this->directory = sys_get_temp_dir().'/osdd-composer-json-'.uniqid();
+        $this->directory = $this->project()->path('composer-json');
         mkdir($this->directory, 0755, true);
         $this->path = $this->directory.'/composer.json';
-    }
-
-    protected function tearDown(): void
-    {
-        (new Filesystem)->deleteDirectory($this->directory);
-
-        parent::tearDown();
     }
 
     public function test_it_keeps_empty_objects_as_objects(): void
