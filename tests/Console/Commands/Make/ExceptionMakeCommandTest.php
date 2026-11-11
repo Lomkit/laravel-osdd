@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class ExceptionMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class ExceptionMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesExceptionFileInCorrectPath(): void
+    public function test_it_generates_exception_file_in_correct_path(): void
     {
         $this->artisan('osdd:exception', ['name' => 'UserNotFoundException', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class ExceptionMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Exceptions/UserNotFoundException.php');
     }
 
-    public function testItGeneratesExceptionWithCorrectNamespace(): void
+    public function test_it_generates_exception_with_correct_namespace(): void
     {
         $this->artisan('osdd:exception', ['name' => 'UserNotFoundException', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class ExceptionMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Exceptions/UserNotFoundException.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:exception', ['name' => 'UserNotFoundException'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -44,7 +44,7 @@ class ExceptionMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Exceptions/UserNotFoundException.php');
     }
 
-    public function testItGeneratesNestedExceptionInCorrectPath(): void
+    public function test_it_generates_nested_exception_in_correct_path(): void
     {
         $this->artisan('osdd:exception', ['name' => 'Auth/InvalidTokenException', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -52,7 +52,7 @@ class ExceptionMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Exceptions/Auth/InvalidTokenException.php');
     }
 
-    public function testItGeneratesNestedExceptionWithCorrectNamespace(): void
+    public function test_it_generates_nested_exception_with_correct_namespace(): void
     {
         $this->artisan('osdd:exception', ['name' => 'Auth/InvalidTokenException', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);

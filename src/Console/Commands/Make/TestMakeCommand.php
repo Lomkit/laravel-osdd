@@ -26,7 +26,7 @@ class TestMakeCommand extends \Illuminate\Foundation\Console\TestMakeCommand
     {
         $suffix = $this->option('unit') ? 'Tests\\Unit' : 'Tests\\Feature';
 
-        return rtrim($rootNamespace, '\\') . '\\' . $suffix;
+        return rtrim($rootNamespace, '\\').'\\'.$suffix;
     }
 
     protected function getPath($name): string
@@ -35,10 +35,10 @@ class TestMakeCommand extends \Illuminate\Foundation\Console\TestMakeCommand
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
         $suffix = $this->option('unit') ? 'Tests\\Unit\\' : 'Tests\\Feature\\';
-        $relative = Str::replaceFirst($layerNamespace . '\\' . $suffix, '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\'.$suffix, '', $name);
 
         $dir = $this->option('unit') ? 'tests/Unit/' : 'tests/Feature/';
 
-        return $layer->path . '/' . $dir . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/'.$dir.str_replace('\\', '/', $relative).'.php';
     }
 }

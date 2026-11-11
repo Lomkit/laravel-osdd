@@ -19,7 +19,7 @@ class ObserverMakeCommand extends \Illuminate\Foundation\Console\ObserverMakeCom
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Observers';
+        return rtrim($rootNamespace, '\\').'\\Observers';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class ObserverMakeCommand extends \Illuminate\Foundation\Console\ObserverMakeCom
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Observers\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Observers\\', '', $name);
 
-        return $layer->path . '/src/Observers/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Observers/'.str_replace('\\', '/', $relative).'.php';
     }
 }

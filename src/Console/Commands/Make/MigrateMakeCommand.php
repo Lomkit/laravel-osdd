@@ -35,6 +35,6 @@ class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\Migrate
 
     protected function getMigrationPath(): string
     {
-        return $this->resolveLayer()->path . '/database/migrations';
+        return $this->resolveLayer()->path.'/database/migrations';
     }
 }

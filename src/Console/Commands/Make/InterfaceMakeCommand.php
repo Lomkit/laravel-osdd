@@ -19,7 +19,7 @@ class InterfaceMakeCommand extends \Illuminate\Foundation\Console\InterfaceMakeC
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Contracts';
+        return rtrim($rootNamespace, '\\').'\\Contracts';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class InterfaceMakeCommand extends \Illuminate\Foundation\Console\InterfaceMakeC
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Contracts\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Contracts\\', '', $name);
 
-        return $layer->path . '/src/Contracts/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Contracts/'.str_replace('\\', '/', $relative).'.php';
     }
 }

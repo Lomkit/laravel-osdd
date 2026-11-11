@@ -16,7 +16,7 @@ class FakeThirdPartyProvider extends ServiceProvider
 
     public function register(): void
     {
-        $path = sys_get_temp_dir() . '/osdd-3p-default.php';
+        $path = sys_get_temp_dir().'/osdd-3p-default.php';
         file_put_contents($path, "<?php return ['path' => 'horizon', 'use' => 'redis'];");
 
         $this->mergeConfigFrom($path, 'horizon');
@@ -33,7 +33,7 @@ class FakeLayerProvider extends LayerServiceProvider
 {
     public function register(): void
     {
-        $path = sys_get_temp_dir() . '/osdd-3p-layer.php';
+        $path = sys_get_temp_dir().'/osdd-3p-layer.php';
         file_put_contents($path, "<?php return ['path' => 'my-horizon'];");
 
         $this->overrideConfigFrom($path, 'horizon');
@@ -60,7 +60,7 @@ class LayerConfigOverrideTest extends TestCase
         parent::tearDown();
     }
 
-    public function testLayerOverridesThirdPartyDefaultsAndSurvivesGaps(): void
+    public function test_layer_overrides_third_party_defaults_and_survives_gaps(): void
     {
         static::$providerOrder = [FakeLayerProvider::class, FakeThirdPartyProvider::class];
         $this->refreshApplication();
@@ -71,7 +71,7 @@ class LayerConfigOverrideTest extends TestCase
         $this->assertSame('redis', $this->app['config']->get('horizon.use'));
     }
 
-    public function testLayerOverrideIsVisibleWhileThirdPartyBoots(): void
+    public function test_layer_override_is_visible_while_third_party_boots(): void
     {
         // The reported bug: Horizon read its config during boot() and saw the
         // default, because overrideConfigFrom() used to defer to app->booted().
@@ -81,7 +81,7 @@ class LayerConfigOverrideTest extends TestCase
         $this->assertSame('my-horizon', FakeThirdPartyProvider::$pathSeenDuringBoot);
     }
 
-    public function testLayerWinsRegardlessOfProviderRegistrationOrder(): void
+    public function test_layer_wins_regardless_of_provider_registration_order(): void
     {
         // Same expectation when the third-party package registers/boots first.
         static::$providerOrder = [FakeThirdPartyProvider::class, FakeLayerProvider::class];

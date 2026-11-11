@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class TestMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class TestMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesUnitTestFileInCorrectPath(): void
+    public function test_it_generates_unit_test_file_in_correct_path(): void
     {
         $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer', '--unit' => true])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class TestMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/tests/Unit/UserTest.php');
     }
 
-    public function testItGeneratesUnitTestWithCorrectNamespace(): void
+    public function test_it_generates_unit_test_with_correct_namespace(): void
     {
         $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer', '--unit' => true])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class TestMakeCommandTest extends TestCase
         ], 'functional/test-layer/tests/Unit/UserTest.php');
     }
 
-    public function testItGeneratesFeatureTestFileInCorrectPath(): void
+    public function test_it_generates_feature_test_file_in_correct_path(): void
     {
         $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -43,7 +43,7 @@ class TestMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/tests/Feature/UserTest.php');
     }
 
-    public function testItGeneratesFeatureTestWithCorrectNamespace(): void
+    public function test_it_generates_feature_test_with_correct_namespace(): void
     {
         $this->artisan('osdd:test', ['name' => 'UserTest', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -54,7 +54,7 @@ class TestMakeCommandTest extends TestCase
         ], 'functional/test-layer/tests/Feature/UserTest.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:test', ['name' => 'UserTest', '--unit' => true])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -63,7 +63,7 @@ class TestMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/tests/Unit/UserTest.php');
     }
 
-    public function testItGeneratesNestedUnitTestInCorrectPath(): void
+    public function test_it_generates_nested_unit_test_in_correct_path(): void
     {
         $this->artisan('osdd:test', ['name' => 'Services/UserServiceTest', '--layer' => 'functional/test-layer', '--unit' => true])
             ->assertExitCode(0);
@@ -71,7 +71,7 @@ class TestMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/tests/Unit/Services/UserServiceTest.php');
     }
 
-    public function testItGeneratesNestedUnitTestWithCorrectNamespace(): void
+    public function test_it_generates_nested_unit_test_with_correct_namespace(): void
     {
         $this->artisan('osdd:test', ['name' => 'Services/UserServiceTest', '--layer' => 'functional/test-layer', '--unit' => true])
             ->assertExitCode(0);

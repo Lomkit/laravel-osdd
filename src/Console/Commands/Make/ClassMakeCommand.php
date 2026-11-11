@@ -22,8 +22,8 @@ class ClassMakeCommand extends \Illuminate\Foundation\Console\ClassMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\', '', $name);
 
-        return $layer->path . '/src/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/'.str_replace('\\', '/', $relative).'.php';
     }
 }

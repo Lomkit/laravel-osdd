@@ -16,14 +16,14 @@ class LayersCollection extends Collection
     {
         return new self(
             collect($paths)
-                ->flatMap(fn(string $path) => static::scanPath($path))
+                ->flatMap(fn (string $path) => static::scanPath($path))
                 ->all()
         );
     }
 
     private static function scanPath(string $path): array
     {
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             return [];
         }
 

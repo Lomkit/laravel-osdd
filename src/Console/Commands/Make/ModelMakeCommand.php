@@ -20,7 +20,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
     protected function getStub(): string
     {
         if ($this->option('factory')) {
-            return __DIR__ . '/../../stubs/make/model.factory.stub';
+            return __DIR__.'/../../stubs/make/model.factory.stub';
         }
 
         return parent::getStub();
@@ -32,11 +32,11 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
 
         if ($this->option('factory')) {
             $rootNamespace = rtrim($this->resolveLayer()->manifest->rootNamespace(), '\\');
-            $modelClass    = class_basename($name);
+            $modelClass = class_basename($name);
 
             $stub = str_replace(
                 ['{{ factoryNamespace }}', '{{ factoryClass }}'],
-                [$rootNamespace . '\\Database\\Factories', $modelClass . 'Factory'],
+                [$rootNamespace.'\\Database\\Factories', $modelClass.'Factory'],
                 $stub,
             );
         }
@@ -44,12 +44,12 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         return $stub;
     }
 
-    public function handle(): bool|null
+    public function handle(): ?bool
     {
         // Bypass ModelMakeCommand::handle()'s interactive "additional components" prompt
         // by calling GeneratorCommand::handle() directly via grandparent scope binding.
         $grandparentHandle = \Closure::bind(
-            fn() => parent::handle(),
+            fn () => parent::handle(),
             $this,
             \Illuminate\Foundation\Console\ModelMakeCommand::class
         );
@@ -101,7 +101,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Models';
+        return rtrim($rootNamespace, '\\').'\\Models';
     }
 
     protected function getPath($name): string
@@ -109,9 +109,9 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Models\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Models\\', '', $name);
 
-        return $layer->path . '/src/Models/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Models/'.str_replace('\\', '/', $relative).'.php';
     }
 
     protected function createFactory(): void

@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class LayerCommandTest extends TestCase
 {
@@ -22,7 +22,7 @@ class LayerCommandTest extends TestCase
         if ($this->app['files']->exists($this->composerPath)) {
             $this->composerOriginal = $this->app['files']->get($this->composerPath);
         } else {
-            $this->app['files']->put($this->composerPath, json_encode(['require' => new \stdClass()], JSON_PRETTY_PRINT) . PHP_EOL);
+            $this->app['files']->put($this->composerPath, json_encode(['require' => new \stdClass], JSON_PRETTY_PRINT).PHP_EOL);
         }
     }
 
@@ -42,7 +42,7 @@ class LayerCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItCreatesLayerWithAllGenerators(): void
+    public function test_it_creates_layer_with_all_generators(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -64,7 +64,7 @@ class LayerCommandTest extends TestCase
         $this->assertFilenameExists('functional/my-layer/routes/channels.php');
     }
 
-    public function testItDoesNotCreateRoutesDirectoryWhenRoutesGeneratorNotSelected(): void
+    public function test_it_does_not_create_routes_directory_when_routes_generator_not_selected(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -75,7 +75,7 @@ class LayerCommandTest extends TestCase
         $this->assertFilenameNotExists('functional/my-layer/routes');
     }
 
-    public function testItGeneratesNamedSeederForLayer(): void
+    public function test_it_generates_named_seeder_for_layer(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -91,7 +91,7 @@ class LayerCommandTest extends TestCase
         ], 'functional/my-layer/database/seeders/MyLayerSeeder.php');
     }
 
-    public function testItCreatesCorrectComposerJson(): void
+    public function test_it_creates_correct_composer_json(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -111,7 +111,7 @@ class LayerCommandTest extends TestCase
         ], 'functional/my-layer/composer.json');
     }
 
-    public function testItCreatesServiceProviderWithCorrectContent(): void
+    public function test_it_creates_service_provider_with_correct_content(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -132,7 +132,7 @@ class LayerCommandTest extends TestCase
         ], 'functional/my-layer/src/Providers/MyLayerServiceProvider.php');
     }
 
-    public function testItCreatesLayerWithSelectedGenerators(): void
+    public function test_it_creates_layer_with_selected_generators(): void
     {
         $selected = ['migration', 'model'];
 
@@ -153,7 +153,7 @@ class LayerCommandTest extends TestCase
         $this->assertFilenameNotExists('functional/my-layer/src/Policies');
     }
 
-    public function testItCreatesLayerWithNoGenerators(): void
+    public function test_it_creates_layer_with_no_generators(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -173,7 +173,7 @@ class LayerCommandTest extends TestCase
         $this->assertFilenameNotExists('functional/my-layer/src/Policies');
     }
 
-    public function testItDoesNotRegisterServiceProviderInLayerComposerJsonWhenNotSelected(): void
+    public function test_it_does_not_register_service_provider_in_layer_composer_json_when_not_selected(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -186,7 +186,7 @@ class LayerCommandTest extends TestCase
         $this->assertEmpty($composer['extra']['laravel']['providers'] ?? []);
     }
 
-    public function testItSkipsPathPromptWhenOnlyOnePathIsConfigured(): void
+    public function test_it_skips_path_prompt_when_only_one_path_is_configured(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -197,7 +197,7 @@ class LayerCommandTest extends TestCase
         $this->assertFilenameExists('functional/my-layer/composer.json');
     }
 
-    public function testItAsksForPathWhenMultiplePathsAreConfigured(): void
+    public function test_it_asks_for_path_when_multiple_paths_are_configured(): void
     {
         $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
 
@@ -212,14 +212,14 @@ class LayerCommandTest extends TestCase
         $this->assertFilenameNotExists('technical/my-layer/composer.json');
     }
 
-    public function testItValidatesLayerName(): void
+    public function test_it_validates_layer_name(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'InvalidName')
             ->assertFailed();
     }
 
-    public function testMigrationTableNameReplacesHyphensWithUnderscores(): void
+    public function test_migration_table_name_replaces_hyphens_with_underscores(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'external-accounts')
@@ -234,7 +234,7 @@ class LayerCommandTest extends TestCase
         $this->assertStringContainsString("Schema::create('external_accounts'", $contents);
     }
 
-    public function testNamespaceIsCorrectlyDerivedFromHyphenatedNames(): void
+    public function test_namespace_is_correctly_derived_from_hyphenated_names(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-auth-layer')
@@ -253,7 +253,7 @@ class LayerCommandTest extends TestCase
         ], 'functional/my-auth-layer/src/Providers/MyAuthLayerServiceProvider.php');
     }
 
-    public function testItRegistersLayerAsPathRepositoryInComposerJson(): void
+    public function test_it_registers_layer_as_path_repository_in_composer_json(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -270,7 +270,7 @@ class LayerCommandTest extends TestCase
         $this->assertContains('path', $types);
     }
 
-    public function testItAddsLayerToRequireInComposerJson(): void
+    public function test_it_adds_layer_to_require_in_composer_json(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -284,10 +284,9 @@ class LayerCommandTest extends TestCase
         $this->assertSame('*', $composer['require']['functional/my-layer']);
     }
 
-
-    public function testItDoesNotDuplicateRepositoryOnRepeatRuns(): void
+    public function test_it_does_not_duplicate_repository_on_repeat_runs(): void
     {
-        $run = fn() => $this->artisan('osdd:layer')
+        $run = fn () => $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
             ->expectsChoice('Which generators should be run?', $this->defaultGenerators(), $this->allGenerators())
             ->expectsConfirmation('Run composer update now?', 'no')
@@ -298,11 +297,11 @@ class LayerCommandTest extends TestCase
 
         $composer = json_decode($this->app['files']->get($this->composerPath), true);
 
-        $matching = array_filter($composer['repositories'] ?? [], fn($r) => ($r['url'] ?? '') === './functional/*');
+        $matching = array_filter($composer['repositories'] ?? [], fn ($r) => ($r['url'] ?? '') === './functional/*');
         $this->assertCount(1, $matching);
     }
 
-    public function testItSkipsComposerRegistrationWhenNoComposerJsonExists(): void
+    public function test_it_skips_composer_registration_when_no_composer_json_exists(): void
     {
         $this->app['files']->delete($this->composerPath);
 
@@ -315,7 +314,7 @@ class LayerCommandTest extends TestCase
         $this->assertFilenameExists('functional/my-layer/composer.json');
     }
 
-    public function testItLinksPolicyToModelWhenBothAreSelected(): void
+    public function test_it_links_policy_to_model_when_both_are_selected(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')
@@ -331,7 +330,7 @@ class LayerCommandTest extends TestCase
         ], 'functional/my-layer/src/Policies/MyLayerPolicy.php');
     }
 
-    public function testItGeneratesPlainPolicyWhenModelNotSelected(): void
+    public function test_it_generates_plain_policy_when_model_not_selected(): void
     {
         $this->artisan('osdd:layer')
             ->expectsQuestion('Layer name', 'my-layer')

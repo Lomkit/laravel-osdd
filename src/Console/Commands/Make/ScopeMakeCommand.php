@@ -19,7 +19,7 @@ class ScopeMakeCommand extends \Illuminate\Foundation\Console\ScopeMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Models\\Scopes';
+        return rtrim($rootNamespace, '\\').'\\Models\\Scopes';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class ScopeMakeCommand extends \Illuminate\Foundation\Console\ScopeMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Models\\Scopes\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Models\\Scopes\\', '', $name);
 
-        return $layer->path . '/src/Models/Scopes/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Models/Scopes/'.str_replace('\\', '/', $relative).'.php';
     }
 }

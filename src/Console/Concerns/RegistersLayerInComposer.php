@@ -8,8 +8,9 @@ trait RegistersLayerInComposer
     {
         $composerPath = $this->laravel->basePath('composer.json');
 
-        if (!$this->files->exists($composerPath)) {
+        if (! $this->files->exists($composerPath)) {
             $this->components->warn('No composer.json found at project root, skipping Composer registration.');
+
             return;
         }
 
@@ -23,7 +24,7 @@ trait RegistersLayerInComposer
 
         $this->files->put(
             $composerPath,
-            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL,
+            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL,
         );
 
         $this->components->info("Registered <options=bold>{$name}</> in composer.json. Run <options=bold>composer update {$name}</> to install it.");
@@ -31,15 +32,15 @@ trait RegistersLayerInComposer
 
     private function relativeLayerPath(string $layerPath): string
     {
-        $base = rtrim(str_replace('\\', '/', $this->laravel->basePath()), '/') . '/';
+        $base = rtrim(str_replace('\\', '/', $this->laravel->basePath()), '/').'/';
         $layer = str_replace('\\', '/', $layerPath);
 
-        return './' . ltrim(str_replace($base, '', $layer), '/');
+        return './'.ltrim(str_replace($base, '', $layer), '/');
     }
 
     private function addPathRepository(array &$composer, string $relativePath): void
     {
-        $wildcardUrl = dirname($relativePath) . '/*';
+        $wildcardUrl = dirname($relativePath).'/*';
         $repositories = $composer['repositories'] ?? [];
 
         foreach ($repositories as $repo) {
@@ -54,7 +55,7 @@ trait RegistersLayerInComposer
 
     private function addRequireEntry(array &$composer, string $name): void
     {
-        if (!isset($composer['require'][$name])) {
+        if (! isset($composer['require'][$name])) {
             $composer['require'][$name] = '*';
         }
     }
@@ -68,7 +69,7 @@ trait RegistersLayerInComposer
 
         $this->files->put(
             $composerPath,
-            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . PHP_EOL,
+            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL,
         );
     }
 
@@ -76,7 +77,7 @@ trait RegistersLayerInComposer
     {
         foreach (['autoload', 'autoload-dev'] as $section) {
             if (isset($composer[$section]['psr-4']) && empty($composer[$section]['psr-4'])) {
-                $composer[$section]['psr-4'] = new \stdClass();
+                $composer[$section]['psr-4'] = new \stdClass;
             }
         }
     }

@@ -24,7 +24,7 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Policies';
+        return rtrim($rootNamespace, '\\').'\\Policies';
     }
 
     protected function qualifyModel(string $model): string
@@ -37,19 +37,19 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
             return $model;
         }
 
-        return $rootNamespace . 'Models\\' . $model;
+        return $rootNamespace.'Models\\'.$model;
     }
 
     protected function replaceUserNamespace($stub): string
     {
         $model = $this->userProviderModel();
 
-        if (!$model) {
+        if (! $model) {
             return $stub;
         }
 
         return str_replace(
-            ['{{ namespacedUserModel }}', '{{namespacedUserModel}}', $this->rootNamespace() . 'User'],
+            ['{{ namespacedUserModel }}', '{{namespacedUserModel}}', $this->rootNamespace().'User'],
             $model,
             $stub
         );
@@ -61,7 +61,7 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
             return parent::getStub();
         }
 
-        return __DIR__ . '/../../stubs/make/policy.stub';
+        return __DIR__.'/../../stubs/make/policy.stub';
     }
 
     protected function getPath($name): string
@@ -69,8 +69,8 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Policies\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Policies\\', '', $name);
 
-        return $layer->path . '/src/Policies/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Policies/'.str_replace('\\', '/', $relative).'.php';
     }
 }

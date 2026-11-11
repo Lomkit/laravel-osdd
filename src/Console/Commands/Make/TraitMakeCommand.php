@@ -19,7 +19,7 @@ class TraitMakeCommand extends \Illuminate\Foundation\Console\TraitMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Concerns';
+        return rtrim($rootNamespace, '\\').'\\Concerns';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class TraitMakeCommand extends \Illuminate\Foundation\Console\TraitMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Concerns\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Concerns\\', '', $name);
 
-        return $layer->path . '/src/Concerns/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Concerns/'.str_replace('\\', '/', $relative).'.php';
     }
 }

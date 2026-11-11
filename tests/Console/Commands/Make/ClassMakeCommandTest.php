@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class ClassMakeCommandTest extends TestCase
 {
@@ -17,7 +17,7 @@ class ClassMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesClassFileInCorrectPath(): void
+    public function test_it_generates_class_file_in_correct_path(): void
     {
         $this->artisan('osdd:class', ['name' => 'PaymentService', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -25,7 +25,7 @@ class ClassMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/PaymentService.php');
     }
 
-    public function testItGeneratesClassWithCorrectNamespace(): void
+    public function test_it_generates_class_with_correct_namespace(): void
     {
         $this->artisan('osdd:class', ['name' => 'PaymentService', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -36,7 +36,7 @@ class ClassMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/PaymentService.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:class', ['name' => 'PaymentService'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -45,7 +45,7 @@ class ClassMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/PaymentService.php');
     }
 
-    public function testItGeneratesNestedClassInCorrectPath(): void
+    public function test_it_generates_nested_class_in_correct_path(): void
     {
         $this->artisan('osdd:class', ['name' => 'Services/PaymentService', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -53,7 +53,7 @@ class ClassMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Services/PaymentService.php');
     }
 
-    public function testItGeneratesNestedClassWithCorrectNamespace(): void
+    public function test_it_generates_nested_class_with_correct_namespace(): void
     {
         $this->artisan('osdd:class', ['name' => 'Services/PaymentService', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);

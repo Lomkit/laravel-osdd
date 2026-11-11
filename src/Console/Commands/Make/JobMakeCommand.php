@@ -19,7 +19,7 @@ class JobMakeCommand extends \Illuminate\Foundation\Console\JobMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Jobs';
+        return rtrim($rootNamespace, '\\').'\\Jobs';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class JobMakeCommand extends \Illuminate\Foundation\Console\JobMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Jobs\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Jobs\\', '', $name);
 
-        return $layer->path . '/src/Jobs/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Jobs/'.str_replace('\\', '/', $relative).'.php';
     }
 }

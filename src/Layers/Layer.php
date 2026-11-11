@@ -16,15 +16,15 @@ class Layer
     {
         return new self(
             path: $directory->getRealPath(),
-            manifest: LayerManifest::fromPath($directory->getRealPath() . '/composer.json'),
+            manifest: LayerManifest::fromPath($directory->getRealPath().'/composer.json'),
         );
     }
 
     public static function isValidLayerDirectory(SplFileInfo $directory): bool
     {
-        $composerPath = $directory->getRealPath() . '/composer.json';
+        $composerPath = $directory->getRealPath().'/composer.json';
 
-        if (!app(Filesystem::class)->isFile($composerPath)) {
+        if (! app(Filesystem::class)->isFile($composerPath)) {
             return false;
         }
 

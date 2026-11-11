@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class TraitMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class TraitMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesTraitFileInCorrectPath(): void
+    public function test_it_generates_trait_file_in_correct_path(): void
     {
         $this->artisan('osdd:trait', ['name' => 'HasTimestamps', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class TraitMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Concerns/HasTimestamps.php');
     }
 
-    public function testItGeneratesTraitWithCorrectNamespace(): void
+    public function test_it_generates_trait_with_correct_namespace(): void
     {
         $this->artisan('osdd:trait', ['name' => 'HasTimestamps', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class TraitMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Concerns/HasTimestamps.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:trait', ['name' => 'HasTimestamps'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])

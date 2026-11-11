@@ -2,11 +2,12 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Illuminate\Foundation\Console\ProviderMakeCommand;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:provider')]
-class ServiceProviderMakeCommand extends \Illuminate\Foundation\Console\ProviderMakeCommand
+class ServiceProviderMakeCommand extends ProviderMakeCommand
 {
     use ChoosesOsddLayer;
 
@@ -24,7 +25,7 @@ class ServiceProviderMakeCommand extends \Illuminate\Foundation\Console\Provider
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Providers';
+        return rtrim($rootNamespace, '\\').'\\Providers';
     }
 
     protected function getPath($name): string
@@ -32,12 +33,12 @@ class ServiceProviderMakeCommand extends \Illuminate\Foundation\Console\Provider
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Providers\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Providers\\', '', $name);
 
-        return $layer->path . '/src/Providers/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Providers/'.str_replace('\\', '/', $relative).'.php';
     }
 
-    public function handle(): bool|null
+    public function handle(): ?bool
     {
         $result = parent::handle();
 
@@ -53,7 +54,7 @@ class ServiceProviderMakeCommand extends \Illuminate\Foundation\Console\Provider
     protected function registerProviderInComposer(): void
     {
         $layer = $this->resolveLayer();
-        $composerPath = $layer->path . '/composer.json';
+        $composerPath = $layer->path.'/composer.json';
 
         $composer = json_decode($this->files->get($composerPath), true);
 
@@ -66,7 +67,7 @@ class ServiceProviderMakeCommand extends \Illuminate\Foundation\Console\Provider
 
         $this->files->put(
             $composerPath,
-            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n"
+            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n"
         );
 
         $this->components->info("Provider [{$providerClass}] registered in [{$composerPath}].");

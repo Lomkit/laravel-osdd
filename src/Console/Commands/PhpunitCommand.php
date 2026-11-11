@@ -6,8 +6,8 @@ use DOMDocument;
 use DOMXPath;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
-use Symfony\Component\Console\Attribute\AsCommand;
 use Lomkit\Osdd\Layers\LayersCollection;
+use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:phpunit')]
 class PhpunitCommand extends Command
@@ -30,8 +30,8 @@ class PhpunitCommand extends Command
     {
         $xmlPath = $this->laravel->basePath('phpunit.xml');
 
-        if (!$this->laravel['files']->exists($xmlPath)) {
-            $this->error('phpunit.xml not found at ' . $xmlPath);
+        if (! $this->laravel['files']->exists($xmlPath)) {
+            $this->error('phpunit.xml not found at '.$xmlPath);
 
             return self::FAILURE;
         }
@@ -44,7 +44,7 @@ class PhpunitCommand extends Command
         $xpath = new DOMXPath($dom);
         $testSuites = $xpath->query('//testsuites')->item(0);
 
-        if (!$testSuites) {
+        if (! $testSuites) {
             $this->error('<testsuites> element not found in phpunit.xml.');
 
             return self::FAILURE;
@@ -65,23 +65,25 @@ class PhpunitCommand extends Command
             return self::SUCCESS;
         }
 
-        $basePath = rtrim($this->laravel->basePath(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $basePath = rtrim($this->laravel->basePath(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
         $added = 0;
 
         foreach ($layers as $layer) {
             $layerName = $layer->manifest->name();
 
-            $existing = $xpath->query('//testsuites/testsuite[@name="' . $layerName . '"]')->item(0);
+            $existing = $xpath->query('//testsuites/testsuite[@name="'.$layerName.'"]')->item(0);
 
             if ($existing) {
                 $this->line("Testsuite <comment>{$layerName}</comment> already present, skipping.");
+
                 continue;
             }
 
-            $testDir = $layer->path . '/tests';
+            $testDir = $layer->path.'/tests';
 
-            if (!is_dir($testDir)) {
+            if (! is_dir($testDir)) {
                 $this->line("Testsuite <comment>{$layerName}</comment> has no tests/ directory, skipping.");
+
                 continue;
             }
 
@@ -118,7 +120,7 @@ class PhpunitCommand extends Command
         $migrationsPath = '**/database/migrations';
 
         $alreadyExcluded = $xpath
-            ->query('//source/exclude/directory[normalize-space()="' . $migrationsPath . '"]')
+            ->query('//source/exclude/directory[normalize-space()="'.$migrationsPath.'"]')
             ->item(0);
 
         if ($alreadyExcluded) {
@@ -127,14 +129,14 @@ class PhpunitCommand extends Command
 
         $source = $xpath->query('//source')->item(0);
 
-        if (!$source) {
+        if (! $source) {
             $source = $dom->createElement('source');
             $dom->documentElement->appendChild($source);
         }
 
         $exclude = $xpath->query('//source/exclude')->item(0);
 
-        if (!$exclude) {
+        if (! $exclude) {
             $exclude = $dom->createElement('exclude');
             $source->appendChild($exclude);
         }

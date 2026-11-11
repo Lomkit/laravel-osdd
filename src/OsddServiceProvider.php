@@ -3,7 +3,6 @@
 namespace Lomkit\Osdd;
 
 use Illuminate\Support\ServiceProvider;
-use Symfony\Component\Finder\Finder;
 use Lomkit\Osdd\Console\Commands\LayerCommand;
 use Lomkit\Osdd\Console\Commands\Make\CastMakeCommand;
 use Lomkit\Osdd\Console\Commands\Make\ChannelMakeCommand;
@@ -38,6 +37,7 @@ use Lomkit\Osdd\Console\Commands\PhpunitCommand;
 use Lomkit\Osdd\Console\Commands\SeedCommand;
 use Lomkit\Osdd\Console\Commands\StartCommand;
 use Lomkit\Osdd\Layers\LayersCollection;
+use Symfony\Component\Finder\Finder;
 
 class OsddServiceProvider extends ServiceProvider
 {
@@ -66,7 +66,7 @@ class OsddServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/osdd.php', 'osdd');
 
-        $this->app->singleton(SeederRegistry::class, fn() => new SeederRegistry());
+        $this->app->singleton(SeederRegistry::class, fn () => new SeederRegistry);
 
         $this->app->singleton(MigrateMakeCommand::class, function ($app) {
             return new MigrateMakeCommand($app['migration.creator'], $app['composer']);
@@ -162,11 +162,11 @@ class OsddServiceProvider extends ServiceProvider
     private function buildLayerClassMap(): array
     {
         $namespaces = [];
-        $map        = [];
+        $map = [];
 
         foreach (LayersCollection::fromConfig() as $layer) {
             $namespace = $layer->manifest->rootNamespace();
-            $srcPath   = rtrim($layer->manifest->srcPath($layer->path), '/\\');
+            $srcPath = rtrim($layer->manifest->srcPath($layer->path), '/\\');
 
             $namespaces[] = $namespace;
 
@@ -174,9 +174,9 @@ class OsddServiceProvider extends ServiceProvider
                 continue;
             }
 
-            foreach ((new Finder())->files()->name('*.php')->in($srcPath) as $file) {
-                $relative  = substr($file->getRealPath(), strlen($srcPath) + 1);
-                $fqcn      = $namespace . str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $relative);
+            foreach ((new Finder)->files()->name('*.php')->in($srcPath) as $file) {
+                $relative = substr($file->getRealPath(), strlen($srcPath) + 1);
+                $fqcn = $namespace.str_replace([DIRECTORY_SEPARATOR, '.php'], ['\\', ''], $relative);
                 $shortName = basename($relative, '.php');
 
                 $map[$shortName] ??= ['fqcn' => $fqcn, 'path' => $file->getRealPath()];

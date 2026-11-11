@@ -3,8 +3,8 @@
 namespace Lomkit\Osdd\Tests\Console;
 
 use Illuminate\Contracts\Console\Kernel;
-use Symfony\Component\Console\Command\Command;
 use Lomkit\Osdd\Tests\TestCase;
+use Symfony\Component\Console\Command\Command;
 
 class CommandRegistrationTest extends TestCase
 {
@@ -47,12 +47,12 @@ class CommandRegistrationTest extends TestCase
         'osdd:start',
     ];
 
-    public function testItEnumeratesTheCommandRegistry(): void
+    public function test_it_enumerates_the_command_registry(): void
     {
         $this->artisan('list')->assertExitCode(0);
     }
 
-    public function testItRegistersEveryOsddCommand(): void
+    public function test_it_registers_every_osdd_command(): void
     {
         $expected = array_merge(self::GENERATOR_COMMANDS, self::NON_GENERATOR_COMMANDS);
 
@@ -61,7 +61,7 @@ class CommandRegistrationTest extends TestCase
         $this->assertSame($expected, array_keys($this->osddCommands()));
     }
 
-    public function testEveryOsddCommandResolvesUnderTheNameItIsRegisteredWith(): void
+    public function test_every_osdd_command_resolves_under_the_name_it_is_registered_with(): void
     {
         foreach ($this->osddCommands() as $name => $command) {
             $this->assertSame(
@@ -72,7 +72,7 @@ class CommandRegistrationTest extends TestCase
         }
     }
 
-    public function testEveryOsddGeneratorAcceptsALayerOption(): void
+    public function test_every_osdd_generator_accepts_a_layer_option(): void
     {
         $commands = $this->osddCommands();
 
@@ -84,7 +84,7 @@ class CommandRegistrationTest extends TestCase
         }
     }
 
-    public function testOsddGeneratorsKeepTheOptionsInheritedFromTheirLaravelCounterpart(): void
+    public function test_osdd_generators_keep_the_options_inherited_from_their_laravel_counterpart(): void
     {
         $commands = $this->osddCommands();
 
@@ -101,7 +101,7 @@ class CommandRegistrationTest extends TestCase
     {
         $commands = array_filter(
             $this->app->make(Kernel::class)->all(),
-            fn(string $name) => str_starts_with($name, 'osdd:'),
+            fn (string $name) => str_starts_with($name, 'osdd:'),
             ARRAY_FILTER_USE_KEY,
         );
 

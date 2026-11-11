@@ -39,7 +39,7 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Database\\Seeders';
+        return rtrim($rootNamespace, '\\').'\\Database\\Seeders';
     }
 
     protected function getPath($name): string
@@ -47,8 +47,8 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Database\\Seeders\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Database\\Seeders\\', '', $name);
 
-        return $layer->path . '/database/seeders/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/database/seeders/'.str_replace('\\', '/', $relative).'.php';
     }
 }

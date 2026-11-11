@@ -24,7 +24,7 @@ class EventMakeCommand extends \Illuminate\Foundation\Console\EventMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Events';
+        return rtrim($rootNamespace, '\\').'\\Events';
     }
 
     protected function getPath($name): string
@@ -32,8 +32,8 @@ class EventMakeCommand extends \Illuminate\Foundation\Console\EventMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Events\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Events\\', '', $name);
 
-        return $layer->path . '/src/Events/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Events/'.str_replace('\\', '/', $relative).'.php';
     }
 }

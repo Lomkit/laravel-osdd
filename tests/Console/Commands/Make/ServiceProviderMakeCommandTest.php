@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class ServiceProviderMakeCommandTest extends TestCase
 {
@@ -32,7 +32,7 @@ class ServiceProviderMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesProviderFileInCorrectPath(): void
+    public function test_it_generates_provider_file_in_correct_path(): void
     {
         $this->artisan('osdd:provider', ['name' => 'TestLayerServiceProvider', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -40,7 +40,7 @@ class ServiceProviderMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Providers/TestLayerServiceProvider.php');
     }
 
-    public function testItGeneratesProviderWithCorrectNamespace(): void
+    public function test_it_generates_provider_with_correct_namespace(): void
     {
         $this->artisan('osdd:provider', ['name' => 'TestLayerServiceProvider', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -51,7 +51,7 @@ class ServiceProviderMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Providers/TestLayerServiceProvider.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:provider', ['name' => 'TestLayerServiceProvider'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -60,7 +60,7 @@ class ServiceProviderMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Providers/TestLayerServiceProvider.php');
     }
 
-    public function testItRegistersProviderInComposerJson(): void
+    public function test_it_registers_provider_in_composer_json(): void
     {
         $this->artisan('osdd:provider', ['name' => 'TestLayerServiceProvider', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -76,7 +76,7 @@ class ServiceProviderMakeCommandTest extends TestCase
         );
     }
 
-    public function testItDoesNotDuplicateProviderInComposerJson(): void
+    public function test_it_does_not_duplicate_provider_in_composer_json(): void
     {
         $this->artisan('osdd:provider', ['name' => 'TestLayerServiceProvider', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -90,10 +90,10 @@ class ServiceProviderMakeCommandTest extends TestCase
         );
 
         $providers = $composer['extra']['laravel']['providers'] ?? [];
-        $this->assertCount(1, array_filter($providers, fn($p) => $p === 'Functional\\TestLayer\\Providers\\TestLayerServiceProvider'));
+        $this->assertCount(1, array_filter($providers, fn ($p) => $p === 'Functional\\TestLayer\\Providers\\TestLayerServiceProvider'));
     }
 
-    public function testItGeneratesNestedProviderInCorrectPath(): void
+    public function test_it_generates_nested_provider_in_correct_path(): void
     {
         $this->artisan('osdd:provider', ['name' => 'Admin/AdminServiceProvider', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -101,7 +101,7 @@ class ServiceProviderMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Providers/Admin/AdminServiceProvider.php');
     }
 
-    public function testItGeneratesNestedProviderWithCorrectNamespace(): void
+    public function test_it_generates_nested_provider_with_correct_namespace(): void
     {
         $this->artisan('osdd:provider', ['name' => 'Admin/AdminServiceProvider', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);

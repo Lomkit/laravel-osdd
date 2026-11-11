@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class RuleMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class RuleMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesRuleFileInCorrectPath(): void
+    public function test_it_generates_rule_file_in_correct_path(): void
     {
         $this->artisan('osdd:rule', ['name' => 'Uppercase', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class RuleMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Rules/Uppercase.php');
     }
 
-    public function testItGeneratesRuleWithCorrectNamespace(): void
+    public function test_it_generates_rule_with_correct_namespace(): void
     {
         $this->artisan('osdd:rule', ['name' => 'Uppercase', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class RuleMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Rules/Uppercase.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:rule', ['name' => 'Uppercase'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])

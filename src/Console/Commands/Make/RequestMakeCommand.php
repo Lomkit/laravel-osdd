@@ -24,7 +24,7 @@ class RequestMakeCommand extends \Illuminate\Foundation\Console\RequestMakeComma
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Http\\Requests';
+        return rtrim($rootNamespace, '\\').'\\Http\\Requests';
     }
 
     protected function getPath($name): string
@@ -32,8 +32,8 @@ class RequestMakeCommand extends \Illuminate\Foundation\Console\RequestMakeComma
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Http\\Requests\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Http\\Requests\\', '', $name);
 
-        return $layer->path . '/src/Http/Requests/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Http/Requests/'.str_replace('\\', '/', $relative).'.php';
     }
 }

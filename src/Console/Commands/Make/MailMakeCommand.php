@@ -19,7 +19,7 @@ class MailMakeCommand extends \Illuminate\Foundation\Console\MailMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Mail';
+        return rtrim($rootNamespace, '\\').'\\Mail';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class MailMakeCommand extends \Illuminate\Foundation\Console\MailMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Mail\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Mail\\', '', $name);
 
-        return $layer->path . '/src/Mail/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Mail/'.str_replace('\\', '/', $relative).'.php';
     }
 }

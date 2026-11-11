@@ -24,7 +24,7 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
     {
         $layer = $this->resolveLayer();
 
-        return $layer->path . '/config/' . Str::finish($this->argument('name'), '.php');
+        return $layer->path.'/config/'.Str::finish($this->argument('name'), '.php');
     }
 
     public function handle(): ?bool
@@ -32,7 +32,7 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
         $result = parent::handle();
 
         $configFile = Str::finish($this->argument('name'), '.php');
-        $configKey  = Str::before($configFile, '.php');
+        $configKey = Str::before($configFile, '.php');
 
         $this->registerInLayerProvider(
             "\$this->overrideConfigFrom(__DIR__ . '/../../config/{$configFile}', '{$configKey}');",

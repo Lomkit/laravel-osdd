@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class RequestMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class RequestMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesRequestFileInCorrectPath(): void
+    public function test_it_generates_request_file_in_correct_path(): void
     {
         $this->artisan('osdd:request', ['name' => 'StoreUserRequest', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class RequestMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Http/Requests/StoreUserRequest.php');
     }
 
-    public function testItGeneratesRequestWithCorrectNamespace(): void
+    public function test_it_generates_request_with_correct_namespace(): void
     {
         $this->artisan('osdd:request', ['name' => 'StoreUserRequest', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class RequestMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Http/Requests/StoreUserRequest.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:request', ['name' => 'StoreUserRequest'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -44,7 +44,7 @@ class RequestMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Http/Requests/StoreUserRequest.php');
     }
 
-    public function testItGeneratesNestedRequestInCorrectPath(): void
+    public function test_it_generates_nested_request_in_correct_path(): void
     {
         $this->artisan('osdd:request', ['name' => 'Admin/StoreAdminRequest', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -52,7 +52,7 @@ class RequestMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Http/Requests/Admin/StoreAdminRequest.php');
     }
 
-    public function testItGeneratesNestedRequestWithCorrectNamespace(): void
+    public function test_it_generates_nested_request_with_correct_namespace(): void
     {
         $this->artisan('osdd:request', ['name' => 'Admin/StoreAdminRequest', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);

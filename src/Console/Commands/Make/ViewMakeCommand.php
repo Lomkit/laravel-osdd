@@ -22,6 +22,6 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
 
         $nameInput = str_replace(['\\', '.'], '/', trim($this->argument('name')));
 
-        return $layer->path . '/resources/views/' . $nameInput . '.' . $this->option('extension');
+        return $layer->path.'/resources/views/'.$nameInput.'.'.$this->option('extension');
     }
 }

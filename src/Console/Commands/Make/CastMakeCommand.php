@@ -19,7 +19,7 @@ class CastMakeCommand extends \Illuminate\Foundation\Console\CastMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Casts';
+        return rtrim($rootNamespace, '\\').'\\Casts';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class CastMakeCommand extends \Illuminate\Foundation\Console\CastMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Casts\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Casts\\', '', $name);
 
-        return $layer->path . '/src/Casts/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Casts/'.str_replace('\\', '/', $relative).'.php';
     }
 }

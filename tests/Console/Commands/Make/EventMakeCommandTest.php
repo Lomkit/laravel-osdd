@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
-use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 use Lomkit\Osdd\Tests\TestCase;
+use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
 class EventMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class EventMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesEventFileInCorrectPath(): void
+    public function test_it_generates_event_file_in_correct_path(): void
     {
         $this->artisan('osdd:event', ['name' => 'UserRegistered', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class EventMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Events/UserRegistered.php');
     }
 
-    public function testItGeneratesEventWithCorrectNamespace(): void
+    public function test_it_generates_event_with_correct_namespace(): void
     {
         $this->artisan('osdd:event', ['name' => 'UserRegistered', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class EventMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Events/UserRegistered.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:event', ['name' => 'UserRegistered'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -44,7 +44,7 @@ class EventMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Events/UserRegistered.php');
     }
 
-    public function testItGeneratesNestedEventInCorrectPath(): void
+    public function test_it_generates_nested_event_in_correct_path(): void
     {
         $this->artisan('osdd:event', ['name' => 'Auth/UserLoggedIn', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -52,7 +52,7 @@ class EventMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Events/Auth/UserLoggedIn.php');
     }
 
-    public function testItGeneratesNestedEventWithCorrectNamespace(): void
+    public function test_it_generates_nested_event_with_correct_namespace(): void
     {
         $this->artisan('osdd:event', ['name' => 'Auth/UserLoggedIn', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);

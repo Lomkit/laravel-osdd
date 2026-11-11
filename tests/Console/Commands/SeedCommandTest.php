@@ -7,36 +7,36 @@ use Lomkit\Osdd\Tests\TestCase;
 
 class SeedCommandTest extends TestCase
 {
-    public function testItRunsSuccessfullyWhenNoSeedersAreRegistered(): void
+    public function test_it_runs_successfully_when_no_seeders_are_registered(): void
     {
         $this->artisan('osdd:seed')->assertExitCode(0);
     }
 
-    public function testItWarnsWhenNoSeedersAreRegistered(): void
+    public function test_it_warns_when_no_seeders_are_registered(): void
     {
         $this->artisan('osdd:seed')
             ->expectsOutputToContain('No OSDD seeders registered')
             ->assertExitCode(0);
     }
 
-    public function testItSkipsNonExistentSeederClasses(): void
+    public function test_it_skips_non_existent_seeder_classes(): void
     {
         $this->app->make(SeederRegistry::class)->push(0, 'NonExistent\\Seeder');
 
         $this->artisan('osdd:seed')->assertExitCode(0);
     }
 
-    public function testSeedersAreReturnedInPriorityOrder(): void
+    public function test_seeders_are_returned_in_priority_order(): void
     {
         $registry = $this->app->make(SeederRegistry::class);
         $registry->push(10, 'Seeder\\C');
         $registry->push(-5, 'Seeder\\A');
-        $registry->push(0,  'Seeder\\B');
+        $registry->push(0, 'Seeder\\B');
 
         $this->assertSame(['Seeder\\A', 'Seeder\\B', 'Seeder\\C'], $registry->seeders());
     }
 
-    public function testSeedersWithSamePriorityPreserveRegistrationOrder(): void
+    public function test_seeders_with_same_priority_preserve_registration_order(): void
     {
         $registry = $this->app->make(SeederRegistry::class);
         $registry->push(0, 'Seeder\\First');
@@ -45,17 +45,17 @@ class SeedCommandTest extends TestCase
         $this->assertSame(['Seeder\\First', 'Seeder\\Second'], $registry->seeders());
     }
 
-    public function testItRunsMigrateFreshWhenFreshOptionIsGiven(): void
+    public function test_it_runs_migrate_fresh_when_fresh_option_is_given(): void
     {
         $this->artisan('osdd:seed --fresh')->assertExitCode(0);
     }
 
-    public function testItRunsMigrateRefreshWhenRefreshOptionIsGiven(): void
+    public function test_it_runs_migrate_refresh_when_refresh_option_is_given(): void
     {
         $this->artisan('osdd:seed --refresh')->assertExitCode(0);
     }
 
-    public function testFreshTakesPrecedenceOverRefresh(): void
+    public function test_fresh_takes_precedence_over_refresh(): void
     {
         $this->artisan('osdd:seed --fresh --refresh')->assertExitCode(0);
     }

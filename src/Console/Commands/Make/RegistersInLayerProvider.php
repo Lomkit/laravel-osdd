@@ -15,13 +15,13 @@ trait RegistersInLayerProvider
      */
     protected function registerInLayerProvider(string $statement, string $label): void
     {
-        $layer        = $this->resolveLayer();
-        $providerName = Str::studly($layer->manifest->package()) . 'ServiceProvider';
-        $providerPath = $layer->path . '/src/Providers/' . $providerName . '.php';
+        $layer = $this->resolveLayer();
+        $providerName = Str::studly($layer->manifest->package()).'ServiceProvider';
+        $providerPath = $layer->path.'/src/Providers/'.$providerName.'.php';
 
         $files = app(Filesystem::class);
 
-        if (!$files->exists($providerPath)) {
+        if (! $files->exists($providerPath)) {
             return;
         }
 
@@ -36,6 +36,7 @@ trait RegistersInLayerProvider
 
         if ($updated === $content) {
             $this->components->warn("Could not register [{$label}] in [{$providerPath}]: unexpected formatting.");
+
             return;
         }
 

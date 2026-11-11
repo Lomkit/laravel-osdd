@@ -2,11 +2,11 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayersCollection;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
 
 use function Laravel\Prompts\search;
 
@@ -23,7 +23,7 @@ trait ChoosesOsddLayer
         $layers = LayersCollection::fromConfig();
 
         if ($layerOption = $this->option('layer')) {
-            $layer = $layers->first(fn(Layer $l) => $l->manifest->name() === $layerOption);
+            $layer = $layers->first(fn (Layer $l) => $l->manifest->name() === $layerOption);
 
             if ($layer === null) {
                 $this->components->error("Layer '{$layerOption}' not found.");
@@ -35,14 +35,14 @@ trait ChoosesOsddLayer
 
         $chosen = search(
             label: 'Which layer should this be generated in?',
-            options: fn(string $value) => $layers
-                ->filter(fn(Layer $l) => str_contains($l->manifest->name(), $value))
-                ->mapWithKeys(fn(Layer $l) => [$l->manifest->name() => $l->manifest->name()])
+            options: fn (string $value) => $layers
+                ->filter(fn (Layer $l) => str_contains($l->manifest->name(), $value))
+                ->mapWithKeys(fn (Layer $l) => [$l->manifest->name() => $l->manifest->name()])
                 ->sort()
                 ->all(),
         );
 
-        return $this->resolvedLayer = $layers->first(fn(Layer $l) => $l->manifest->name() === $chosen);
+        return $this->resolvedLayer = $layers->first(fn (Layer $l) => $l->manifest->name() === $chosen);
     }
 
     protected function interact(InputInterface $input, OutputInterface $output): void

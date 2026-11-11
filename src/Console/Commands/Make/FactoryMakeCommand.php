@@ -24,7 +24,7 @@ class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryM
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Database\\Factories';
+        return rtrim($rootNamespace, '\\').'\\Database\\Factories';
     }
 
     protected function buildClass($name): string
@@ -41,8 +41,8 @@ class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryM
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Database\\Factories\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Database\\Factories\\', '', $name);
 
-        return $layer->path . '/database/factories/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/database/factories/'.str_replace('\\', '/', $relative).'.php';
     }
 }

@@ -19,7 +19,7 @@ class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeComma
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Console\\Commands';
+        return rtrim($rootNamespace, '\\').'\\Console\\Commands';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeComma
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Console\\Commands\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Console\\Commands\\', '', $name);
 
-        return $layer->path . '/src/Console/Commands/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Console/Commands/'.str_replace('\\', '/', $relative).'.php';
     }
 }

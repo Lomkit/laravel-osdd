@@ -19,7 +19,7 @@ class ChannelMakeCommand extends \Illuminate\Foundation\Console\ChannelMakeComma
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Broadcasting';
+        return rtrim($rootNamespace, '\\').'\\Broadcasting';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class ChannelMakeCommand extends \Illuminate\Foundation\Console\ChannelMakeComma
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Broadcasting\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Broadcasting\\', '', $name);
 
-        return $layer->path . '/src/Broadcasting/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Broadcasting/'.str_replace('\\', '/', $relative).'.php';
     }
 }

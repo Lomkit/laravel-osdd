@@ -46,6 +46,7 @@ class LayerManifest
     public function srcPath(string $layerPath): string
     {
         $relative = current($this->data['autoload']['psr-4'] ?? ['src/']);
-        return rtrim($layerPath, '/') . '/' . trim($relative, '/');
+
+        return rtrim($layerPath, '/').'/'.trim($relative, '/');
     }
 }

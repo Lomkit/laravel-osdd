@@ -19,7 +19,7 @@ class EnumMakeCommand extends \Illuminate\Foundation\Console\EnumMakeCommand
 
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Enums';
+        return rtrim($rootNamespace, '\\').'\\Enums';
     }
 
     protected function getPath($name): string
@@ -27,8 +27,8 @@ class EnumMakeCommand extends \Illuminate\Foundation\Console\EnumMakeCommand
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Enums\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Enums\\', '', $name);
 
-        return $layer->path . '/src/Enums/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Enums/'.str_replace('\\', '/', $relative).'.php';
     }
 }
