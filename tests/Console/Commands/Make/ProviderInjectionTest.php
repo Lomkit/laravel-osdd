@@ -93,6 +93,31 @@ class ProviderInjectionTest extends TestCase
         $this->assertSame(['driver' => 'layer', 'currency' => 'EUR'], $this->app['config']->get('payments'));
     }
 
+    public function test_migrations_are_registered_in_the_conventional_provider_of_a_dotted_package_name(): void
+    {
+        $layer = $this->app->basePath('functional/foo.bar');
+        $this->app['files']->ensureDirectoryExists($layer.'/src/Providers');
+        $this->app['files']->put($layer.'/composer.json', (string) json_encode([
+            'name' => 'functional/foo.bar',
+            'type' => 'layer',
+            'autoload' => ['psr-4' => ['Functional\\FooBar\\' => 'src/']],
+        ]));
+        $this->app['files']->put($layer.'/src/Providers/FooBarServiceProvider.php', $this->providerFor('FooBarServiceProvider'));
+
+        try {
+            $this->artisan('osdd:migration', ['name' => 'create_bars_table', '--layer' => 'functional/foo.bar'])
+                ->doesntExpectOutputToContain('has no service provider')
+                ->assertExitCode(0);
+
+            $this->assertStringContainsString(
+                "\$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');",
+                (string) file_get_contents($layer.'/src/Providers/FooBarServiceProvider.php'),
+            );
+        } finally {
+            $this->app['files']->deleteDirectory($layer);
+        }
+    }
+
     public function test_it_prints_the_line_to_add_when_the_layer_has_no_provider(): void
     {
         $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/src/Providers'));
@@ -128,6 +153,11 @@ class ProviderInjectionTest extends TestCase
         $this->app->register($provider['class']);
 
         return array_values(array_filter(array_map('realpath', $this->app['migrator']->paths())));
+    }
+
+    private function providerFor(string $class): string
+    {
+        return "<?php\n\nnamespace Functional\\FooBar\\Providers;\n\nuse Lomkit\\Osdd\\LayerServiceProvider;\n\nclass {$class} extends LayerServiceProvider\n{\n    public function boot(): void\n    {\n        //\n    }\n}\n";
     }
 
     private function providerLayerPath(string $relative): string

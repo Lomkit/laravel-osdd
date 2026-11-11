@@ -2,7 +2,7 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Console\Providers\Statements\RegisterCommand;
 use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
@@ -10,20 +10,13 @@ use Symfony\Component\Console\Attribute\AsCommand;
 final class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeCommand
 {
     use GeneratesClassesInLayer;
-    use RegistersInLayerProvider;
 
     #[\Override]
     public function handle(): ?bool
     {
         $created = parent::handle();
 
-        $commandClass = $this->qualifyClass($this->getNameInput());
-
-        $this->registerInLayerProvider(
-            ProviderMethod::Boot,
-            fn (): string => "\$this->commands([\\{$commandClass}::class]);",
-            $commandClass,
-        );
+        $this->wireInTargetLayer(new RegisterCommand($this->qualifyClass($this->getNameInput())));
 
         return $created;
     }

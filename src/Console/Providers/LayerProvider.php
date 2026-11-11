@@ -2,14 +2,14 @@
 
 namespace Lomkit\Osdd\Console\Providers;
 
-use Illuminate\Support\Str;
 use Lomkit\Osdd\Filesystem\Path;
 use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerDirectory;
 
 final class LayerProvider
 {
     private function __construct(
-        private readonly Layer $layer,
+        private readonly LayerDirectory $layerDirectory,
         public readonly string $path,
     ) {}
 
@@ -23,13 +23,16 @@ final class LayerProvider
             $path = $layer->classFile($provider);
 
             if ($path !== null && is_file($path)) {
-                return new self($layer, $path);
+                return new self($layer->directory, $path);
             }
         }
 
-        $conventional = Str::studly($layer->name->package).'ServiceProvider.php';
+        return new self($layer->directory, $layer->sourceDirectory.'/'.(new ConventionalProvider($layer->name))->sourceFile());
+    }
 
-        return new self($layer, $layer->sourceDirectory.'/Providers/'.$conventional);
+    public static function at(LayerDirectory $layerDirectory, string $path): self
+    {
+        return new self($layerDirectory, $path);
     }
 
     public function exists(): bool
@@ -39,7 +42,7 @@ final class LayerProvider
 
     public function pathExpression(string $layerRelativePath): string
     {
-        $relative = Path::relative(dirname($this->path), $this->layer->directory->pathTo($layerRelativePath));
+        $relative = Path::relative(dirname($this->path), $this->layerDirectory->pathTo($layerRelativePath));
 
         return "__DIR__ . '/{$relative}'";
     }

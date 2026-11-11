@@ -2,6 +2,7 @@
 
 namespace Lomkit\Osdd\Console\Providers;
 
+use Lomkit\Osdd\Console\Providers\Calls\StringArgument;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\Layers;
 
@@ -30,8 +31,13 @@ final class LayerResourceNamespace
         return $this->explicit !== null;
     }
 
-    public function argument(): string
+    /**
+     * The namespace argument of withViews(), withTranslations() and withComponents(): none for the default namespace.
+     *
+     * @return list<StringArgument>
+     */
+    public function arguments(): array
     {
-        return $this->explicit === null ? '' : ", '{$this->explicit}'";
+        return $this->explicit === null ? [] : [new StringArgument($this->explicit)];
     }
 }

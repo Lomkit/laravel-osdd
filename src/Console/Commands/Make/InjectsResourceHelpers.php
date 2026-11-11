@@ -2,14 +2,11 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Lomkit\Osdd\Console\Providers\LayerProvider;
-use Lomkit\Osdd\Console\Providers\ProviderMethod;
-use Lomkit\Osdd\Layers\LayerFolder;
+use Lomkit\Osdd\Console\Providers\Statements\WithComponents;
+use Lomkit\Osdd\Console\Providers\Statements\WithViews;
 
 trait InjectsResourceHelpers
 {
-    use RegistersInLayerProvider;
-
     protected function warnWhenTheResourceNamespaceIsShared(): void
     {
         $target = $this->target();
@@ -21,26 +18,11 @@ trait InjectsResourceHelpers
 
     protected function injectWithViews(): void
     {
-        $namespace = $this->target()->resourceNamespace;
-
-        $this->registerInLayerProvider(
-            ProviderMethod::Boot,
-            fn (LayerProvider $provider): string => "\$this->withViews({$provider->pathExpression(LayerFolder::Views->value)}{$namespace->argument()});",
-            LayerFolder::Views->value,
-            '$this->withViews(',
-        );
+        $this->wireInTargetLayer(new WithViews($this->target()->resourceNamespace));
     }
 
     protected function injectWithComponents(string $componentNamespace): void
     {
-        $namespace = $this->target()->resourceNamespace;
-        $quotedNamespace = str_replace('\\', '\\\\', trim($componentNamespace, '\\'));
-
-        $this->registerInLayerProvider(
-            ProviderMethod::Boot,
-            fn (): string => "\$this->withComponents('{$quotedNamespace}'{$namespace->argument()});",
-            $componentNamespace,
-            '$this->withComponents(',
-        );
+        $this->wireInTargetLayer(new WithComponents($componentNamespace, $this->target()->resourceNamespace));
     }
 }

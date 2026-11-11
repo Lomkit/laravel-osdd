@@ -4,8 +4,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Database\Migrations\MigrationCreator;
 use Illuminate\Support\Composer;
-use Lomkit\Osdd\Console\Providers\LayerProvider;
-use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Console\Providers\Statements\LoadMigrations;
 use Lomkit\Osdd\Generation\GeneratesInLayer;
 use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -15,7 +14,6 @@ use Symfony\Component\Console\Input\InputOption;
 final class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\MigrateMakeCommand
 {
     use GeneratesInLayer;
-    use RegistersInLayerProvider;
 
     private const array PATH_OPTIONS = ['path', 'realpath'];
 
@@ -34,13 +32,7 @@ final class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\M
     {
         parent::handle();
 
-        $folder = LayerFolder::Migrations->value;
-
-        $this->registerInLayerProvider(
-            ProviderMethod::Boot,
-            fn (LayerProvider $provider): string => "\$this->loadMigrationsFrom({$provider->pathExpression($folder)});",
-            $folder,
-        );
+        $this->wireInTargetLayer(new LoadMigrations);
     }
 
     #[\Override]
