@@ -5,6 +5,7 @@ namespace Lomkit\Osdd\Tests\Console\Commands;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Lomkit\Osdd\SeederRegistry;
+use Lomkit\Osdd\Seeders\SeederNotFoundException;
 use Lomkit\Osdd\Tests\TestCase;
 
 class SeedCommandTest extends TestCase
@@ -29,11 +30,13 @@ class SeedCommandTest extends TestCase
             ->assertExitCode(0);
     }
 
-    public function test_it_skips_non_existent_seeder_classes(): void
+    public function test_it_fails_on_a_non_existent_seeder_class(): void
     {
         $this->app->make(SeederRegistry::class)->push(0, 'NonExistent\\Seeder');
 
-        $this->artisan('osdd:seed')->assertExitCode(0);
+        $this->expectException(SeederNotFoundException::class);
+
+        $this->artisan('osdd:seed')->run();
     }
 
     public function test_seeders_are_returned_in_priority_order(): void

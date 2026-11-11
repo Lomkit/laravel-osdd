@@ -144,7 +144,7 @@ Projects already converted with 2.x keep working. If yours lost the sessions, ca
 
 #### `osdd:seed` runs `LayersSeeder`, exit codes and options
 
-`osdd:seed` now runs `db:seed` once with the new `Lomkit\Osdd\Seeders\LayersSeeder`, which calls the seeders registered by the layers in priority order, and returns the exit code of `db:seed`; in 2.x it ran `db:seed` once per seeder, ignored the result and exited 0. In production, the confirmation is asked once instead of once per seeder, and a cancelled run seeds nothing. A seeder that throws stops the run. In production without a terminal, `db:seed` cancels itself: pass the new `--force` option to `osdd:seed` (it is forwarded to `db:seed`, `migrate:fresh` and `migrate:refresh`), as you would to `db:seed`. The new `--database` option is forwarded the same way.
+`osdd:seed` now runs `db:seed` once with the new `Lomkit\Osdd\Seeders\LayersSeeder`, which calls the seeders registered by the layers in priority order, and returns the exit code of `db:seed`; in 2.x it ran `db:seed` once per seeder, ignored the result and exited 0. In production, the confirmation is asked once instead of once per seeder, and a cancelled run seeds nothing. A seeder that throws stops the run. A seeder class registered with `loadSeeders()` that does not exist now fails the run before any seeder runs (`Lomkit\Osdd\Seeders\SeederNotFoundException`); 2.x skipped it with a warning. In production without a terminal, `db:seed` cancels itself: pass the new `--force` option to `osdd:seed` (it is forwarded to `db:seed`, `migrate:fresh` and `migrate:refresh`), as you would to `db:seed`. The new `--database` option is forwarded the same way.
 
 `--fresh` and `--refresh` together now fail; in 2.x `--refresh` was ignored.
 

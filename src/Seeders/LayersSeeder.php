@@ -7,6 +7,9 @@ use Lomkit\Osdd\SeederRegistry;
 
 class LayersSeeder extends Seeder
 {
+    /**
+     * @throws SeederNotFoundException
+     */
     public function run(SeederRegistry $registry): void
     {
         $seeders = $registry->seeders();
@@ -19,12 +22,10 @@ class LayersSeeder extends Seeder
 
         foreach ($seeders as $seeder) {
             if (! class_exists($seeder)) {
-                $this->command?->outputComponents()->warn("Seeder [{$seeder}] not found, skipping.");
-
-                continue;
+                throw new SeederNotFoundException($seeder);
             }
-
-            $this->call($seeder);
         }
+
+        $this->call($seeders);
     }
 }

@@ -5,6 +5,7 @@ namespace Lomkit\Osdd\Tests\Seeders;
 use Lomkit\Osdd\OsddServiceProvider;
 use Lomkit\Osdd\SeederRegistry;
 use Lomkit\Osdd\Seeders\LayersSeeder;
+use Lomkit\Osdd\Seeders\SeederNotFoundException;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\LoggingSeeder;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\OrdersLayerSeeder;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\SeedingLayerServiceProvider;
@@ -55,15 +56,18 @@ class LayersSeederTest extends TestCase
         $this->assertSame([UsersLayerSeeder::class, OrdersLayerSeeder::class], LoggingSeeder::$runs);
     }
 
-    public function test_it_skips_a_seeder_class_that_does_not_exist(): void
+    public function test_it_fails_before_seeding_when_a_seeder_class_does_not_exist(): void
     {
         $this->app->make(SeederRegistry::class)->push(5, 'Functional\\Missing\\Database\\Seeders\\MissingSeeder');
 
-        $this->artisan('db:seed', ['--class' => LayersSeeder::class])
-            ->expectsOutputToContain('Seeder [Functional\\Missing\\Database\\Seeders\\MissingSeeder] not found, skipping.')
-            ->assertExitCode(0);
+        try {
+            $this->artisan('db:seed', ['--class' => LayersSeeder::class])->run();
+            $this->fail('LayersSeeder ran with a seeder class that does not exist.');
+        } catch (SeederNotFoundException $exception) {
+            $this->assertSame('Functional\\Missing\\Database\\Seeders\\MissingSeeder', $exception->seeder);
+        }
 
-        $this->assertSame([UsersLayerSeeder::class, OrdersLayerSeeder::class], LoggingSeeder::$runs);
+        $this->assertSame([], LoggingSeeder::$runs);
     }
 
     public function test_it_warns_when_no_layer_registers_a_seeder(): void
