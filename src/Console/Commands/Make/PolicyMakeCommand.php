@@ -2,13 +2,13 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:policy')]
 class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
 {
     use ChoosesOsddLayer;
+    use QualifiesModelsAcrossLayers;
 
     /**
      * The console command name.
@@ -27,19 +27,6 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
     protected function getDefaultNamespace($rootNamespace): string
     {
         return rtrim($rootNamespace, '\\').'\\Policies';
-    }
-
-    #[\Override]
-    protected function qualifyModel(string $model): string
-    {
-        $model = ltrim($model, '\\/');
-        $model = str_replace('/', '\\', $model);
-        $rootNamespace = $this->rootNamespace();
-
-        /** @var class-string $qualified */
-        $qualified = Str::startsWith($model, $rootNamespace) ? $model : $rootNamespace.'Models\\'.$model;
-
-        return $qualified;
     }
 
     #[\Override]
@@ -71,11 +58,6 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Policies\\', '', $name);
-
-        return $layer->path.'/src/Policies/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 }

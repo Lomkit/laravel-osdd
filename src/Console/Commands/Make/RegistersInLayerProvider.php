@@ -2,45 +2,52 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Closure;
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Str;
+use Lomkit\Osdd\Console\Providers\LayerProvider;
+use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Console\Providers\ProviderMethodEditor;
+use Lomkit\Osdd\Console\Providers\ProviderMethodNotFoundException;
 
 trait RegistersInLayerProvider
 {
     /**
-     * Inject a statement at the end of the resolved layer service provider's boot() method.
+     * Append a statement to a method of the layer's service provider, once.
      *
-     * No-op when the provider is missing or already contains the statement, so it is
-     * safe to call on every generation.
+     * Warns with the line to add by hand when the layer has no provider or the
+     * method cannot be found.
+     *
+     * @param  Closure(LayerProvider): string  $statement
      */
-    protected function registerInLayerProvider(string $statement, string $label): void
+    protected function registerInLayerProvider(ProviderMethod $method, Closure $statement, string $label): void
     {
         $layer = $this->resolveLayer();
-        $providerName = Str::studly($layer->manifest->package()).'ServiceProvider';
-        $providerPath = $layer->path.'/src/Providers/'.$providerName.'.php';
+        $provider = LayerProvider::of($layer);
+        $line = $statement($provider);
+
+        if (! $provider->exists()) {
+            $this->components->warn("Layer [{$layer->manifest->name()}] has no service provider. Add this line to the {$method->value}() method of its provider:");
+            $this->line($line);
+
+            return;
+        }
 
         $files = app(Filesystem::class);
+        $source = $files->get($provider->path);
 
-        if (! $files->exists($providerPath)) {
+        if (str_contains($source, $line)) {
             return;
         }
 
-        $content = $files->get($providerPath);
-
-        if (str_contains($content, $statement)) {
-            return;
-        }
-
-        $pattern = '/(\n[ \t]*\})(\s+)([ \t]*public\s+function\s+register\b)/';
-        $updated = preg_replace($pattern, "\n        {$statement}$1$2$3", $content, 1);
-
-        if ($updated === null || $updated === $content) {
-            $this->components->warn("Could not register [{$label}] in [{$providerPath}]: unexpected formatting.");
+        try {
+            $files->put($provider->path, (new ProviderMethodEditor)->append($source, $method, $line));
+        } catch (ProviderMethodNotFoundException) {
+            $this->components->warn("No {$method->value}() method found in [{$provider->path}]. Add this line to it:");
+            $this->line($line);
 
             return;
         }
 
-        $files->put($providerPath, $updated);
-        $this->components->info("Registered [{$label}] in [{$providerPath}].");
+        $this->components->info("Registered [{$label}] in [{$provider->path}].");
     }
 }

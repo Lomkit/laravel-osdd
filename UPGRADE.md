@@ -97,3 +97,76 @@ Without this change, Boost no longer finds `xefi/laravel-osdd` and removes the s
 
 - Renovate or Dependabot may offer to bump `xefi/laravel-osdd` to `^3.0`. Do not accept it: that version expects the `Lomkit\Osdd` namespace and breaks every layer that still uses `Xefi\LaravelOSDD`. Follow this guide instead.
 - `composer audit` reports `xefi/laravel-osdd` as abandoned and fails by default. Switching to `lomkit/laravel-osdd` with this guide fixes it. A project that cannot switch yet can report abandoned packages without failing by setting `config.audit.abandoned` to `"report"` in its root `composer.json` (`config.policy.abandoned.audit` on Composer 2.11 and later).
+
+### Changed behaviour
+
+#### `overrideConfigFrom()` replaces lists
+
+`overrideConfigFrom()` still merges maps key by key, at every depth. A list in the layer file now replaces the loaded list as a whole, and an empty array clears the loaded value. In 2.x, lists were merged index by index: overriding `['default', 'low']` with `['high']` gave `['high', 'low']`; it now gives `['high']`.
+
+Check the config files your layers load with `overrideConfigFrom()`. Where a layer relied on the old merge to keep the tail of a list, write the full list in the layer file.
+
+#### `osdd:layer` without a terminal
+
+`osdd:layer` no longer runs `composer update` when it cannot ask: under `--no-interaction` (`-n`), or without a terminal (CI, scripts, tools driven by Laravel Boost). In 2.x it ran the update by default. Pass `--composer-update` to run it, or run `composer update vendor/package` yourself. When the update runs and fails, `osdd:layer` and `osdd:start` now exit with 1; the layers they created stay in place. `--no-composer-update` skips the question in a terminal.
+
+Without a terminal, the command also stops asking for the rest:
+
+- the bucket comes from the vendor of the name when it matches a key of `osdd.layers.paths` (`functional/orders` goes to the `functional` path). Pass `--target-path` for any other vendor;
+- the name argument is required;
+- without `--generators`, the default generators run (`migration`, `model`, `factory`, `service-provider`, `test`).
+
+`--generators` accepts comma-separated lists (`--generators=model,policy`) as well as repeated options, and an unknown generator name now fails the command with the list of valid names. In 2.x, `--generators=model,policy` matched no generator and created a layer with only its `composer.json`.
+
+#### `osdd:layer` refuses an existing layer
+
+`osdd:layer` now fails when the layer directory already exists and is not empty. In 2.x it overwrote the layer's `composer.json` (dropping `extra.laravel.providers`) and its provider. Pass `--force` to run the generators again on an existing layer: the provider and the route files are rewritten, the model and the controller are overwritten, the other generated files are kept, and no second `create_*_table` migration is added. The layer's `composer.json` is kept: it only gains the keys of a new layer that it lacks, so its `require`, `extra.laravel.providers` and your own keys stay.
+
+#### `osdd:layer` validates the name
+
+The name must be a Composer package name: `vendor/package`, lowercase letters and digits, words separated by `-`, `_` or `.`, each part starting with a letter. `osdd:layer orders` and `osdd:layer functional/My_Orders` now fail with a message instead of crashing or writing an invalid requirement into the root `composer.json`.
+
+#### The generated layer provider no longer registers a seeder by default
+
+The provider created by `osdd:layer` used to import and register `{Package}Seeder` even when the `seeder` generator did not run. It now registers nothing; the `seeder` generator, or `osdd:seeder`, adds `$this->loadSeeders([...])` to `boot()`. Existing layers are not changed. A seeder registered twice now runs once (the first registration and its priority win).
+
+#### `osdd:start` asks first and runs once
+
+`osdd:start` now asks for confirmation (default no) before it deletes `app/`, `config/` and `database/`. Scripts pass `--force`; without a terminal and without `--force`, the command fails and changes nothing. It also fails when `functional/users` or `technical/osdd` already exists, so it cannot run twice on a project. Like `osdd:layer`, it only runs `composer update` when you accept the question or pass `--composer-update`.
+
+What it does to a fresh project also changed:
+
+- `database/database.sqlite` (and `database/.gitignore`) are kept, so the default SQLite connection keeps working; the rest of `database/` is deleted.
+- The skeleton migrations keep their names and their tables: `0001_01_01_000000_create_users_table` (users, password reset tokens, sessions) goes to `functional/users`, `0001_01_01_000001_create_cache_table` and `0001_01_01_000002_create_jobs_table` go to `technical/osdd`, whose provider now loads them. In 2.x the sessions, cache and jobs tables were lost.
+- `bootstrap/providers.php` loses only the providers of the deleted `app/` directory (`App\Providers\...`); the providers of installed packages listed there stay. In 2.x the file was emptied.
+
+Projects already converted with 2.x keep working. If yours lost the sessions, cache or jobs tables, add their migrations to a layer: `php artisan make:session-table`, `make:cache-table` and `make:queue-table` write them under `database/migrations`; move them to `technical/osdd/database/migrations` and call `$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');` in the `boot()` method of `Technical\Osdd\Providers\OsddServiceProvider`.
+
+#### `osdd:seed` exit codes and options
+
+`osdd:seed` now stops at the first `db:seed` that fails or is cancelled and returns its exit code; in 2.x it ignored the result and exited 0. In production without a terminal, `db:seed` cancels itself: pass the new `--force` option to `osdd:seed` (it is forwarded to `db:seed`, `migrate:fresh` and `migrate:refresh`), as you would to `db:seed`. The new `--database` option is forwarded the same way.
+
+`--fresh` and `--refresh` together now fail; in 2.x `--refresh` was ignored.
+
+#### `osdd:phpunit` coverage source
+
+`osdd:phpunit` now adds each layer's source directory to `<source><include>` and excludes the migrations per layer path (`functional/*/database/migrations`) instead of `**/database/migrations`, which walked the whole project, `vendor/` included. Remove the old entry from your `phpunit.xml`:
+
+```diff
+ <exclude>
+-    <directory suffix=".php">**/database/migrations</directory>
+ </exclude>
+```
+
+The new `--prune` option removes the test suites of layers that no longer exist and the `<source><include>` directories that are gone, such as `app` after `osdd:start`.
+
+#### Other changes in the generators and the base provider
+
+These fix 2.x bugs; existing layers keep working without changes.
+
+- `withRouting()` now loads the `commands` and `channels` files when routes are cached (after `php artisan optimize`), as Laravel does. In 2.x, the `routes/console.php` commands and schedules and the broadcast channels of every layer disappeared once routes were cached. If you worked around it by loading these files yourself, remove the workaround.
+- `osdd:config` injects `overrideConfigFrom()` into `register()` instead of `boot()`. Earlier overrides stay where they are; move them to `register()` if another package reads that config while it boots.
+- `osdd:migration`, `osdd:seeder` and `osdd:config` find the method to edit by parsing the provider, take the provider from the layer's `extra.laravel.providers` when it is declared there, and print the line to add when the layer has no provider or the method is missing. In 2.x they edited the method placed before `register()`, or did nothing.
+- Generators write classes under the directory of the layer's root psr-4 entry (the shortest namespace prefix), not always under `src/`.
+- `--model` on `osdd:policy`, `osdd:controller`, `osdd:observer` and `osdd:factory` keeps a model of another layer (`--model='Functional\Users\Models\User'`) instead of nesting it under the current layer.
+- `osdd:layer`, `osdd:start` and `osdd:provider` keep empty objects such as `"require-dev": {}` in `composer.json`, follow `config.sort-packages`, and write a `../` repository URL for a layer path outside the project.

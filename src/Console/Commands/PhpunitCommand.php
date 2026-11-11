@@ -2,13 +2,15 @@
 
 namespace Lomkit\Osdd\Console\Commands;
 
-use DOMDocument;
-use DOMElement;
-use DOMXPath;
 use Illuminate\Console\Command;
-use Illuminate\Support\Str;
+use Lomkit\Osdd\Console\Phpunit\PhpunitXml;
+use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerBuckets;
+use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Support\Path;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputOption;
 
 #[AsCommand(name: 'osdd:phpunit')]
 class PhpunitCommand extends Command
@@ -25,7 +27,9 @@ class PhpunitCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Synchronize phpunit.xml testsuites with discovered OSDD layers';
+    protected $description = 'Synchronize phpunit.xml testsuites and coverage source with discovered OSDD layers';
+
+    private const string LAYER_MIGRATIONS = '*/database/migrations';
 
     public function handle(): int
     {
@@ -37,71 +41,33 @@ class PhpunitCommand extends Command
             return self::FAILURE;
         }
 
-        $dom = new DOMDocument('1.0', 'UTF-8');
-        $dom->preserveWhiteSpace = false;
-        $dom->formatOutput = true;
-        $dom->load($xmlPath);
+        $xml = PhpunitXml::load($xmlPath);
 
-        $xpath = new DOMXPath($dom);
-        $testSuites = $this->firstElement($xpath, '//testsuites');
-
-        if (! $testSuites) {
+        if (! $xml->hasTestSuites()) {
             $this->error('<testsuites> element not found in phpunit.xml.');
 
             return self::FAILURE;
         }
 
-        $changed = $this->excludeMigrationsFromCoverage($dom, $xpath);
-
         $layers = LayersCollection::fromConfig();
+
+        $this->excludeLayerMigrations($xml);
 
         if ($layers->isEmpty()) {
             $this->warn('No OSDD layers discovered.');
-
-            if ($changed) {
-                $this->laravel->make('files')->put($xmlPath, (string) $dom->saveXML());
-                $this->info('phpunit.xml updated successfully.');
-            }
-
-            return self::SUCCESS;
         }
-
-        $basePath = rtrim($this->laravel->basePath(), DIRECTORY_SEPARATOR).DIRECTORY_SEPARATOR;
-        $added = 0;
 
         foreach ($layers as $layer) {
-            $layerName = $layer->manifest->name();
-
-            $existing = $this->firstElement($xpath, '//testsuites/testsuite[@name="'.$layerName.'"]');
-
-            if ($existing) {
-                $this->line("Testsuite <comment>{$layerName}</comment> already present, skipping.");
-
-                continue;
-            }
-
-            $testDir = $layer->path.'/tests';
-
-            if (! is_dir($testDir)) {
-                $this->line("Testsuite <comment>{$layerName}</comment> has no tests/ directory, skipping.");
-
-                continue;
-            }
-
-            $relativeTestDir = Str::replaceFirst($basePath, '', $testDir);
-            $relativeTestDir = str_replace('\\', '/', $relativeTestDir);
-
-            $suite = $dom->createElement('testsuite');
-            $suite->setAttribute('name', $layerName);
-            $suite->appendChild($dom->createElement('directory', $relativeTestDir));
-            $testSuites->appendChild($suite);
-
-            $this->info("Added testsuite <comment>{$layerName}</comment> → {$relativeTestDir}");
-            $added++;
+            $this->addTestSuite($xml, $layer);
+            $this->includeSource($xml, $layer);
         }
 
-        if ($added > 0 || $changed) {
-            $this->laravel->make('files')->put($xmlPath, (string) $dom->saveXML());
+        if ($this->option('prune')) {
+            $this->prune($xml, $layers);
+        }
+
+        if ($xml->isChanged()) {
+            $this->laravel->make('files')->put($xmlPath, $xml->toXml());
             $this->info('phpunit.xml updated successfully.');
         }
 
@@ -109,51 +75,80 @@ class PhpunitCommand extends Command
     }
 
     /**
-     * Ensure layer migrations are excluded from code coverage.
-     *
-     * Every OSDD layer ships its own database/migrations directory; those files
-     * are schema boilerplate and must not count towards coverage metrics.
-     *
-     * @return bool whether the document was modified
+     * @return array<int, InputOption>
      */
-    private function excludeMigrationsFromCoverage(DOMDocument $dom, DOMXPath $xpath): bool
+    #[\Override]
+    protected function getOptions(): array
     {
-        $migrationsPath = '**/database/migrations';
-
-        $alreadyExcluded = $this->firstElement($xpath, '//source/exclude/directory[normalize-space()="'.$migrationsPath.'"]');
-
-        if ($alreadyExcluded) {
-            return false;
-        }
-
-        $source = $this->firstElement($xpath, '//source');
-
-        if (! $source) {
-            $source = $dom->createElement('source');
-            $dom->documentElement?->appendChild($source);
-        }
-
-        $exclude = $this->firstElement($xpath, '//source/exclude');
-
-        if (! $exclude) {
-            $exclude = $dom->createElement('exclude');
-            $source->appendChild($exclude);
-        }
-
-        $directory = $dom->createElement('directory', $migrationsPath);
-        $directory->setAttribute('suffix', '.php');
-        $exclude->appendChild($directory);
-
-        $this->info("Excluded <comment>{$migrationsPath}</comment> from code coverage.");
-
-        return true;
+        return [
+            new InputOption('prune', null, InputOption::VALUE_NONE, 'Remove the test suites of removed layers and the source directories that no longer exist'),
+        ];
     }
 
-    private function firstElement(DOMXPath $xpath, string $expression): ?DOMElement
+    private function excludeLayerMigrations(PhpunitXml $xml): void
     {
-        $node = $xpath->query($expression) ?: null;
-        $first = $node?->item(0);
+        $buckets = LayerBuckets::fromConfig();
 
-        return $first instanceof DOMElement ? $first : null;
+        foreach ($buckets->names() as $bucket) {
+            $directory = $this->relative($buckets->path($bucket)).'/'.self::LAYER_MIGRATIONS;
+
+            if ($xml->excludeFromSource($directory)) {
+                $this->info("Excluded <comment>{$directory}</comment> from code coverage.");
+            }
+        }
+    }
+
+    private function addTestSuite(PhpunitXml $xml, Layer $layer): void
+    {
+        $layerName = $layer->manifest->name();
+
+        if ($xml->hasTestSuite($layerName)) {
+            $this->line("Testsuite <comment>{$layerName}</comment> already present, skipping.");
+
+            return;
+        }
+
+        if (! is_dir($layer->path.'/tests')) {
+            $this->line("Testsuite <comment>{$layerName}</comment> has no tests/ directory, skipping.");
+
+            return;
+        }
+
+        $directory = $this->relative($layer->path.'/tests');
+        $xml->addTestSuite($layerName, $directory);
+        $this->info("Added testsuite <comment>{$layerName}</comment> → {$directory}");
+    }
+
+    private function includeSource(PhpunitXml $xml, Layer $layer): void
+    {
+        $source = $layer->manifest->srcPath($layer->path);
+
+        if (is_dir($source) && $xml->includeInSource($directory = $this->relative($source))) {
+            $this->info("Included <comment>{$directory}</comment> in code coverage.");
+        }
+    }
+
+    private function prune(PhpunitXml $xml, LayersCollection $layers): void
+    {
+        $layerNames = $layers->toBase()->map(fn (Layer $layer): string => $layer->manifest->name())->all();
+
+        foreach ($xml->testSuiteNames() as $suite) {
+            if (LayerName::validationError($suite) === null && ! in_array($suite, $layerNames, true)) {
+                $xml->removeTestSuite($suite);
+                $this->info("Removed testsuite <comment>{$suite}</comment>: the layer no longer exists.");
+            }
+        }
+
+        foreach ($xml->sourceIncludes() as $directory) {
+            if (! is_dir(Path::isAbsolute($directory) ? $directory : $this->laravel->basePath($directory))) {
+                $xml->removeSourceInclude($directory);
+                $this->info("Removed <comment>{$directory}</comment> from code coverage: the directory no longer exists.");
+            }
+        }
+    }
+
+    private function relative(string $path): string
+    {
+        return Path::relative($this->laravel->basePath(), $path);
     }
 }

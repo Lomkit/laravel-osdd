@@ -9,6 +9,7 @@ use Symfony\Component\Console\Attribute\AsCommand;
 class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryMakeCommand
 {
     use ChoosesOsddLayer;
+    use QualifiesModelsAcrossLayers;
 
     /**
      * The console command name.

@@ -125,6 +125,35 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame('untouched', $this->app['config']->get('package.other'));
     }
 
+    public function test_it_replaces_lists_as_a_whole(): void
+    {
+        $this->app['config']->set('queue-demo', [
+            'queues' => ['default', 'low'],
+            'connections' => ['redis' => ['queue' => 'default', 'retry_after' => 90]],
+        ]);
+
+        $path = $this->writeConfig('queue-demo.php', [
+            'queues' => ['high'],
+            'connections' => ['redis' => ['queue' => 'high']],
+        ]);
+
+        $this->makeProvider()->callOverrideConfigFrom($path, 'queue-demo');
+
+        $this->assertSame(['high'], $this->app['config']->get('queue-demo.queues'));
+        $this->assertSame(['queue' => 'high', 'retry_after' => 90], $this->app['config']->get('queue-demo.connections.redis'));
+    }
+
+    public function test_an_empty_array_clears_the_loaded_value(): void
+    {
+        $this->app['config']->set('middleware-demo', ['except' => ['a', 'b'], 'enabled' => true]);
+
+        $path = $this->writeConfig('middleware-demo.php', ['except' => []]);
+
+        $this->makeProvider()->callOverrideConfigFrom($path, 'middleware-demo');
+
+        $this->assertSame(['except' => [], 'enabled' => true], $this->app['config']->get('middleware-demo'));
+    }
+
     public function test_it_creates_the_key_when_it_did_not_exist_before(): void
     {
         $path = $this->writeConfig('brand-new.php', ['option' => 'value']);
@@ -230,6 +259,27 @@ class LayerServiceProviderTest extends TestCase
         $this->makeProvider()->callWithRouting(commands: $path);
 
         $this->assertFileExists($marker);
+    }
+
+    public function test_with_routing_still_loads_commands_and_channels_when_routes_are_cached(): void
+    {
+        $this->app->instance('routes.cached', true);
+
+        $consoleMarker = $this->tmpDir.'/console-loaded';
+        $channelsMarker = $this->tmpDir.'/channels-loaded';
+        $web = $this->writeRouteFile('web.php', "<?php\nRoute::get('/cached', fn () => 'ok')->name('web.cached');\n");
+        $console = $this->writeRouteFile('console.php', "<?php file_put_contents('{$consoleMarker}', 'yes');\n");
+        $channels = $this->writeRouteFile('channels.php', "<?php file_put_contents('{$channelsMarker}', 'yes');\n");
+
+        $this->makeProvider()->callWithRouting(web: $web, commands: $console, channels: $channels, health: '/up');
+
+        $this->assertFileExists($consoleMarker);
+        $this->assertFileExists($channelsMarker);
+        $this->assertNull($this->findRouteByName('web.cached'));
+        $this->assertCount(0, array_filter(
+            $this->app['router']->getRoutes()->getRoutes(),
+            fn (Route $route): bool => $route->uri() === 'up',
+        ));
     }
 
     public function test_with_routing_silently_skips_missing_files(): void
