@@ -129,3 +129,15 @@ The name must be a Composer package name: `vendor/package`, lowercase letters an
 #### The generated layer provider no longer registers a seeder by default
 
 The provider created by `osdd:layer` used to import and register `{Package}Seeder` even when the `seeder` generator did not run. It now registers nothing; the `seeder` generator, or `osdd:seeder`, adds `$this->loadSeeders([...])` to `boot()`. Existing layers are not changed. A seeder registered twice now runs once (the first registration and its priority win).
+
+#### `osdd:start` asks first and runs once
+
+`osdd:start` now asks for confirmation (default no) before it deletes `app/`, `config/` and `database/`. Scripts pass `--force`; without a terminal and without `--force`, the command fails and changes nothing. It also fails when `functional/users` or `technical/osdd` already exists, so it cannot run twice on a project. Like `osdd:layer`, it only runs `composer update` when you accept the question or pass `--composer-update`.
+
+What it does to a fresh project also changed:
+
+- `database/database.sqlite` (and `database/.gitignore`) are kept, so the default SQLite connection keeps working; the rest of `database/` is deleted.
+- The skeleton migrations keep their names and their tables: `0001_01_01_000000_create_users_table` (users, password reset tokens, sessions) goes to `functional/users`, `0001_01_01_000001_create_cache_table` and `0001_01_01_000002_create_jobs_table` go to `technical/osdd`, whose provider now loads them. In 2.x the sessions, cache and jobs tables were lost.
+- `bootstrap/providers.php` loses only the providers of the deleted `app/` directory (`App\Providers\...`); the providers of installed packages listed there stay. In 2.x the file was emptied.
+
+Projects already converted with 2.x keep working. If yours lost the sessions, cache or jobs tables, add their migrations to a layer: `php artisan make:session-table`, `make:cache-table` and `make:queue-table` write them under `database/migrations`; move them to `technical/osdd/database/migrations` and call `$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');` in the `boot()` method of `Technical\Osdd\Providers\OsddServiceProvider`.

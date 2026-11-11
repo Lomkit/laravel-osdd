@@ -4,12 +4,14 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
-use Lomkit\Osdd\Composer\ComposerJsonFile;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
+use Lomkit\Osdd\Console\Start\SkeletonCleaner;
 use Lomkit\Osdd\Console\StubWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputOption;
+
+use function Laravel\Prompts\confirm;
 
 #[AsCommand(name: 'osdd:start')]
 class StartCommand extends Command
@@ -34,15 +36,25 @@ class StartCommand extends Command
 
     public function handle(): int
     {
-        $usersLayerPath = $this->resolveLayerBasePath().'/users';
-        $osddLayerPath = $this->resolveTechnicalBasePath().'/osdd';
+        $usersLayerPath = $this->bucketPath('functional').'/users';
+        $osddLayerPath = $this->bucketPath('technical').'/osdd';
+
+        foreach ([$usersLayerPath, $osddLayerPath] as $layerPath) {
+            if ($this->files->exists($layerPath)) {
+                $this->components->error("[{$layerPath}] already exists: osdd:start has already run on this project.");
+
+                return self::FAILURE;
+            }
+        }
+
+        if (! $this->confirmed()) {
+            return self::FAILURE;
+        }
 
         $this->createUsersLayer($usersLayerPath);
         $this->createOsddLayer($osddLayerPath);
-        $this->deleteDirectory('app');
-        $this->deleteDirectory('database');
-        $this->deleteDirectory('config');
-        $this->cleanComposerAutoload();
+
+        (new SkeletonCleaner($this->files, $this->components, $this->laravel->basePath()))->clean();
 
         $this->components->info('Congratulations! Your project is ready for OSDD. Create your first layer with <options=bold>php artisan osdd:layer</>.');
 
@@ -57,23 +69,39 @@ class StartCommand extends Command
     #[\Override]
     protected function getOptions(): array
     {
-        return [$this->composerUpdateOption()];
+        return [
+            new InputOption('force', null, InputOption::VALUE_NONE, 'Delete app/, config/ and database/ without asking'),
+            $this->composerUpdateOption(),
+        ];
     }
 
-    private function resolveLayerBasePath(): string
+    private function confirmed(): bool
+    {
+        if ($this->option('force')) {
+            return true;
+        }
+
+        if (! $this->canPrompt()) {
+            $this->components->error('osdd:start deletes app/, config/ and database/. Pass --force to run it without interaction.');
+
+            return false;
+        }
+
+        if (confirm('osdd:start deletes app/, config/ and database/ (database/database.sqlite is kept). Continue?', default: false)) {
+            return true;
+        }
+
+        $this->components->warn('Nothing was changed.');
+
+        return false;
+    }
+
+    private function bucketPath(string $bucket): string
     {
         /** @var array<string, string> $paths */
         $paths = config('osdd.layers.paths', []);
 
-        return $paths['functional'] ?? $this->laravel->basePath('functional');
-    }
-
-    private function resolveTechnicalBasePath(): string
-    {
-        /** @var array<string, string> $paths */
-        $paths = config('osdd.layers.paths', []);
-
-        return $paths['technical'] ?? $this->laravel->basePath('technical');
+        return $paths[$bucket] ?? $this->laravel->basePath($bucket);
     }
 
     private function createUsersLayer(string $layerPath): void
@@ -95,10 +123,7 @@ class StartCommand extends Command
         $this->stubs->write('start/user-model', $layerPath.'/src/Models/User.php');
         $this->stubs->write('start/user-factory', $layerPath.'/database/factories/UserFactory.php');
         $this->stubs->write('start/users-seeder', $layerPath.'/database/seeders/UsersSeeder.php');
-        $this->stubs->write(
-            'start/create-users-table',
-            $layerPath.'/database/migrations/'.date('Y_m_d_His').'_create_users_table.php',
-        );
+        $this->stubs->write('start/create-users-table', $layerPath.'/database/migrations/0001_01_01_000000_create_users_table.php');
 
         $this->components->info('Layer <options=bold>'.self::USERS_LAYER_NAME.'</> created at <options=bold>'.$layerPath.'</>.');
     }
@@ -108,60 +133,11 @@ class StartCommand extends Command
         $this->stubs->write('layer/osdd-composer', $layerPath.'/composer.json');
         $this->stubs->write('layer/osdd-config', $layerPath.'/config/osdd.php');
         $this->stubs->write('layer/osdd-service-provider', $layerPath.'/src/Providers/OsddServiceProvider.php');
+        $this->stubs->write('start/create-cache-table', $layerPath.'/database/migrations/0001_01_01_000001_create_cache_table.php');
+        $this->stubs->write('start/create-jobs-table', $layerPath.'/database/migrations/0001_01_01_000002_create_jobs_table.php');
 
         $this->registerLayerInComposer(self::OSDD_LAYER_NAME, $layerPath);
-        $this->injectOsddProvider();
 
         $this->components->info('Layer <options=bold>'.self::OSDD_LAYER_NAME.'</> created at <options=bold>'.$layerPath.'</>.');
-    }
-
-    private function injectOsddProvider(): void
-    {
-        $path = $this->laravel->basePath('bootstrap/providers.php');
-
-        if (! $this->files->exists($path)) {
-            $this->components->warn('No bootstrap/providers.php found, skipping provider injection.');
-
-            return;
-        }
-
-        $this->files->put($path, "<?php\n\nreturn [\n];\n");
-    }
-
-    private function cleanComposerAutoload(): void
-    {
-        $composerPath = $this->laravel->basePath('composer.json');
-
-        if (! $this->files->exists($composerPath)) {
-            $this->components->warn('No composer.json found, skipping autoload cleanup.');
-
-            return;
-        }
-
-        $composer = ComposerJsonFile::open($this->files, $composerPath);
-        $composer->removeAutoloadNamespace('Database\\Factories\\');
-        $composer->removeAutoloadNamespace('Database\\Seeders\\');
-        $composer->save();
-
-        $this->components->info('Cleaned up legacy autoload entries from composer.json.');
-    }
-
-    private function deleteDirectory(string $dir): void
-    {
-        $path = $this->laravel->basePath($dir);
-
-        if (! $this->files->isDirectory($path)) {
-            $this->components->warn("No {$dir}/ directory found, skipping.");
-
-            return;
-        }
-
-        if (! $this->files->deleteDirectory($path)) {
-            $this->components->error("Failed to delete {$dir}/ directory.");
-
-            return;
-        }
-
-        $this->components->info("Deleted {$dir}/ directory.");
     }
 }
