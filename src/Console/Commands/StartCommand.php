@@ -58,9 +58,7 @@ class StartCommand extends Command
 
         $this->components->info('Congratulations! Your project is ready for OSDD. Create your first layer with <options=bold>php artisan osdd:layer</>.');
 
-        $this->offerComposerUpdate(self::USERS_LAYER_NAME, self::OSDD_LAYER_NAME);
-
-        return self::SUCCESS;
+        return $this->offerComposerUpdate(self::USERS_LAYER_NAME, self::OSDD_LAYER_NAME) ? self::SUCCESS : self::FAILURE;
     }
 
     /**

@@ -260,6 +260,41 @@ class LayerCommandOptionsTest extends TestCase
         $this->assertFileDoesNotExist($this->fakeBin.'/calls');
     }
 
+    public function test_force_keeps_the_existing_layer_composer_json(): void
+    {
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])
+            ->assertExitCode(0);
+
+        $layerComposerPath = $this->app->basePath('functional/orders/composer.json');
+        $layerComposer = json_decode((string) file_get_contents($layerComposerPath), true);
+        $layerComposer['description'] = 'Orders domain';
+        $layerComposer['require']['functional/users'] = '*';
+        unset($layerComposer['minimum-stability']);
+        file_put_contents($layerComposerPath, json_encode($layerComposer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES).PHP_EOL);
+
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['routes'], '--force' => true, '--no-interaction' => true])
+            ->assertExitCode(0);
+
+        $kept = json_decode((string) file_get_contents($layerComposerPath), true);
+        $this->assertSame('Orders domain', $kept['description']);
+        $this->assertSame(['lomkit/laravel-osdd' => '*', 'functional/users' => '*'], $kept['require']);
+        $this->assertSame(['Functional\\Orders\\Providers\\OrdersServiceProvider'], $kept['extra']['laravel']['providers']);
+        $this->assertSame('stable', $kept['minimum-stability']);
+        $this->assertFileExists($this->app->basePath('functional/orders/routes/web.php'));
+    }
+
+    public function test_a_failed_composer_update_fails_the_command(): void
+    {
+        file_put_contents($this->fakeBin.'/composer', "#!/bin/sh\necho \"\$@\" >> \"{$this->fakeBin}/calls\"\nexit 1\n");
+
+        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--composer-update' => true, '--no-interaction' => true])
+            ->expectsOutputToContain('composer update failed')
+            ->assertExitCode(1));
+
+        $this->assertSame("update functional/orders\n", file_get_contents($this->fakeBin.'/calls'));
+        $this->assertFileExists($this->app->basePath('functional/orders/src/Providers/OrdersServiceProvider.php'));
+    }
+
     private function withFakeComposer(\Closure $callback): void
     {
         $path = (string) getenv('PATH');

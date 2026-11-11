@@ -87,6 +87,20 @@ final class ComposerJsonFile
         $this->contents->repositories = [...(is_array($repositories) ? $repositories : []), $repository];
     }
 
+    /**
+     * Add the keys of $json that this file does not have yet, at every depth; existing values win.
+     */
+    public function addMissing(string $json): void
+    {
+        $defaults = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
+
+        if (! $defaults instanceof stdClass) {
+            throw new InvalidComposerJsonException($this->path, 'root');
+        }
+
+        MissingKeys::copy($defaults, $this->contents);
+    }
+
     public function addLaravelProvider(string $provider): void
     {
         $laravel = $this->object($this->object($this->contents, 'extra'), 'laravel');
