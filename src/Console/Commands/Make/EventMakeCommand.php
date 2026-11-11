@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -17,23 +17,26 @@ class EventMakeCommand extends \Illuminate\Foundation\Console\EventMakeCommand
      */
     protected $name = 'osdd:event';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Events';
+        return rtrim($rootNamespace, '\\').'\\Events';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Events\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Events\\', '', $name);
 
-        return $layer->path . '/src/Events/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Events/'.str_replace('\\', '/', $relative).'.php';
     }
 }

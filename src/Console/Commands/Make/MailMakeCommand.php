@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -12,23 +12,26 @@ class MailMakeCommand extends \Illuminate\Foundation\Console\MailMakeCommand
 
     protected $name = 'osdd:mail';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Mail';
+        return rtrim($rootNamespace, '\\').'\\Mail';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Mail\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Mail\\', '', $name);
 
-        return $layer->path . '/src/Mail/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Mail/'.str_replace('\\', '/', $relative).'.php';
     }
 }

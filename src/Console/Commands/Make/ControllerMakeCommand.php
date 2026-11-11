@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -17,29 +17,37 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
      */
     protected $name = 'osdd:controller';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Http\\Controllers';
+        return rtrim($rootNamespace, '\\').'\\Http\\Controllers';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Http\\Controllers\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Http\\Controllers\\', '', $name);
 
-        return $layer->path . '/src/Http/Controllers/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Http/Controllers/'.str_replace('\\', '/', $relative).'.php';
     }
 
+    /**
+     * @param  array<string, string>  $replace
+     * @return array<string, string>
+     */
+    #[\Override]
     protected function buildModelReplacements(array $replace): array
     {
-        $modelClass = $this->parseModel($this->option('model'));
+        $modelClass = $this->parseModel((string) $this->option('model'));
 
         $replace = $this->buildFormRequestReplacements($replace, $modelClass);
 
@@ -56,6 +64,11 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
         ]);
     }
 
+    /**
+     * @param  array<string, string>  $replace
+     * @return array<string, string>
+     */
+    #[\Override]
     protected function buildFormRequestReplacements(array $replace, $modelClass): array
     {
         [$namespace, $storeRequestClass, $updateRequestClass] = [
@@ -64,17 +77,17 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
 
         if ($this->option('requests')) {
             $layerNamespace = rtrim($this->resolveLayer()->manifest->rootNamespace(), '\\');
-            $namespace = $layerNamespace . '\\Http\\Requests';
+            $namespace = $layerNamespace.'\\Http\\Requests';
 
             [$storeRequestClass, $updateRequestClass] = $this->generateFormRequests(
                 $modelClass, $storeRequestClass, $updateRequestClass
             );
         }
 
-        $namespacedRequests = $namespace . '\\' . $storeRequestClass . ';';
+        $namespacedRequests = $namespace.'\\'.$storeRequestClass.';';
 
         if ($storeRequestClass !== $updateRequestClass) {
-            $namespacedRequests .= PHP_EOL . 'use ' . $namespace . '\\' . $updateRequestClass . ';';
+            $namespacedRequests .= PHP_EOL.'use '.$namespace.'\\'.$updateRequestClass.';';
         }
 
         return array_merge($replace, [
@@ -82,19 +95,23 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
             '{{storeRequest}}' => $storeRequestClass,
             '{{ updateRequest }}' => $updateRequestClass,
             '{{updateRequest}}' => $updateRequestClass,
-            '{{ namespacedStoreRequest }}' => $namespace . '\\' . $storeRequestClass,
-            '{{namespacedStoreRequest}}' => $namespace . '\\' . $storeRequestClass,
-            '{{ namespacedUpdateRequest }}' => $namespace . '\\' . $updateRequestClass,
-            '{{namespacedUpdateRequest}}' => $namespace . '\\' . $updateRequestClass,
+            '{{ namespacedStoreRequest }}' => $namespace.'\\'.$storeRequestClass,
+            '{{namespacedStoreRequest}}' => $namespace.'\\'.$storeRequestClass,
+            '{{ namespacedUpdateRequest }}' => $namespace.'\\'.$updateRequestClass,
+            '{{namespacedUpdateRequest}}' => $namespace.'\\'.$updateRequestClass,
             '{{ namespacedRequests }}' => $namespacedRequests,
             '{{namespacedRequests}}' => $namespacedRequests,
         ]);
     }
 
+    /**
+     * @return array{string, string}
+     */
+    #[\Override]
     protected function generateFormRequests($modelClass, $storeRequestClass, $updateRequestClass): array
     {
-        $storeRequestClass = 'Store' . class_basename($modelClass) . 'Request';
-        $updateRequestClass = 'Update' . class_basename($modelClass) . 'Request';
+        $storeRequestClass = 'Store'.class_basename($modelClass).'Request';
+        $updateRequestClass = 'Update'.class_basename($modelClass).'Request';
 
         $this->call('osdd:request', [
             'name' => $storeRequestClass,

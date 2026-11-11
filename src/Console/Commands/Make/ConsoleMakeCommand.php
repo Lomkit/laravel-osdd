@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -12,23 +12,26 @@ class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeComma
 
     protected $name = 'osdd:command';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Console\\Commands';
+        return rtrim($rootNamespace, '\\').'\\Console\\Commands';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Console\\Commands\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Console\\Commands\\', '', $name);
 
-        return $layer->path . '/src/Console/Commands/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Console/Commands/'.str_replace('\\', '/', $relative).'.php';
     }
 }

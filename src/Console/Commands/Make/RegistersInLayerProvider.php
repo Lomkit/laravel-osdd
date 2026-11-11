@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
@@ -15,13 +15,13 @@ trait RegistersInLayerProvider
      */
     protected function registerInLayerProvider(string $statement, string $label): void
     {
-        $layer        = $this->resolveLayer();
-        $providerName = Str::studly($layer->manifest->package()) . 'ServiceProvider';
-        $providerPath = $layer->path . '/src/Providers/' . $providerName . '.php';
+        $layer = $this->resolveLayer();
+        $providerName = Str::studly($layer->manifest->package()).'ServiceProvider';
+        $providerPath = $layer->path.'/src/Providers/'.$providerName.'.php';
 
         $files = app(Filesystem::class);
 
-        if (!$files->exists($providerPath)) {
+        if (! $files->exists($providerPath)) {
             return;
         }
 
@@ -34,8 +34,9 @@ trait RegistersInLayerProvider
         $pattern = '/(\n[ \t]*\})(\s+)([ \t]*public\s+function\s+register\b)/';
         $updated = preg_replace($pattern, "\n        {$statement}$1$2$3", $content, 1);
 
-        if ($updated === $content) {
+        if ($updated === null || $updated === $content) {
             $this->components->warn("Could not register [{$label}] in [{$providerPath}]: unexpected formatting.");
+
             return;
         }
 

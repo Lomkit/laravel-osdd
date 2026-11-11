@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands\Make;
+namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\TestCase;
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
-use Xefi\LaravelOSDD\Tests\TestCase;
 
 class ListenerMakeCommandTest extends TestCase
 {
@@ -17,7 +17,7 @@ class ListenerMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesListenerFileInCorrectPath(): void
+    public function test_it_generates_listener_file_in_correct_path(): void
     {
         $this->artisan('osdd:listener', ['name' => 'SendWelcomeEmail', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -25,7 +25,7 @@ class ListenerMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Listeners/SendWelcomeEmail.php');
     }
 
-    public function testItGeneratesListenerWithCorrectNamespace(): void
+    public function test_it_generates_listener_with_correct_namespace(): void
     {
         $this->artisan('osdd:listener', ['name' => 'SendWelcomeEmail', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -36,7 +36,7 @@ class ListenerMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Listeners/SendWelcomeEmail.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:listener', ['name' => 'SendWelcomeEmail'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -45,7 +45,7 @@ class ListenerMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Listeners/SendWelcomeEmail.php');
     }
 
-    public function testItGeneratesListenerWithEventInLayerNamespace(): void
+    public function test_it_generates_listener_with_event_in_layer_namespace(): void
     {
         $this->artisan('osdd:listener', ['name' => 'SendWelcomeEmail', '--event' => 'UserRegistered', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -55,7 +55,7 @@ class ListenerMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Listeners/SendWelcomeEmail.php');
     }
 
-    public function testItGeneratesNestedListenerInCorrectPath(): void
+    public function test_it_generates_nested_listener_in_correct_path(): void
     {
         $this->artisan('osdd:listener', ['name' => 'Auth/HandleLogin', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -63,7 +63,7 @@ class ListenerMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Listeners/Auth/HandleLogin.php');
     }
 
-    public function testItGeneratesNestedListenerWithCorrectNamespace(): void
+    public function test_it_generates_nested_listener_with_correct_namespace(): void
     {
         $this->artisan('osdd:listener', ['name' => 'Auth/HandleLogin', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);

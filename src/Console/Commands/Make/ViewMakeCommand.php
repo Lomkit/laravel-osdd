@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 
@@ -11,17 +11,19 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
 
     protected $name = 'osdd:view';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
 
         $nameInput = str_replace(['\\', '.'], '/', trim($this->argument('name')));
 
-        return $layer->path . '/resources/views/' . $nameInput . '.' . $this->option('extension');
+        return $layer->path.'/resources/views/'.$nameInput.'.'.$this->option('extension');
     }
 }

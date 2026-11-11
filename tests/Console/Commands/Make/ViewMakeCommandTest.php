@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands\Make;
+namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\TestCase;
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
-use Xefi\LaravelOSDD\Tests\TestCase;
 
 class ViewMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class ViewMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesViewFileInCorrectPath(): void
+    public function test_it_generates_view_file_in_correct_path(): void
     {
         $this->artisan('osdd:view', ['name' => 'index', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class ViewMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/resources/views/index.blade.php');
     }
 
-    public function testItGeneratesNestedViewInCorrectPath(): void
+    public function test_it_generates_nested_view_in_correct_path(): void
     {
         $this->artisan('osdd:view', ['name' => 'users/index', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -32,7 +32,7 @@ class ViewMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/resources/views/users/index.blade.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:view', ['name' => 'index'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])

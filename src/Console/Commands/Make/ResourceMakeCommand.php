@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -12,23 +12,26 @@ class ResourceMakeCommand extends \Illuminate\Foundation\Console\ResourceMakeCom
 
     protected $name = 'osdd:resource';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Http\\Resources';
+        return rtrim($rootNamespace, '\\').'\\Http\\Resources';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Http\\Resources\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Http\\Resources\\', '', $name);
 
-        return $layer->path . '/src/Http/Resources/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Http/Resources/'.str_replace('\\', '/', $relative).'.php';
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -15,24 +15,27 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
 
     protected $aliases = [];
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
 
-        return $layer->path . '/config/' . Str::finish($this->argument('name'), '.php');
+        return $layer->path.'/config/'.Str::finish($this->argument('name'), '.php');
     }
 
+    #[\Override]
     public function handle(): ?bool
     {
         $result = parent::handle();
 
         $configFile = Str::finish($this->argument('name'), '.php');
-        $configKey  = Str::before($configFile, '.php');
+        $configKey = Str::before($configFile, '.php');
 
         $this->registerInLayerProvider(
             "\$this->overrideConfigFrom(__DIR__ . '/../../config/{$configFile}', '{$configKey}');",

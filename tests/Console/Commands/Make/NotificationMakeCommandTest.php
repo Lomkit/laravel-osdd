@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands\Make;
+namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\TestCase;
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
-use Xefi\LaravelOSDD\Tests\TestCase;
 
 class NotificationMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class NotificationMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesNotificationFileInCorrectPath(): void
+    public function test_it_generates_notification_file_in_correct_path(): void
     {
         $this->artisan('osdd:notification', ['name' => 'WelcomeNotification', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class NotificationMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Notifications/WelcomeNotification.php');
     }
 
-    public function testItGeneratesNotificationWithCorrectNamespace(): void
+    public function test_it_generates_notification_with_correct_namespace(): void
     {
         $this->artisan('osdd:notification', ['name' => 'WelcomeNotification', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class NotificationMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Notifications/WelcomeNotification.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:notification', ['name' => 'WelcomeNotification'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -44,7 +44,7 @@ class NotificationMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Notifications/WelcomeNotification.php');
     }
 
-    public function testItGeneratesNestedNotificationInCorrectPath(): void
+    public function test_it_generates_nested_notification_in_correct_path(): void
     {
         $this->artisan('osdd:notification', ['name' => 'Auth/PasswordResetNotification', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -52,7 +52,7 @@ class NotificationMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Notifications/Auth/PasswordResetNotification.php');
     }
 
-    public function testItGeneratesNestedNotificationWithCorrectNamespace(): void
+    public function test_it_generates_nested_notification_with_correct_namespace(): void
     {
         $this->artisan('osdd:notification', ['name' => 'Auth/PasswordResetNotification', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
