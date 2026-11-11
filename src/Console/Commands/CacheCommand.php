@@ -3,7 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
-use Lomkit\Osdd\Layers\InvalidLayerManifestException;
+use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Layers\LayerCache;
 use Lomkit\Osdd\Layers\LayerDiscovery;
 use Lomkit\Osdd\Layers\Layers;
@@ -12,6 +12,8 @@ use Symfony\Component\Console\Attribute\AsCommand;
 #[AsCommand(name: 'osdd:cache')]
 final class CacheCommand extends Command
 {
+    use ReportsOsddConsoleExceptions;
+
     protected $signature = 'osdd:cache';
 
     protected $description = 'Discover the OSDD layers and cache them for faster boots';
@@ -22,13 +24,7 @@ final class CacheCommand extends Command
 
         $layers = $discovery->discover();
 
-        try {
-            $cache->write($layers);
-        } catch (InvalidLayerManifestException $exception) {
-            $this->components->error($exception->getMessage());
-
-            return self::FAILURE;
-        }
+        $cache->write($layers);
 
         $this->laravel->instance(Layers::class, $layers);
 

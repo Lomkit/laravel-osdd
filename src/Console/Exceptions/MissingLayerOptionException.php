@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Console\Exceptions;
 
 use InvalidArgumentException;
 
-class MissingLayerOptionException extends InvalidArgumentException
+class MissingLayerOptionException extends InvalidArgumentException implements OsddConsoleException
 {
     /**
      * @param  list<string>  $availableLayers

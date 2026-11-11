@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
+use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
 use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\LayerNameList;
@@ -16,6 +17,8 @@ use Symfony\Component\Console\Attribute\AsCommand;
 #[AsCommand(name: 'osdd:seed')]
 class SeedCommand extends Command
 {
+    use ReportsOsddConsoleExceptions;
+
     protected $description = 'Run the seeders registered by the OSDD layers';
 
     protected $signature = 'osdd:seed
@@ -33,13 +36,7 @@ class SeedCommand extends Command
             return self::FAILURE;
         }
 
-        try {
-            $selection = $this->layerSelection();
-        } catch (LayerNotFoundException|AmbiguousLayerNameException|InvalidLayerManifestException $exception) {
-            $this->components->error($exception->getMessage());
-
-            return self::FAILURE;
-        }
+        $selection = $this->layerSelection();
 
         $migration = match (true) {
             (bool) $this->option('fresh') => 'migrate:fresh',

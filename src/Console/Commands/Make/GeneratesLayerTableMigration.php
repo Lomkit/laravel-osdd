@@ -6,6 +6,7 @@ use Illuminate\Console\MigrationGeneratorCommand;
 use Lomkit\Osdd\Console\Migrations\ExistingTableMigrations;
 use Lomkit\Osdd\Console\Providers\LayerProvider;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Generation\GeneratesInLayer;
 use Lomkit\Osdd\Layers\LayerFolder;
 use Lomkit\Osdd\Layers\Layers;
 
@@ -14,7 +15,7 @@ use Lomkit\Osdd\Layers\Layers;
  */
 trait GeneratesLayerTableMigration
 {
-    use ChoosesOsddLayer;
+    use GeneratesInLayer;
     use RegistersInLayerProvider;
 
     #[\Override]
@@ -43,7 +44,7 @@ trait GeneratesLayerTableMigration
     {
         return $this->laravel->make('migration.creator')->create(
             'create_'.$table.'_table',
-            $this->resolveLayer()->directory->path(LayerFolder::Migrations),
+            $this->target()->layer->directory->path(LayerFolder::Migrations),
         );
     }
 
@@ -69,7 +70,7 @@ trait GeneratesLayerTableMigration
         $migratorPaths = $this->laravel->make('migrator')->paths();
 
         return [
-            $this->resolveLayer()->directory->path(LayerFolder::Migrations),
+            $this->target()->layer->directory->path(LayerFolder::Migrations),
             ...$this->laravel->make(Layers::class)->paths(LayerFolder::Migrations),
             ...$migratorPaths,
         ];

@@ -2,20 +2,20 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Lomkit\Osdd\Layers\LayerFolder;
+use Lomkit\Osdd\Generation\GeneratesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:view')]
-class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
+final class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
 {
-    use ChoosesOsddLayer;
+    use GeneratesInLayer;
     use InjectsResourceHelpers;
-
-    protected $name = 'osdd:view';
 
     #[\Override]
     public function handle(): ?bool
     {
+        $this->warnWhenTheResourceNamespaceIsShared();
+
         $created = parent::handle();
 
         $this->injectWithViews();
@@ -26,16 +26,12 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->rootNamespace;
+        return $this->target()->layer->rootNamespace;
     }
 
     #[\Override]
-    protected function getPath($name): string
+    protected function viewPath($path = ''): string
     {
-        $layer = $this->resolveLayer();
-
-        $nameInput = str_replace(['\\', '.'], '/', trim($this->argument('name')));
-
-        return $layer->directory->path(LayerFolder::Views).'/'.$nameInput.'.'.$this->option('extension');
+        return $this->target()->viewPath($path);
     }
 }

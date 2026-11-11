@@ -12,4 +12,9 @@ enum LayerFolder: string
     case Seeders = 'database/seeders';
     case Tests = 'tests';
     case Views = 'resources/views';
+
+    public function namespace(): string
+    {
+        return implode('\\', array_map(ucfirst(...), explode('/', $this->value)));
+    }
 }

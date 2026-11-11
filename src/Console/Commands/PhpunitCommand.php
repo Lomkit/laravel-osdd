@@ -3,9 +3,9 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
+use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Console\Phpunit\PhpunitXml;
 use Lomkit\Osdd\Filesystem\Path;
-use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerFolder;
@@ -17,6 +17,8 @@ use Symfony\Component\Console\Input\InputOption;
 #[AsCommand(name: 'osdd:phpunit')]
 class PhpunitCommand extends Command
 {
+    use ReportsOsddConsoleExceptions;
+
     protected $name = 'osdd:phpunit';
 
     protected $description = 'Synchronize phpunit.xml testsuites and coverage source with discovered OSDD layers';
@@ -47,13 +49,7 @@ class PhpunitCommand extends Command
             return self::FAILURE;
         }
 
-        try {
-            $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
-        } catch (InvalidLayerManifestException $exception) {
-            $this->components->error($exception->getMessage());
-
-            return self::FAILURE;
-        }
+        $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
 
         $this->excludeLayerMigrations($xml);
 

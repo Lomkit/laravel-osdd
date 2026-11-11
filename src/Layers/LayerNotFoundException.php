@@ -2,9 +2,10 @@
 
 namespace Lomkit\Osdd\Layers;
 
+use Lomkit\Osdd\Console\Exceptions\OsddConsoleException;
 use RuntimeException;
 
-class LayerNotFoundException extends RuntimeException
+class LayerNotFoundException extends RuntimeException implements OsddConsoleException
 {
     /**
      * @param  list<string>  $availableLayers

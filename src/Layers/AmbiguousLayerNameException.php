@@ -2,9 +2,10 @@
 
 namespace Lomkit\Osdd\Layers;
 
+use Lomkit\Osdd\Console\Exceptions\OsddConsoleException;
 use RuntimeException;
 
-class AmbiguousLayerNameException extends RuntimeException
+class AmbiguousLayerNameException extends RuntimeException implements OsddConsoleException
 {
     /**
      * @param  list<string>  $candidates

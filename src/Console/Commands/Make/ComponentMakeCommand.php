@@ -3,20 +3,20 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Lomkit\Osdd\Console\Providers\BootedLayerResources;
-use Lomkit\Osdd\Layers\LayerFolder;
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:component')]
-class ComponentMakeCommand extends \Illuminate\Foundation\Console\ComponentMakeCommand
+final class ComponentMakeCommand extends \Illuminate\Foundation\Console\ComponentMakeCommand
 {
-    use ChoosesOsddLayer;
+    use GeneratesClassesInLayer;
     use InjectsResourceHelpers;
-
-    protected $name = 'osdd:component';
 
     #[\Override]
     public function handle(): void
     {
+        $this->warnWhenTheResourceNamespaceIsShared();
+
         parent::handle();
 
         if (! $this->option('inline')) {
@@ -24,7 +24,7 @@ class ComponentMakeCommand extends \Illuminate\Foundation\Console\ComponentMakeC
         }
 
         if (! $this->option('view')) {
-            $this->injectWithComponents($this->componentNamespace());
+            $this->injectWithComponents($this->getDefaultNamespace(trim($this->rootNamespace(), '\\')));
         }
     }
 
@@ -45,35 +45,14 @@ class ComponentMakeCommand extends \Illuminate\Foundation\Console\ComponentMakeC
     #[\Override]
     protected function viewPath($path = ''): string
     {
-        return $this->resolveLayer()->directory->path(LayerFolder::Views).($path === '' ? '' : '/'.$path);
-    }
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
-
-    #[\Override]
-    protected function getDefaultNamespace($rootNamespace): string
-    {
-        return rtrim($rootNamespace, '\\').'\\View\\Components';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
-    }
-
-    private function componentNamespace(): string
-    {
-        return $this->getDefaultNamespace($this->rootNamespace());
+        return $this->target()->viewPath($path);
     }
 
     private function viewNamespace(): string
     {
-        return $this->laravel->make(BootedLayerResources::class)->viewNamespace($this->resolveLayer())
-            ?? $this->resourceNamespace()->name();
+        $target = $this->target();
+
+        return $this->laravel->make(BootedLayerResources::class)->viewNamespace($target->layer)
+            ?? $target->resourceNamespace->name();
     }
 }

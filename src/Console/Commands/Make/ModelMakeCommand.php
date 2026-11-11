@@ -3,19 +3,14 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:model')]
-class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
+final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
 {
-    use ChoosesOsddLayer;
-
-    /**
-     * The console command name.
-     *
-     * @var string
-     */
-    protected $name = 'osdd:model';
+    use GeneratesClassesInLayer;
 
     #[\Override]
     protected function getStub(): string
@@ -32,151 +27,29 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
     {
         $stub = parent::buildClass($name);
 
-        if ($this->option('factory')) {
-            $rootNamespace = rtrim($this->resolveLayer()->rootNamespace, '\\');
-            $modelClass = class_basename($name);
-
-            $stub = str_replace(
-                ['{{ factoryNamespace }}', '{{ factoryClass }}'],
-                [$rootNamespace.'\\Database\\Factories', $modelClass.'Factory'],
-                $stub,
-            );
+        if (! $this->option('factory')) {
+            return $stub;
         }
 
-        return $stub;
-    }
-
-    #[\Override]
-    public function handle(): ?bool
-    {
-        // Bypass ModelMakeCommand::handle()'s interactive "additional components" prompt
-        // by calling GeneratorCommand::handle() directly via grandparent scope binding.
-        $grandparentHandle = \Closure::bind(
-            fn () => parent::handle(),
-            $this,
-            \Illuminate\Foundation\Console\ModelMakeCommand::class
+        return str_replace(
+            ['{{ factoryNamespace }}', '{{ factoryClass }}'],
+            [rtrim($this->target()->folder(LayerFolder::Factories)->namespace, '\\'), class_basename($name).'Factory'],
+            $stub,
         );
-
-        $result = $grandparentHandle();
-
-        if ($result === false && ! $this->option('force')) {
-            return false;
-        }
-
-        if ($this->option('all')) {
-            $this->input->setOption('factory', true);
-            $this->input->setOption('seed', true);
-            $this->input->setOption('migration', true);
-            $this->input->setOption('controller', true);
-            $this->input->setOption('policy', true);
-            $this->input->setOption('resource', true);
-        }
-
-        if ($this->option('factory')) {
-            $this->createFactory();
-        }
-
-        if ($this->option('migration')) {
-            $this->createMigration();
-        }
-
-        if ($this->option('seed')) {
-            $this->createSeeder();
-        }
-
-        if ($this->option('controller') || $this->option('resource') || $this->option('api')) {
-            $this->createController();
-        } elseif ($this->option('requests')) {
-            $this->createFormRequests();
-        }
-
-        if ($this->option('policy')) {
-            $this->createPolicy();
-        }
-
-        return null;
-    }
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\').'\\Models';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
+        return $rootNamespace.'\\Models';
     }
 
     #[\Override]
     protected function createFactory(): void
     {
-        $factory = Str::studly($this->argument('name'));
-
-        $this->call('osdd:factory', [
-            'name' => "{$factory}Factory",
+        $this->generateInTargetLayer(FactoryMakeCommand::class, [
+            'name' => Str::studly($this->argument('name')).'Factory',
             '--model' => $this->qualifyClass($this->getNameInput()),
-            '--layer' => $this->resolveLayer()->name->toString(),
-        ]);
-    }
-
-    #[\Override]
-    protected function createController(): void
-    {
-        $controller = Str::studly($this->argument('name'));
-
-        $this->call('osdd:controller', array_filter([
-            'name' => "{$controller}Controller",
-            '--model' => $this->qualifyClass($this->getNameInput()),
-            '--resource' => true,
-            '--requests' => $this->option('requests'),
-            '--layer' => $this->resolveLayer()->name->toString(),
-        ]));
-    }
-
-    #[\Override]
-    protected function createFormRequests(): void
-    {
-        $request = Str::studly($this->argument('name'));
-
-        $this->call('osdd:request', [
-            'name' => "Store{$request}Request",
-            '--layer' => $this->resolveLayer()->name->toString(),
-        ]);
-
-        $this->call('osdd:request', [
-            'name' => "Update{$request}Request",
-            '--layer' => $this->resolveLayer()->name->toString(),
-        ]);
-    }
-
-    #[\Override]
-    protected function createPolicy(): void
-    {
-        $policy = Str::studly($this->argument('name'));
-
-        $this->call('osdd:policy', [
-            'name' => "{$policy}Policy",
-            '--model' => $this->qualifyClass($this->getNameInput()),
-            '--layer' => $this->resolveLayer()->name->toString(),
-        ]);
-    }
-
-    #[\Override]
-    protected function createSeeder(): void
-    {
-        $seeder = Str::studly($this->argument('name'));
-
-        $this->call('osdd:seeder', [
-            'name' => "{$seeder}Seeder",
-            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
     }
 
@@ -189,10 +62,46 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
             $table = Str::singular($table);
         }
 
-        $this->call('osdd:migration', [
+        $this->generateInTargetLayer(MigrateMakeCommand::class, [
             'name' => "create_{$table}_table",
             '--create' => $table,
-            '--layer' => $this->resolveLayer()->name->toString(),
+        ]);
+    }
+
+    #[\Override]
+    protected function createSeeder(): void
+    {
+        $this->generateInTargetLayer(SeederMakeCommand::class, [
+            'name' => Str::studly($this->argument('name')).'Seeder',
+        ]);
+    }
+
+    #[\Override]
+    protected function createController(): void
+    {
+        $this->generateInTargetLayer(ControllerMakeCommand::class, array_filter([
+            'name' => Str::studly($this->argument('name')).'Controller',
+            '--model' => $this->qualifyClass($this->getNameInput()),
+            '--resource' => true,
+            '--requests' => $this->option('requests'),
+        ]));
+    }
+
+    #[\Override]
+    protected function createFormRequests(): void
+    {
+        $request = Str::studly($this->argument('name'));
+
+        $this->generateInTargetLayer(RequestMakeCommand::class, ['name' => "Store{$request}Request"]);
+        $this->generateInTargetLayer(RequestMakeCommand::class, ['name' => "Update{$request}Request"]);
+    }
+
+    #[\Override]
+    protected function createPolicy(): void
+    {
+        $this->generateInTargetLayer(PolicyMakeCommand::class, [
+            'name' => Str::studly($this->argument('name')).'Policy',
+            '--model' => $this->qualifyClass($this->getNameInput()),
         ]);
     }
 }

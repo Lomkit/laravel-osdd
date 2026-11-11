@@ -2,30 +2,17 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:interface')]
-class InterfaceMakeCommand extends \Illuminate\Foundation\Console\InterfaceMakeCommand
+final class InterfaceMakeCommand extends \Illuminate\Foundation\Console\InterfaceMakeCommand
 {
-    use ChoosesOsddLayer;
-
-    protected $name = 'osdd:interface';
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
+    use GeneratesClassesInLayer;
 
     #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\').'\\Contracts';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
+        return $rootNamespace.'\\Contracts';
     }
 }

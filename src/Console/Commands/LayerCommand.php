@@ -7,15 +7,11 @@ use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Console\Concerns\ChoosesLayerGenerators;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
+use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Console\Exceptions\MissingLayerNameException;
 use Lomkit\Osdd\Console\Exceptions\UnknownLayerBucketException;
-use Lomkit\Osdd\Console\Exceptions\UnknownLayerGeneratorException;
-use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
-use Lomkit\Osdd\Layers\InvalidLayerNameException;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerName;
-use Lomkit\Osdd\Layers\LayerNotFoundException;
-use Lomkit\Osdd\Layers\LayerRequiresItselfException;
 use Lomkit\Osdd\Layers\Layers;
 use Lomkit\Osdd\Layers\RefreshLayers;
 use Lomkit\Osdd\Layers\RequiredLayers;
@@ -36,6 +32,7 @@ class LayerCommand extends Command
     use ChoosesLayerGenerators;
     use OffersComposerUpdate;
     use RegistersLayerInComposer;
+    use ReportsOsddConsoleExceptions;
 
     protected $name = 'osdd:layer';
 
@@ -48,15 +45,9 @@ class LayerCommand extends Command
 
     public function handle(): int
     {
-        try {
-            [$name, $targetPath] = $this->layerNameAndTargetPath();
-            $generators = $this->generators();
-            $requiredLayers = RequiredLayers::resolve((array) $this->option('requires'), $name, $this->laravel->make(Layers::class));
-        } catch (InvalidLayerNameException|MissingLayerNameException|UnknownLayerBucketException|UnknownLayerGeneratorException|LayerNotFoundException|AmbiguousLayerNameException|LayerRequiresItselfException $exception) {
-            $this->components->error($exception->getMessage());
-
-            return self::FAILURE;
-        }
+        [$name, $targetPath] = $this->layerNameAndTargetPath();
+        $generators = $this->generators();
+        $requiredLayers = RequiredLayers::resolve((array) $this->option('requires'), $name, $this->laravel->make(Layers::class));
 
         $layerPath = $targetPath.'/'.$name->package;
 

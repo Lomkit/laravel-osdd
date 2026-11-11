@@ -3,15 +3,14 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:command')]
-class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeCommand
+final class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeCommand
 {
-    use ChoosesOsddLayer;
+    use GeneratesClassesInLayer;
     use RegistersInLayerProvider;
-
-    protected $name = 'osdd:command';
 
     #[\Override]
     public function handle(): ?bool
@@ -27,23 +26,5 @@ class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeComma
         );
 
         return $created;
-    }
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
-
-    #[\Override]
-    protected function getDefaultNamespace($rootNamespace): string
-    {
-        return rtrim($rootNamespace, '\\').'\\Console\\Commands';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
     }
 }

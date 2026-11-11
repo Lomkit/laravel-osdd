@@ -2,24 +2,11 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:class')]
-class ClassMakeCommand extends \Illuminate\Foundation\Console\ClassMakeCommand
+final class ClassMakeCommand extends \Illuminate\Foundation\Console\ClassMakeCommand
 {
-    use ChoosesOsddLayer;
-
-    protected $name = 'osdd:class';
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
-    }
+    use GeneratesClassesInLayer;
 }

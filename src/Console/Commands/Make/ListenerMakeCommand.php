@@ -2,58 +2,44 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Illuminate\Console\GeneratorCommand;
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:listener')]
-class ListenerMakeCommand extends \Illuminate\Foundation\Console\ListenerMakeCommand
+final class ListenerMakeCommand extends \Illuminate\Foundation\Console\ListenerMakeCommand
 {
-    use ChoosesOsddLayer;
+    use GeneratesClassesInLayer;
 
-    /**
-     * The console command name.
-     *
-     * @var string
-     */
-    protected $name = 'osdd:listener';
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
-
-    #[\Override]
-    protected function getDefaultNamespace($rootNamespace): string
-    {
-        return rtrim($rootNamespace, '\\').'\\Listeners';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
-    }
+    private const string EVENTS_NAMESPACE = 'Events\\';
 
     #[\Override]
     protected function buildClass($name): string
     {
-        $event = $this->option('event') ?? '';
+        $class = GeneratorCommand::buildClass($name);
+        $event = $this->eventClass();
 
-        if ($event !== '' && ! str_starts_with($event, 'Illuminate') && ! str_starts_with($event, '\\')) {
-            $layerNamespace = rtrim($this->resolveLayer()->rootNamespace, '\\');
-            $event = $layerNamespace.'\\Events\\'.str_replace('/', '\\', $event);
+        if ($event === null) {
+            return $class;
         }
 
-        // Reproduce GeneratorCommand::buildClass to avoid the laravel->getNamespace() call in the parent
-        $stub = $this->files->get($this->getStub());
-        $base = $this->replaceNamespace($stub, $name)->replaceClass($stub, $name);
+        $class = str_replace(['DummyEvent', '{{ event }}'], class_basename($event), $class);
+
+        return str_replace(['DummyFullEvent', '{{ eventNamespace }}'], trim($event, '\\'), $class);
+    }
+
+    private function eventClass(): ?string
+    {
+        $event = (string) $this->option('event');
 
         if ($event === '') {
-            return $base;
+            return null;
         }
 
-        $base = str_replace(['DummyEvent', '{{ event }}'], class_basename($event), $base);
+        if (str_starts_with($event, 'Illuminate') || str_starts_with($event, '\\')) {
+            return $event;
+        }
 
-        return str_replace(['DummyFullEvent', '{{ eventNamespace }}'], trim($event, '\\'), $base);
+        return $this->rootNamespace().self::EVENTS_NAMESPACE.str_replace('/', '\\', $event);
     }
 }

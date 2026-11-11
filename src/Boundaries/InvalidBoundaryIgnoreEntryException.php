@@ -3,8 +3,9 @@
 namespace Lomkit\Osdd\Boundaries;
 
 use InvalidArgumentException;
+use Lomkit\Osdd\Console\Exceptions\OsddConsoleException;
 
-class InvalidBoundaryIgnoreEntryException extends InvalidArgumentException
+class InvalidBoundaryIgnoreEntryException extends InvalidArgumentException implements OsddConsoleException
 {
     public function __construct(public readonly mixed $entry)
     {

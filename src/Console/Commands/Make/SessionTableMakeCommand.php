@@ -6,14 +6,7 @@ use Illuminate\Session\Console\SessionTableCommand;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:session-table')]
-class SessionTableMakeCommand extends SessionTableCommand
+final class SessionTableMakeCommand extends SessionTableCommand
 {
     use GeneratesLayerTableMigration;
-
-    protected $name = 'osdd:session-table';
-
-    /**
-     * @var list<string>
-     */
-    protected $aliases = [];
 }
