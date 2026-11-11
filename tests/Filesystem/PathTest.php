@@ -1,8 +1,8 @@
 <?php
 
-namespace Lomkit\Osdd\Tests\Support;
+namespace Lomkit\Osdd\Tests\Filesystem;
 
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Filesystem\Path;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

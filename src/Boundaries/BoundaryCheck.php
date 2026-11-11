@@ -2,11 +2,11 @@
 
 namespace Lomkit\Osdd\Boundaries;
 
+use Lomkit\Osdd\Filesystem\Path;
 use Lomkit\Osdd\Graph\LayerCycles;
 use Lomkit\Osdd\Graph\LayerGraph;
 use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Layers\Layers;
 
 final class BoundaryCheck
 {
@@ -18,7 +18,7 @@ final class BoundaryCheck
         private readonly string $basePath,
     ) {}
 
-    public static function of(LayersCollection $layers, BoundaryIgnoreList $ignore, bool $strict, string $basePath): self
+    public static function of(Layers $layers, BoundaryIgnoreList $ignore, bool $strict, string $basePath): self
     {
         return new self(
             LayerGraph::of($layers),
@@ -29,15 +29,15 @@ final class BoundaryCheck
         );
     }
 
-    public function run(LayersCollection $selected): BoundaryReport
+    public function run(Layers $selected): BoundaryReport
     {
         $names = $selected->names();
         $undeclared = [];
         $unused = [];
 
-        foreach ($selected->sortBy(fn (Layer $layer): string => $layer->manifest->name()) as $layer) {
+        foreach ($selected as $layer) {
             $references = $this->references->of($layer);
-            array_push($undeclared, ...$this->undeclared($layer->manifest->name(), $references));
+            array_push($undeclared, ...$this->undeclared($layer->name->toString(), $references));
             array_push($unused, ...$this->unused($layer, $references));
         }
 
@@ -73,9 +73,9 @@ final class BoundaryCheck
      */
     private function unused(Layer $layer, array $references): array
     {
-        $name = $layer->manifest->name();
+        $name = $layer->name->toString();
         $used = array_map(fn (LayerReference $reference): string => $reference->layer, $references);
-        $composerFile = Path::relative($this->basePath, $layer->path.'/composer.json');
+        $composerFile = Path::relative($this->basePath, $layer->directory->manifestFile());
         $unused = [];
 
         foreach (RequireSection::cases() as $section) {

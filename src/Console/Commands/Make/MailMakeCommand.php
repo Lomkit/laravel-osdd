@@ -14,7 +14,7 @@ class MailMakeCommand extends \Illuminate\Foundation\Console\MailMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

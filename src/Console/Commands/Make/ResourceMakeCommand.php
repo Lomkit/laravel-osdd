@@ -14,7 +14,7 @@ class ResourceMakeCommand extends \Illuminate\Foundation\Console\ResourceMakeCom
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

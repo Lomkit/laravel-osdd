@@ -14,7 +14,7 @@ class MiddlewareMakeCommand extends \Illuminate\Routing\Console\MiddlewareMakeCo
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

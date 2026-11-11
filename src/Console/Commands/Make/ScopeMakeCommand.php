@@ -14,7 +14,7 @@ class ScopeMakeCommand extends \Illuminate\Foundation\Console\ScopeMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

@@ -2,7 +2,7 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 
 trait QualifiesModelsAcrossLayers
 {
@@ -25,8 +25,8 @@ trait QualifiesModelsAcrossLayers
 
     private function startsWithALayerNamespace(string $model): bool
     {
-        foreach (LayersCollection::fromConfig() as $layer) {
-            $namespace = $layer->manifest->rootNamespace();
+        foreach ($this->laravel->make(Layers::class) as $layer) {
+            $namespace = $layer->rootNamespace;
 
             if ($namespace !== '' && str_starts_with($model, $namespace)) {
                 return true;

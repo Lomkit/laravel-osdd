@@ -4,6 +4,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:seeder')]
@@ -36,7 +37,7 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -49,10 +50,10 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
+        $layerNamespace = rtrim($layer->rootNamespace, '\\');
 
         $relative = Str::replaceFirst($layerNamespace.'\\Database\\Seeders\\', '', $name);
 
-        return $layer->path.'/database/seeders/'.str_replace('\\', '/', $relative).'.php';
+        return $layer->directory->path(LayerFolder::Seeders).'/'.str_replace('\\', '/', $relative).'.php';
     }
 }

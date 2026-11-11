@@ -3,10 +3,12 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
+use Lomkit\Osdd\Inventory\InvalidManifestSummary;
 use Lomkit\Osdd\Inventory\LayerSummary;
 use Lomkit\Osdd\Inventory\RootProject;
+use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:list')]
@@ -21,18 +23,27 @@ class ListCommand extends Command
 
     public function handle(): int
     {
-        $summaries = $this->summaries();
+        $layers = $this->laravel->make(Layers::class);
+        $project = RootProject::load($this->laravel->basePath());
+        $summaries = $this->summaries($layers, $project);
+        $invalidManifests = array_map(
+            fn (InvalidLayerManifestException $exception): InvalidManifestSummary => InvalidManifestSummary::of($exception, $project),
+            $layers->invalidManifests(),
+        );
 
         if ($this->option('json')) {
             $this->line((string) json_encode(
-                ['layers' => array_map(fn (LayerSummary $summary): array => $summary->toArray(), $summaries)],
+                [
+                    'layers' => array_map(fn (LayerSummary $summary): array => $summary->toArray(), $summaries),
+                    'invalid_manifests' => array_map(fn (InvalidManifestSummary $invalid): array => $invalid->toArray(), $invalidManifests),
+                ],
                 JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR,
             ));
 
             return self::SUCCESS;
         }
 
-        if ($summaries === []) {
+        if ($summaries === [] && $invalidManifests === []) {
             $this->components->warn('No layer was discovered in the osdd.layers.paths directories.');
 
             return self::SUCCESS;
@@ -42,7 +53,15 @@ class ListCommand extends Command
             $this->display($summary);
         }
 
+        foreach ($invalidManifests as $invalidManifest) {
+            $this->displayInvalid($invalidManifest);
+        }
+
         $this->components->info(count($summaries).' '.str('layer')->plural(count($summaries)).' listed.');
+
+        if ($invalidManifests !== []) {
+            $this->components->warn(count($invalidManifests).' invalid layer '.str('manifest')->plural(count($invalidManifests)).' skipped.');
+        }
 
         return self::SUCCESS;
     }
@@ -50,14 +69,9 @@ class ListCommand extends Command
     /**
      * @return list<LayerSummary>
      */
-    private function summaries(): array
+    private function summaries(Layers $layers, RootProject $project): array
     {
-        $layers = LayersCollection::fromConfig()->sortBy(fn (Layer $layer): string => $layer->manifest->name());
-        $project = RootProject::load($this->laravel->basePath());
-
-        return array_values($layers->toBase()->map(
-            fn (Layer $layer): LayerSummary => LayerSummary::of($layer, $layers, $project),
-        )->all());
+        return $layers->map(fn (Layer $layer): LayerSummary => LayerSummary::of($layer, $layers, $project));
     }
 
     private function display(LayerSummary $summary): void
@@ -79,5 +93,12 @@ class ListCommand extends Command
             'Health',
             $problems === [] ? '<fg=green;options=bold>OK</>' : '<fg=yellow>'.implode(', ', $problems).'</>',
         );
+    }
+
+    private function displayInvalid(InvalidManifestSummary $invalid): void
+    {
+        $this->newLine();
+        $this->components->twoColumnDetail("<fg=red;options=bold>{$invalid->file}</>", '<fg=red;options=bold>INVALID</>');
+        $this->components->twoColumnDetail('Error', $invalid->error);
     }
 }

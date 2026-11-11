@@ -19,7 +19,7 @@ class EventMakeCommand extends \Illuminate\Foundation\Console\EventMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

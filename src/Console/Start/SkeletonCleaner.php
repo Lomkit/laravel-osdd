@@ -7,7 +7,7 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Filesystem\Path;
 
 final class SkeletonCleaner
 {

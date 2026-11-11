@@ -2,8 +2,7 @@
 
 namespace Lomkit\Osdd\Seeders;
 
-use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 
 final class SeedersOfLayers implements SeederSelection
 {
@@ -11,11 +10,11 @@ final class SeedersOfLayers implements SeederSelection
      * @param  list<string>  $selectedLayers
      */
     private function __construct(
-        private readonly LayersCollection $layers,
+        private readonly Layers $layers,
         private readonly array $selectedLayers,
     ) {}
 
-    public static function of(LayersCollection $selected, LayersCollection $layers): self
+    public static function of(Layers $selected, Layers $layers): self
     {
         return new self($layers, $selected->names());
     }
@@ -34,24 +33,6 @@ final class SeedersOfLayers implements SeederSelection
 
     private function belongsToSelectedLayer(string $seeder): bool
     {
-        return in_array($this->owningLayer($seeder)?->manifest->name(), $this->selectedLayers, true);
-    }
-
-    private function owningLayer(string $seeder): ?Layer
-    {
-        $seeder = ltrim($seeder, '\\');
-        $owner = null;
-        $longestPrefix = 0;
-
-        foreach ($this->layers as $layer) {
-            foreach ($layer->manifest->namespaces() as $namespace) {
-                if (str_starts_with($seeder, $namespace) && strlen($namespace) > $longestPrefix) {
-                    $owner = $layer;
-                    $longestPrefix = strlen($namespace);
-                }
-            }
-        }
-
-        return $owner;
+        return in_array($this->layers->owning($seeder)?->name->toString(), $this->selectedLayers, true);
     }
 }

@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Lomkit\Osdd\Console\Providers\BootedLayerResources;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:component')]
@@ -44,13 +45,13 @@ class ComponentMakeCommand extends \Illuminate\Foundation\Console\ComponentMakeC
     #[\Override]
     protected function viewPath($path = ''): string
     {
-        return $this->resolveLayer()->path.'/resources/views'.($path === '' ? '' : '/'.$path);
+        return $this->resolveLayer()->directory->path(LayerFolder::Views).($path === '' ? '' : '/'.$path);
     }
 
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

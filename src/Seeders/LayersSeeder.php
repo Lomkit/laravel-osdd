@@ -3,7 +3,6 @@
 namespace Lomkit\Osdd\Seeders;
 
 use Illuminate\Database\Seeder;
-use Lomkit\Osdd\SeederRegistry;
 
 class LayersSeeder extends Seeder
 {

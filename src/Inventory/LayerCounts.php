@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Inventory;
 
 use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Finder\Finder;
 
 final readonly class LayerCounts
@@ -18,11 +19,11 @@ final readonly class LayerCounts
     public static function of(Layer $layer): self
     {
         return new self(
-            models: self::count($layer->manifest->srcPath($layer->path).'/Models', '*.php'),
-            migrations: self::count($layer->path.'/database/migrations', '*.php', depth: 0),
-            seeders: self::count($layer->path.'/database/seeders', '*.php'),
-            tests: self::count($layer->path.'/tests', '*Test.php'),
-            routeFiles: self::count($layer->path.'/routes', '*.php', depth: 0),
+            models: self::count($layer->sourceDirectory.'/Models', '*.php'),
+            migrations: self::count($layer->directory->path(LayerFolder::Migrations), '*.php', depth: 0),
+            seeders: self::count($layer->directory->path(LayerFolder::Seeders), '*.php'),
+            tests: self::count($layer->directory->path(LayerFolder::Tests), '*Test.php'),
+            routeFiles: self::count($layer->directory->path(LayerFolder::Routes), '*.php', depth: 0),
         );
     }
 

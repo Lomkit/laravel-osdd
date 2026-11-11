@@ -14,7 +14,7 @@ class InterfaceMakeCommand extends \Illuminate\Foundation\Console\InterfaceMakeC
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

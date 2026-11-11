@@ -3,8 +3,8 @@
 namespace Lomkit\Osdd\Boundaries;
 
 use Lomkit\Osdd\Boundaries\Php\ReferencedNames;
+use Lomkit\Osdd\Filesystem\Path;
 use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Support\Path;
 
 final class LayerReferences
 {
@@ -29,7 +29,7 @@ final class LayerReferences
             foreach (ReferencedNames::inFile($path) as $reference) {
                 $target = $this->namespaces->layerOf($reference->name);
 
-                if ($target === null || $target === $layer->manifest->name() || isset($seen[$reference->name])) {
+                if ($target === null || $target === $layer->name->toString() || isset($seen[$reference->name])) {
                     continue;
                 }
 

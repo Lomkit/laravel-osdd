@@ -4,6 +4,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Lomkit\Osdd\Console\Providers\LayerProvider;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:migration')]
@@ -28,16 +29,18 @@ class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\Migrate
     {
         parent::handle();
 
+        $folder = LayerFolder::Migrations->value;
+
         $this->registerInLayerProvider(
             ProviderMethod::Boot,
-            fn (LayerProvider $provider): string => "\$this->loadMigrationsFrom({$provider->pathExpression('database/migrations')});",
-            'database/migrations',
+            fn (LayerProvider $provider): string => "\$this->loadMigrationsFrom({$provider->pathExpression($folder)});",
+            $folder,
         );
     }
 
     #[\Override]
     protected function getMigrationPath(): string
     {
-        return $this->resolveLayer()->path.'/database/migrations';
+        return $this->resolveLayer()->directory->path(LayerFolder::Migrations);
     }
 }

@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Tests\Resources;
 
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
-use Lomkit\Osdd\Layers\LayerManifestNotFoundException;
+use Lomkit\Osdd\Layers\ProviderLayerNotFoundException;
 use Lomkit\Osdd\Resources\ResourceNamespaceCollisionException;
 use Lomkit\Osdd\Tests\Concerns\CompilesViews;
 use Lomkit\Osdd\Tests\Concerns\CreatesLayers;
@@ -24,7 +24,7 @@ class LayerResourcesTest extends TestCase
 
     public function test_views_use_the_package_name_as_default_namespace(): void
     {
-        $layer = $this->createLayer($this->app->basePath('functional/receipts'), 'functional/receipts');
+        $layer = $this->createReceiptsLayer('functional');
         $this->app['files']->ensureDirectoryExists($layer.'/resources/views');
         $this->app['files']->put($layer.'/resources/views/hello.blade.php', 'Hello {{ $name }}');
 
@@ -35,7 +35,7 @@ class LayerResourcesTest extends TestCase
 
     public function test_views_accept_an_explicit_namespace(): void
     {
-        $layer = $this->createLayer($this->app->basePath('functional/receipts'), 'functional/receipts');
+        $layer = $this->createReceiptsLayer('functional');
         $this->app['files']->ensureDirectoryExists($layer.'/resources/views');
         $this->app['files']->put($layer.'/resources/views/hello.blade.php', 'Hello');
 
@@ -47,7 +47,7 @@ class LayerResourcesTest extends TestCase
 
     public function test_a_missing_views_directory_registers_nothing(): void
     {
-        $layer = $this->createLayer($this->app->basePath('functional/receipts'), 'functional/receipts');
+        $layer = $this->createReceiptsLayer('functional');
 
         $this->registerLayerProvider($this->createLayerProvider($layer, 'Functional\\Receipts', "        \$this->withViews(__DIR__ . '/../../resources/views');"));
 
@@ -56,7 +56,7 @@ class LayerResourcesTest extends TestCase
 
     public function test_translations_load_namespaced_and_json_files(): void
     {
-        $layer = $this->createLayer($this->app->basePath('functional/receipts'), 'functional/receipts');
+        $layer = $this->createReceiptsLayer('functional');
         $this->app['files']->ensureDirectoryExists($layer.'/lang/en');
         $this->app['files']->put($layer.'/lang/en/messages.php', "<?php\n\nreturn ['welcome' => 'Welcome to receipts'];\n");
         $this->app['files']->put($layer.'/lang/fr.json', '{"Download the receipt": "Télécharger le reçu"}');
@@ -69,7 +69,7 @@ class LayerResourcesTest extends TestCase
 
     public function test_class_components_render_under_the_package_prefix(): void
     {
-        $layer = $this->createLayer($this->app->basePath('functional/receipts'), 'functional/receipts');
+        $layer = $this->createReceiptsLayer('functional');
         $componentNamespace = 'Functional\\Receipts'.Str::random(8).'\\View\\Components';
         $this->writeComponent($layer, $componentNamespace, 'Badge', '<span class="badge">Paid</span>');
 
@@ -84,7 +84,7 @@ class LayerResourcesTest extends TestCase
 
     public function test_components_accept_an_explicit_prefix(): void
     {
-        $layer = $this->createLayer($this->app->basePath('functional/receipts'), 'functional/receipts');
+        $layer = $this->createReceiptsLayer('functional');
         $componentNamespace = 'Functional\\Receipts'.Str::random(8).'\\View\\Components';
         $this->writeComponent($layer, $componentNamespace, 'Badge', '<span>Paid</span>');
 
@@ -141,14 +141,14 @@ class LayerResourcesTest extends TestCase
         $this->registerLayerProvider($this->createLayerProvider($technical, 'Technical\\Receipts', "        \$this->withComponents('Technical\\\\Receipts\\\\View\\\\Components');"));
     }
 
-    public function test_a_default_namespace_needs_a_composer_json_above_the_provider(): void
+    public function test_a_default_namespace_needs_a_discovered_layer_owning_the_provider(): void
     {
         $directory = sys_get_temp_dir().'/osdd-no-manifest-'.Str::random(8);
         $this->createdLayerPaths[] = $directory;
         $provider = $this->createLayerProvider($directory, 'Functional\\Orphan', "        \$this->withComponents('Functional\\\\Orphan\\\\View\\\\Components');");
 
-        $this->expectException(LayerManifestNotFoundException::class);
-        $this->expectExceptionMessage("No composer.json found above [{$provider['path']}]");
+        $this->expectException(ProviderLayerNotFoundException::class);
+        $this->expectExceptionMessage("No discovered layer owns [{$provider['class']}]");
 
         $this->registerLayerProvider($provider);
     }
@@ -158,15 +158,23 @@ class LayerResourcesTest extends TestCase
      */
     private function createTwoReceiptsLayers(): array
     {
-        $functional = $this->createLayer($this->app->basePath('functional/receipts'), 'functional/receipts');
-        $technical = $this->createLayer($this->app->basePath('technical/receipts'), 'technical/receipts');
+        $functional = $this->createReceiptsLayer('functional');
+        $technical = $this->createReceiptsLayer('technical');
         $this->createdLayerPaths[] = $this->app->basePath('technical');
+        $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
 
         foreach ([$functional, $technical] as $layer) {
             $this->app['files']->ensureDirectoryExists($layer.'/resources/views');
         }
 
         return [$functional, $technical];
+    }
+
+    private function createReceiptsLayer(string $bucket): string
+    {
+        return $this->createLayer($this->app->basePath($bucket.'/receipts'), $bucket.'/receipts', [
+            'autoload' => ['psr-4' => [Str::studly($bucket).'\\Receipts\\' => 'src/']],
+        ]);
     }
 
     private function writeComponent(string $layer, string $namespace, string $class, string $html): void

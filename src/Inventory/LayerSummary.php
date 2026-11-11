@@ -3,7 +3,7 @@
 namespace Lomkit\Osdd\Inventory;
 
 use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 
 final readonly class LayerSummary
 {
@@ -21,14 +21,14 @@ final readonly class LayerSummary
         public LayerHealth $health,
     ) {}
 
-    public static function of(Layer $layer, LayersCollection $layers, RootProject $project): self
+    public static function of(Layer $layer, Layers $layers, RootProject $project): self
     {
         return new self(
-            name: $layer->manifest->name(),
-            path: $project->relativePath($layer->path),
-            namespace: $layer->manifest->rootNamespace(),
-            providers: $layer->manifest->providers(),
-            requires: array_values(array_intersect($layer->manifest->requires(), $layers->names())),
+            name: $layer->name->toString(),
+            path: $project->relativePath($layer->directory->root),
+            namespace: $layer->rootNamespace,
+            providers: $layer->providers,
+            requires: array_values(array_intersect($layer->requires, $layers->names())),
             counts: LayerCounts::of($layer),
             health: LayerHealth::of($layer, $project),
         );

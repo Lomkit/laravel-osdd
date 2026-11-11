@@ -32,7 +32,7 @@ class ConsoleMakeCommand extends \Illuminate\Foundation\Console\ConsoleMakeComma
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

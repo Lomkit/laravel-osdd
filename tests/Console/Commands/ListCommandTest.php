@@ -61,6 +61,7 @@ class ListCommandTest extends TestCase
                     'health' => ['required' => false, 'path_repository' => false, 'installed' => false, 'provider_extends_layer_service_provider' => false, 'test_suite' => false],
                 ],
             ],
+            'invalid_manifests' => [],
         ], json_decode(Artisan::output(), true));
     }
 
@@ -107,7 +108,28 @@ class ListCommandTest extends TestCase
             ->assertExitCode(0);
 
         Artisan::call('osdd:list', ['--json' => true]);
-        $this->assertSame(['layers' => []], json_decode(Artisan::output(), true));
+        $this->assertSame(['layers' => [], 'invalid_manifests' => []], json_decode(Artisan::output(), true));
+    }
+
+    public function test_invalid_layer_manifests_are_reported_next_to_the_layers(): void
+    {
+        $this->writeFile('functional/broken/composer.json', '{"name": "functional/broken", "type": "layer",');
+        $this->writeFile('technical/nameless/composer.json', json_encode(['type' => 'layer']));
+
+        Artisan::call('osdd:list', ['--json' => true]);
+        $output = json_decode(Artisan::output(), true);
+
+        $this->assertSame(['functional/orders', 'technical/billing'], array_column($output['layers'], 'name'));
+        $this->assertSame(['functional/broken/composer.json', 'technical/nameless/composer.json'], array_column($output['invalid_manifests'], 'file'));
+        $this->assertStringStartsWith('it is not valid JSON', $output['invalid_manifests'][0]['error']);
+        $this->assertSame('it has no "name".', $output['invalid_manifests'][1]['error']);
+
+        $this->artisan('osdd:list')
+            ->expectsOutputToContain('functional/broken/composer.json')
+            ->expectsOutputToContain('INVALID')
+            ->expectsOutputToContain('2 layers listed.')
+            ->expectsOutputToContain('2 invalid layer manifests skipped.')
+            ->assertExitCode(0);
     }
 
     private function writeProject(): void

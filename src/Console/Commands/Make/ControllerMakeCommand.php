@@ -20,7 +20,7 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -71,7 +71,7 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
         ];
 
         if ($this->option('requests')) {
-            $layerNamespace = rtrim($this->resolveLayer()->manifest->rootNamespace(), '\\');
+            $layerNamespace = rtrim($this->resolveLayer()->rootNamespace, '\\');
             $namespace = $layerNamespace.'\\Http\\Requests';
 
             [$storeRequestClass, $updateRequestClass] = $this->generateFormRequests(
@@ -110,12 +110,12 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
 
         $this->call('osdd:request', [
             'name' => $storeRequestClass,
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
 
         $this->call('osdd:request', [
             'name' => $updateRequestClass,
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
 
         return [$storeRequestClass, $updateRequestClass];

@@ -4,8 +4,8 @@ namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use Lomkit\Osdd\SeederRegistry;
 use Lomkit\Osdd\Seeders\SeederNotFoundException;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 use Lomkit\Osdd\Tests\TestCase;
 
 class SeedCommandTest extends TestCase

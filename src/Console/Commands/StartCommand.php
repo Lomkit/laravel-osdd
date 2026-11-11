@@ -7,7 +7,9 @@ use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
 use Lomkit\Osdd\Console\Start\SkeletonCleaner;
-use Lomkit\Osdd\Console\StubWriter;
+use Lomkit\Osdd\Layers\LayerBuckets;
+use Lomkit\Osdd\Layers\RefreshLayers;
+use Lomkit\Osdd\Stubs\StubWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -54,6 +56,8 @@ class StartCommand extends Command
         $this->createUsersLayer($usersLayerPath);
         $this->createOsddLayer($osddLayerPath);
 
+        $this->laravel->make(RefreshLayers::class)();
+
         (new SkeletonCleaner($this->files, $this->components, $this->laravel->basePath()))->clean();
 
         $this->components->info('Congratulations! Your project is ready for OSDD. Create your first layer with <options=bold>php artisan osdd:layer</>.');
@@ -96,10 +100,9 @@ class StartCommand extends Command
 
     private function bucketPath(string $bucket): string
     {
-        /** @var array<string, string> $paths */
-        $paths = config('osdd.layers.paths', []);
+        $buckets = $this->laravel->make(LayerBuckets::class);
 
-        return $paths[$bucket] ?? $this->laravel->basePath($bucket);
+        return $buckets->has($bucket) ? $buckets->path($bucket) : $this->laravel->basePath($bucket);
     }
 
     private function createUsersLayer(string $layerPath): void

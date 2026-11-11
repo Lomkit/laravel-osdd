@@ -98,7 +98,69 @@ Without this change, Boost no longer finds `xefi/laravel-osdd` and removes the s
 - Renovate or Dependabot may offer to bump `xefi/laravel-osdd` to `^3.0`. Do not accept it: that version expects the `Lomkit\Osdd` namespace and breaks every layer that still uses `Xefi\LaravelOSDD`. Follow this guide instead.
 - `composer audit` reports `xefi/laravel-osdd` as abandoned and fails by default. Switching to `lomkit/laravel-osdd` with this guide fixes it. A project that cannot switch yet can report abandoned packages without failing by setting `config.audit.abandoned` to `"report"` in its root `composer.json` (`config.policy.abandoned.audit` on Composer 2.11 and later).
 
+### Renamed and moved classes
+
+Most applications only use `LayerServiceProvider` and the seeders, which keep their names. Code that uses the classes below must follow them.
+
+#### `SeederRegistry`
+
+`Lomkit\Osdd\SeederRegistry` is now `Lomkit\Osdd\Seeders\SeederRegistry`, next to `LayersSeeder`. Replace the import wherever you resolve the registry, in a seeder, a test or tinker:
+
+```diff
+-use Lomkit\Osdd\SeederRegistry;
++use Lomkit\Osdd\Seeders\SeederRegistry;
+```
+
+#### `LayersCollection` is replaced by the `Layers` service
+
+`Lomkit\Osdd\Layers\LayersCollection` is gone. The layers are now discovered once per process and resolved from the container as `Lomkit\Osdd\Layers\Layers`, which is no longer a Laravel collection: use its methods, or iterate it with `foreach`.
+
+| 2.x | 3.0 |
+|-----|-----|
+| `LayersCollection::fromConfig()` | `app(Layers::class)`, or inject `Layers` |
+| `LayersCollection::discover($path)` | `(new LayerDiscovery(new LayerBuckets(['functional' => $path]), new Filesystem))->discover()` |
+| `$layers->findByName($name)` | `$layers->find($name)` |
+| `$layers->findAllByName($names)` | `$layers->findAll($names)` |
+| `$layers->map(...)`, `filter(...)` (collection methods) | `$layers->map(...)` returns an array, `$layers->filter(...)` returns `Layers`; `names()`, `owning($class)`, `count()`, `isEmpty()` |
+| `$layer->path` | `$layer->directory->root` |
+| `$layer->path.'/database/migrations'` | `$layer->directory->path(LayerFolder::Migrations)` |
+| `$layer->manifest->name()` | `$layer->name->toString()` (`$layer->name` is a `LayerName`) |
+| `$layer->manifest->vendor()`, `package()` | `$layer->name->vendor`, `$layer->name->package` |
+| `$layer->manifest->rootNamespace()` | `$layer->rootNamespace` |
+| `$layer->manifest->srcPath($layer->path)` | `$layer->sourceDirectory` |
+| `$layer->manifest->providers()`, `requires()`, `devRequires()` | `$layer->providers`, `$layer->requires`, `$layer->devRequires` |
+| `$layer->manifest->namespaces()`, `devNamespaces()` | `$layer->namespaces()`, `$layer->devNamespaces()` |
+| `$layer->manifest->classPath($layer->path, $class)` | `$layer->classFile($class)` |
+
+`Lomkit\Osdd\Layers\LayerManifest` now only parses a `composer.json` into a `Layer`, and `Lomkit\Osdd\Layers\ProviderLayerManifest` is removed. `Lomkit\Osdd\Layers\LayerManifestNotFoundException` is replaced by `Lomkit\Osdd\Layers\ProviderLayerNotFoundException` (see below).
+
+#### Other internal classes
+
+These classes are internal, but code that used them must follow the move: `Lomkit\Osdd\Support\Path` is now `Lomkit\Osdd\Filesystem\Path`; `Lomkit\Osdd\Console\StubWriter` is now `Lomkit\Osdd\Stubs\StubWriter`; `LayerGenerator`, `LayerGeneratorRunner` and `LayerComposerJson` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Scaffolding`; `MissingLayerNameException`, `MissingLayerOptionException`, `UnknownLayerBucketException` and `UnknownLayerGeneratorException` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Console\Exceptions`.
+
 ### Changed behaviour
+
+#### `php artisan optimize` caches the layers
+
+`php artisan optimize` now also runs the new `osdd:cache` command, which writes the discovered layers to `bootstrap/cache/osdd.php`; `optimize:clear` runs `osdd:clear`, which deletes the file. While the cache exists, every process reads the layers from it instead of scanning the `osdd.layers.paths` folders. Add `osdd:cache` to your deployment only if you run the cache commands one by one instead of `optimize`.
+
+`osdd:layer`, `osdd:start`, `osdd:provider` and Composer (through `php artisan package:discover`, which runs after every `composer install` or `update`) rewrite an existing cache, and a cache built for other `osdd.layers.paths` is ignored. A layer copied into the project by hand, without running Composer, stays invisible until you run `php artisan osdd:cache` again or `php artisan optimize:clear`, as with `event:cache`.
+
+`osdd:cache` fails and writes nothing while a layer `composer.json` is invalid, so `optimize` reports the `osdd` task as failed: run `php artisan osdd:list` to see the error.
+
+#### Default view, translation and component namespace
+
+`withViews()`, `withTranslations()` and `withComponents()` without a namespace now take the package name of the discovered layer that owns the provider: the layer under `osdd.layers.paths` whose `autoload.psr-4` prefix covers the provider class. In 2.x it came from the `composer.json` closest to the provider file, in or out of a layer. A provider that belongs to no discovered layer, or whose layer has no `autoload.psr-4` entry for its namespace, now throws `Lomkit\Osdd\Layers\ProviderLayerNotFoundException` at boot: pass the namespace as second argument (`$this->withViews(__DIR__ . '/../../resources/views', 'orders');`). Layers created by `osdd:layer` or `osdd:start` are not affected.
+
+#### Invalid layer `composer.json` files
+
+A `composer.json` under `osdd.layers.paths` that is not valid JSON, or a `"type": "layer"` file without a valid `name`, with an `autoload.psr-4` that does not map namespaces to directories, or with an `extra.laravel.providers` that is not a list, used to crash every `osdd:*` command with a bare `JsonException` or a PHP error. The generators, `osdd:seed --layer`, `osdd:check`, `osdd:graph`, `osdd:phpunit` and `osdd:cache` now exit with 1 and name the file: `Invalid layer manifest [functional/orders/composer.json]: it has no "name".` `osdd:list` lists the file with its error and keeps listing the valid layers; `osdd:list --json` has a new `invalid_manifests` key next to `layers`.
+
+The layer discovery also stops at any directory that has a `composer.json`: a layer nested inside another package (a directory whose `composer.json` is not of type `layer`) is no longer discovered. Move it next to that package.
+
+#### Layers are listed by name
+
+The layers are now always sorted by name. `osdd:phpunit` adds the test suites of new layers in that order, instead of the order of the file system.
 
 #### `overrideConfigFrom()` replaces lists
 

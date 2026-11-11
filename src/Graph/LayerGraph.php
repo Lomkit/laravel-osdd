@@ -3,8 +3,7 @@
 namespace Lomkit\Osdd\Graph;
 
 use Closure;
-use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 
 final class LayerGraph
 {
@@ -17,15 +16,15 @@ final class LayerGraph
         private readonly array $devRequires,
     ) {}
 
-    public static function of(LayersCollection $layers): self
+    public static function of(Layers $layers): self
     {
         $names = $layers->names();
         $requires = [];
         $devRequires = [];
 
-        foreach ($layers->sortBy(fn (Layer $layer): string => $layer->manifest->name()) as $layer) {
-            $requires[$layer->manifest->name()] = self::layersAmong($layer->manifest->requires(), $names);
-            $devRequires[$layer->manifest->name()] = self::layersAmong($layer->manifest->devRequires(), $names);
+        foreach ($layers as $layer) {
+            $requires[$layer->name->toString()] = self::layersAmong($layer->requires, $names);
+            $devRequires[$layer->name->toString()] = self::layersAmong($layer->devRequires, $names);
         }
 
         return new self($requires, $devRequires);

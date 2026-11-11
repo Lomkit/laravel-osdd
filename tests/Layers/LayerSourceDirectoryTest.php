@@ -2,7 +2,7 @@
 
 namespace Lomkit\Osdd\Tests\Layers;
 
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 use Lomkit\Osdd\Tests\TestCase;
 
 class LayerSourceDirectoryTest extends TestCase
@@ -34,10 +34,10 @@ class LayerSourceDirectoryTest extends TestCase
 
     public function test_the_manifest_takes_the_source_mapping_not_the_first_entry(): void
     {
-        $layer = LayersCollection::fromConfig()->first(fn ($layer) => $layer->manifest->name() === 'functional/app-layer');
+        $layer = $this->app->make(Layers::class)->find('functional/app-layer');
 
-        $this->assertSame('Functional\\AppLayer\\', $layer->manifest->rootNamespace());
-        $this->assertSame($layer->path.'/app', $layer->manifest->srcPath($layer->path));
+        $this->assertSame('Functional\\AppLayer\\', $layer->rootNamespace);
+        $this->assertSame($layer->directory->root.'/app', $layer->sourceDirectory);
     }
 
     public function test_generators_write_into_the_source_directory_of_the_layer(): void

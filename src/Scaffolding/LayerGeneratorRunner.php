@@ -1,6 +1,6 @@
 <?php
 
-namespace Lomkit\Osdd\Console;
+namespace Lomkit\Osdd\Scaffolding;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
@@ -8,7 +8,9 @@ use Illuminate\Support\Str;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
 use Lomkit\Osdd\Console\Providers\LayerResourceNamespace;
 use Lomkit\Osdd\Layers\LayerName;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
+use Lomkit\Osdd\Layers\RefreshLayers;
+use Lomkit\Osdd\Stubs\StubWriter;
 
 final class LayerGeneratorRunner
 {
@@ -23,12 +25,15 @@ final class LayerGeneratorRunner
         private readonly string $layerPath,
         private readonly array $generators,
         private readonly bool $force,
+        private readonly RefreshLayers $refreshLayers,
     ) {}
 
     public function run(): void
     {
+        $layers = ($this->refreshLayers)();
+
         foreach ($this->executionOrder() as $generator) {
-            $this->runGenerator($generator);
+            $this->runGenerator($generator, $layers);
         }
     }
 
@@ -52,7 +57,7 @@ final class LayerGeneratorRunner
         ];
     }
 
-    private function runGenerator(LayerGenerator $generator): void
+    private function runGenerator(LayerGenerator $generator, Layers $layers): void
     {
         $studly = $this->name->studlyPackage();
         $singular = Str::singular($studly);
@@ -62,7 +67,7 @@ final class LayerGeneratorRunner
             LayerGenerator::Model => $this->callGenerator('osdd:model', ['name' => $singular, '--factory' => $this->selected(LayerGenerator::Factory)]),
             LayerGenerator::Factory => $this->callGenerator('osdd:factory', ['name' => "{$singular}Factory"]),
             LayerGenerator::Seeder => $this->callGenerator('osdd:seeder', ['name' => "{$studly}Seeder"]),
-            LayerGenerator::ServiceProvider => $this->generateServiceProvider($studly.'ServiceProvider'),
+            LayerGenerator::ServiceProvider => $this->generateServiceProvider($studly.'ServiceProvider', $layers),
             LayerGenerator::Test => $this->callGenerator('osdd:test', ['name' => "{$studly}Test"]),
             LayerGenerator::Controller => $this->callGenerator('osdd:controller', ['name' => "{$studly}Controller"]),
             LayerGenerator::Policy => $this->callGenerator('osdd:policy', ['name' => "{$studly}Policy", '--model' => $this->selected(LayerGenerator::Model) ? $singular : null]),
@@ -107,17 +112,19 @@ final class LayerGeneratorRunner
         ]);
     }
 
-    private function generateServiceProvider(string $class): void
+    private function generateServiceProvider(string $class, Layers $layers): void
     {
         $this->stubs->write('layer/service-provider', $this->layerPath.'/src/Providers/'.$class.'.php', [
             '{{ namespace }}' => $this->name->namespace(),
             '{{ class }}' => $class,
-            '{{ resourceNamespace }}' => LayerResourceNamespace::of($this->name->toString(), LayersCollection::fromConfig())->argument(),
+            '{{ resourceNamespace }}' => LayerResourceNamespace::of($this->name, $layers)->argument(),
         ]);
 
         $composer = ComposerJsonFile::open($this->files, $this->layerPath.'/composer.json');
         $composer->addLaravelProvider($this->name->namespace().'\\Providers\\'.$class);
         $composer->save();
+
+        ($this->refreshLayers)();
     }
 
     private function generateRoutes(): void

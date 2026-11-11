@@ -2,136 +2,58 @@
 
 namespace Lomkit\Osdd\Layers;
 
-use Illuminate\Filesystem\Filesystem;
+use JsonException;
 
-class LayerManifest
+final class LayerManifest
 {
-    private const string DEFAULT_SOURCE_DIRECTORY = 'src/';
+    public const string LAYER_TYPE = 'layer';
 
     /**
-     * @param  array{name: string, type?: string, require?: array<string, string>, require-dev?: array<string, string>, autoload?: array{psr-4?: array<string, string>}, autoload-dev?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}}  $data
+     * The layer a composer.json describes, or null when it is a valid composer.json of another type.
+     *
+     * @throws InvalidLayerManifestException
      */
-    private function __construct(private readonly array $data) {}
-
-    public static function fromPath(string $path): self
+    public static function parse(string $json, string $directory): ?Layer
     {
-        /** @var array{name: string, type?: string, require?: array<string, string>, require-dev?: array<string, string>, autoload?: array{psr-4?: array<string, string>}, autoload-dev?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}} $data */
-        $data = json_decode(app(Filesystem::class)->get($path), true, 512, JSON_THROW_ON_ERROR);
-
-        return new self($data);
-    }
-
-    public function name(): string
-    {
-        return $this->data['name'];
-    }
-
-    public function type(): string
-    {
-        return $this->data['type'] ?? '';
-    }
-
-    public function vendor(): string
-    {
-        return explode('/', $this->name())[0];
-    }
-
-    public function package(): string
-    {
-        return explode('/', $this->name())[1];
-    }
-
-    public function isLayer(): bool
-    {
-        return $this->type() === 'layer';
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function requires(): array
-    {
-        return array_keys($this->data['require'] ?? []);
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function devRequires(): array
-    {
-        return array_keys($this->data['require-dev'] ?? []);
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function providers(): array
-    {
-        return $this->data['extra']['laravel']['providers'] ?? [];
-    }
-
-    public function classPath(string $layerPath, string $class): ?string
-    {
-        $class = ltrim($class, '\\');
-        $prefix = null;
-
-        foreach (array_keys($this->data['autoload']['psr-4'] ?? []) as $namespace) {
-            if (str_starts_with($class, $namespace) && strlen($namespace) > strlen($prefix ?? '')) {
-                $prefix = $namespace;
-            }
+        try {
+            $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $exception) {
+            throw new InvalidLayerManifestException(self::file($directory), "it is not valid JSON ({$exception->getMessage()}).");
         }
 
-        if ($prefix === null) {
+        if (! is_array($data)) {
+            throw new InvalidLayerManifestException(self::file($directory), 'it is not a JSON object.');
+        }
+
+        return self::fromData($data, $directory);
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $data
+     *
+     * @throws InvalidLayerManifestException
+     */
+    public static function fromData(array $data, string $directory): ?Layer
+    {
+        if (($data['type'] ?? null) !== self::LAYER_TYPE) {
             return null;
         }
 
-        $directory = trim($this->data['autoload']['psr-4'][$prefix] ?? '', '/');
+        $reader = new ManifestReader($data, self::file($directory));
 
-        return rtrim($layerPath, '/').'/'.$directory.'/'.str_replace('\\', '/', substr($class, strlen($prefix))).'.php';
+        return new Layer(
+            name: $reader->name(),
+            directory: new LayerDirectory($directory),
+            autoload: $reader->psr4('autoload'),
+            devAutoload: $reader->psr4('autoload-dev'),
+            providers: $reader->providers(),
+            requires: $reader->packages('require'),
+            devRequires: $reader->packages('require-dev'),
+        );
     }
 
-    /**
-     * @return list<string>
-     */
-    public function namespaces(): array
+    private static function file(string $directory): string
     {
-        return array_keys($this->data['autoload']['psr-4'] ?? []);
-    }
-
-    /**
-     * @return list<string>
-     */
-    public function devNamespaces(): array
-    {
-        return array_keys($this->data['autoload-dev']['psr-4'] ?? []);
-    }
-
-    public function rootNamespace(): string
-    {
-        return $this->sourceMapping()[0];
-    }
-
-    public function srcPath(string $layerPath): string
-    {
-        return rtrim($layerPath, '/').'/'.trim($this->sourceMapping()[1], '/');
-    }
-
-    /**
-     * The shortest psr-4 prefix, so a Database\Factories\ entry listed first is not taken for the source.
-     *
-     * @return array{string, string}
-     */
-    private function sourceMapping(): array
-    {
-        $psr4 = $this->data['autoload']['psr-4'] ?? [];
-
-        if ($psr4 === []) {
-            return ['', self::DEFAULT_SOURCE_DIRECTORY];
-        }
-
-        $namespaces = array_keys($psr4);
-        usort($namespaces, fn (string $a, string $b): int => strlen($a) <=> strlen($b));
-
-        return [$namespaces[0], $psr4[$namespaces[0]]];
+        return (new LayerDirectory($directory))->manifestFile();
     }
 }

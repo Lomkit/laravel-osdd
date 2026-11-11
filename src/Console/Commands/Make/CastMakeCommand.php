@@ -14,7 +14,7 @@ class CastMakeCommand extends \Illuminate\Foundation\Console\CastMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

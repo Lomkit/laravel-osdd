@@ -1,6 +1,6 @@
 <?php
 
-namespace Lomkit\Osdd\Console;
+namespace Lomkit\Osdd\Console\Exceptions;
 
 use InvalidArgumentException;
 

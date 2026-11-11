@@ -1,6 +1,6 @@
 <?php
 
-namespace Lomkit\Osdd;
+namespace Lomkit\Osdd\Seeders;
 
 use Illuminate\Database\Seeder;
 

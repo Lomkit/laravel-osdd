@@ -12,7 +12,7 @@ final class RequiredLayers
      * @throws AmbiguousLayerNameException
      * @throws LayerRequiresItselfException
      */
-    public static function resolve(array $values, LayerName $layer): array
+    public static function resolve(array $values, LayerName $layer, Layers $layers): array
     {
         $names = LayerNameList::parse($values);
 
@@ -20,7 +20,7 @@ final class RequiredLayers
             return [];
         }
 
-        $required = LayersCollection::fromConfig()->findAllByName($names)->names();
+        $required = $layers->findAll($names)->names();
 
         if (in_array($layer->toString(), $required, true)) {
             throw new LayerRequiresItselfException($layer->toString());

@@ -1,8 +1,9 @@
 <?php
 
-namespace Lomkit\Osdd\Console;
+namespace Lomkit\Osdd\Console\Exceptions;
 
 use InvalidArgumentException;
+use Lomkit\Osdd\Scaffolding\LayerGenerator;
 
 class UnknownLayerGeneratorException extends InvalidArgumentException
 {

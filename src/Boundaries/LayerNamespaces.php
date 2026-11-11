@@ -2,7 +2,7 @@
 
 namespace Lomkit\Osdd\Boundaries;
 
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 
 final class LayerNamespaces
 {
@@ -11,16 +11,16 @@ final class LayerNamespaces
      */
     private function __construct(private readonly array $layerByPrefix) {}
 
-    public static function of(LayersCollection $layers): self
+    public static function of(Layers $layers): self
     {
         $layerByPrefix = [];
 
         foreach ($layers as $layer) {
-            foreach ([...$layer->manifest->namespaces(), ...$layer->manifest->devNamespaces()] as $prefix) {
+            foreach ([...$layer->namespaces(), ...$layer->devNamespaces()] as $prefix) {
                 $prefix = trim($prefix, '\\');
 
                 if ($prefix !== '') {
-                    $layerByPrefix[$prefix.'\\'] = $layer->manifest->name();
+                    $layerByPrefix[$prefix.'\\'] = $layer->name->toString();
                 }
             }
         }

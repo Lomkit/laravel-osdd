@@ -1,6 +1,6 @@
 <?php
 
-namespace Lomkit\Osdd\Console;
+namespace Lomkit\Osdd\Stubs;
 
 use Illuminate\Filesystem\Filesystem;
 
@@ -9,7 +9,7 @@ final class StubWriter
     public function __construct(private readonly Filesystem $files) {}
 
     /**
-     * @param  string  $stub  Path under src/Console/stubs, without the .stub extension (layer/composer)
+     * @param  string  $stub  Path under src/Stubs, without the .stub extension (layer/composer)
      * @param  array<string, string>  $replacements
      */
     public function write(string $stub, string $target, array $replacements = []): void
@@ -24,7 +24,7 @@ final class StubWriter
      */
     public function render(string $stub, array $replacements = []): string
     {
-        $contents = $this->files->get(__DIR__.'/stubs/'.$stub.'.stub');
+        $contents = $this->files->get(__DIR__.'/'.$stub.'.stub');
 
         return str_replace(array_keys($replacements), array_values($replacements), $contents);
     }

@@ -19,7 +19,7 @@ class NotificationMakeCommand extends \Illuminate\Foundation\Console\Notificatio
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

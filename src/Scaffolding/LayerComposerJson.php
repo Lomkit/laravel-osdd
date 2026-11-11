@@ -1,10 +1,11 @@
 <?php
 
-namespace Lomkit\Osdd\Console;
+namespace Lomkit\Osdd\Scaffolding;
 
 use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
 use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Stubs\StubWriter;
 
 final class LayerComposerJson
 {

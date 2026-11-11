@@ -3,8 +3,8 @@
 namespace Lomkit\Osdd\Tests\Seeders;
 
 use Illuminate\Support\Str;
-use Lomkit\Osdd\SeederRegistry;
 use Lomkit\Osdd\Seeders\LayersSeeder;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 use Lomkit\Osdd\Tests\Concerns\CreatesLayers;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\Billing\BillingSeeder;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\LoggingSeeder;

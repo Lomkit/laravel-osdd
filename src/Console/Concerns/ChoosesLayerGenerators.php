@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Console\Concerns;
 
-use Lomkit\Osdd\Console\LayerGenerator;
-use Lomkit\Osdd\Console\UnknownLayerGeneratorException;
+use Lomkit\Osdd\Console\Exceptions\UnknownLayerGeneratorException;
+use Lomkit\Osdd\Scaffolding\LayerGenerator;
 
 use function Laravel\Prompts\multiselect;
 
