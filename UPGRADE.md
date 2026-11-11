@@ -105,3 +105,27 @@ Without this change, Boost no longer finds `xefi/laravel-osdd` and removes the s
 `overrideConfigFrom()` still merges maps key by key, at every depth. A list in the layer file now replaces the loaded list as a whole, and an empty array clears the loaded value. In 2.x, lists were merged index by index: overriding `['default', 'low']` with `['high']` gave `['high', 'low']`; it now gives `['high']`.
 
 Check the config files your layers load with `overrideConfigFrom()`. Where a layer relied on the old merge to keep the tail of a list, write the full list in the layer file.
+
+#### `osdd:layer` without a terminal
+
+`osdd:layer` no longer runs `composer update` when it cannot ask: under `--no-interaction` (`-n`), or without a terminal (CI, scripts, AI agents). In 2.x it ran the update by default. Pass `--composer-update` to run it, or run `composer update vendor/package` yourself. `--no-composer-update` skips the question in a terminal.
+
+Without a terminal, the command also stops asking for the rest:
+
+- the bucket comes from the vendor of the name when it matches a key of `osdd.layers.paths` (`functional/orders` goes to the `functional` path). Pass `--target-path` for any other vendor;
+- the name argument is required;
+- without `--generators`, the default generators run (`migration`, `model`, `factory`, `service-provider`, `test`).
+
+`--generators` accepts comma-separated lists (`--generators=model,policy`) as well as repeated options, and an unknown generator name now fails the command with the list of valid names. In 2.x, `--generators=model,policy` matched no generator and created a layer with only its `composer.json`.
+
+#### `osdd:layer` refuses an existing layer
+
+`osdd:layer` now fails when the layer directory already exists and is not empty. In 2.x it overwrote the layer's `composer.json` (dropping `extra.laravel.providers`) and its provider. Pass `--force` to rewrite the files `osdd:layer` writes: `composer.json`, the provider and the route files. The model and the controller are overwritten too; the other generated files are kept, and no second `create_*_table` migration is added.
+
+#### `osdd:layer` validates the name
+
+The name must be a Composer package name: `vendor/package`, lowercase letters and digits, words separated by `-`, `_` or `.`, each part starting with a letter. `osdd:layer orders` and `osdd:layer functional/My_Orders` now fail with a message instead of crashing or writing an invalid requirement into the root `composer.json`.
+
+#### The generated layer provider no longer registers a seeder by default
+
+The provider created by `osdd:layer` used to import and register `{Package}Seeder` even when the `seeder` generator did not run. It now registers nothing; the `seeder` generator, or `osdd:seeder`, adds `$this->loadSeeders([...])` to `boot()`. Existing layers are not changed. A seeder registered twice now runs once (the first registration and its priority win).

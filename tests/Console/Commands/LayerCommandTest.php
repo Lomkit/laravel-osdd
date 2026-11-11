@@ -33,6 +33,10 @@ class LayerCommandTest extends TestCase
         $this->app['files']->deleteDirectory($this->app->basePath('functional/my-auth-layer'));
         $this->app['files']->deleteDirectory($this->app->basePath('functional/external-accounts'));
         $this->app['files']->deleteDirectory($this->app->basePath('technical/my-layer'));
+        $this->app['files']->deleteDirectory($this->app->basePath('technical/orders'));
+        $this->app['files']->deleteDirectory($this->app->basePath('functional/orders'));
+        $this->app['files']->deleteDirectory($this->app->basePath('functional/plain-layer'));
+        $this->app['files']->deleteDirectory($this->app->basePath('functional/process-layer'));
 
         if ($this->composerOriginal !== null) {
             $this->app['files']->put($this->composerPath, $this->composerOriginal);
@@ -125,7 +129,7 @@ class LayerCommandTest extends TestCase
             'use Lomkit\Osdd\LayerServiceProvider;',
             'class MyLayerServiceProvider extends LayerServiceProvider',
             "loadMigrationsFrom(__DIR__ . '/../../database/migrations')",
-            'loadSeeders([MyLayerSeeder::class])',
+            '$this->loadSeeders([\Functional\MyLayer\Database\Seeders\MyLayerSeeder::class]);',
             '$this->withRouting(',
             "web: __DIR__ . '/../../routes/web.php'",
             "api: __DIR__ . '/../../routes/api.php'",
@@ -293,14 +297,14 @@ class LayerCommandTest extends TestCase
 
     public function test_it_does_not_duplicate_repository_on_repeat_runs(): void
     {
-        $run = fn () => $this->artisan('osdd:layer')
-            ->expectsQuestion('Layer name', 'my-layer')
+        $run = fn (string $package) => $this->artisan('osdd:layer')
+            ->expectsQuestion('Layer name', $package)
             ->expectsChoice('Which generators should be run?', $this->defaultGenerators(), $this->allGenerators())
             ->expectsConfirmation('Run composer update now?', 'no')
             ->assertExitCode(0);
 
-        $run();
-        $run();
+        $run('my-layer');
+        $run('my-auth-layer');
 
         $composer = json_decode($this->app['files']->get($this->composerPath), true);
 

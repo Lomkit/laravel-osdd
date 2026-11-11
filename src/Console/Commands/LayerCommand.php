@@ -4,11 +4,20 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
-use Illuminate\Support\Str;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
+use Lomkit\Osdd\Console\LayerGenerator;
+use Lomkit\Osdd\Console\LayerGeneratorRunner;
+use Lomkit\Osdd\Console\MissingLayerNameException;
 use Lomkit\Osdd\Console\StubWriter;
+use Lomkit\Osdd\Console\UnknownLayerBucketException;
+use Lomkit\Osdd\Console\UnknownLayerGeneratorException;
+use Lomkit\Osdd\Layers\InvalidLayerNameException;
+use Lomkit\Osdd\Layers\LayerBuckets;
+use Lomkit\Osdd\Layers\LayerName;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
 
 use function Laravel\Prompts\multiselect;
 use function Laravel\Prompts\select;
@@ -20,26 +29,9 @@ class LayerCommand extends Command
     use OffersComposerUpdate;
     use RegistersLayerInComposer;
 
-    protected $signature = 'osdd:layer
-        {name? : Layer name (vendor/package)}
-        {--target-path= : Full path to the target directory (skips selection prompt)}
-        {--generators=* : Generators to run (skips selection prompt)}';
+    protected $name = 'osdd:layer';
 
     protected $description = 'Create a new OSDD layer';
-
-    private const array GENERATORS = [
-        'migration',
-        'model',
-        'factory',
-        'seeder',
-        'service-provider',
-        'test',
-        'controller',
-        'policy',
-        'routes',
-    ];
-
-    private const array DEFAULT_GENERATORS = ['migration', 'model', 'factory', 'service-provider', 'test'];
 
     public function __construct(protected Filesystem $files, private readonly StubWriter $stubs)
     {
@@ -48,163 +40,155 @@ class LayerCommand extends Command
 
     public function handle(): int
     {
-        if ($name = $this->argument('name')) {
-            $targetPath = $this->option('target-path') ?? $this->askForTargetPath();
-        } else {
-            [$vendor, $targetPath] = $this->askForVendorAndPath();
-            $package = $this->askForPackage();
-            $name = $vendor.'/'.$package;
+        try {
+            [$name, $targetPath] = $this->layerNameAndTargetPath();
+            $generators = $this->generators();
+        } catch (InvalidLayerNameException|MissingLayerNameException|UnknownLayerBucketException|UnknownLayerGeneratorException $exception) {
+            $this->components->error($exception->getMessage());
+
+            return self::FAILURE;
         }
 
-        $generators = $this->option('generators') ?: $this->askForGenerators();
+        $layerPath = $targetPath.'/'.$name->package;
 
-        $this->generate($name, $targetPath, $generators);
+        if (! $this->option('force') && $this->files->isDirectory($layerPath) && ! $this->files->isEmptyDirectory($layerPath)) {
+            $this->components->error("The layer directory [{$layerPath}] already exists. Pass --force to overwrite the files osdd:layer writes.");
 
-        $this->components->info("Layer <options=bold>{$name}</> created at <options=bold>{$targetPath}</>.");
+            return self::FAILURE;
+        }
 
-        $this->offerComposerUpdate($name);
+        $this->generate($name, $layerPath, $generators);
+
+        $this->components->info("Layer <options=bold>{$name->toString()}</> created at <options=bold>{$targetPath}</>.");
+
+        $this->offerComposerUpdate($name->toString());
 
         return self::SUCCESS;
     }
 
     /**
-     * @return array{string, string}
+     * @return array<int, InputArgument>
      */
-    private function askForVendorAndPath(): array
+    #[\Override]
+    protected function getArguments(): array
     {
-        /** @var array<string, string> $paths */
-        $paths = config('osdd.layers.paths');
+        return [new InputArgument('name', InputArgument::OPTIONAL, 'Layer name (vendor/package)')];
+    }
 
-        if (count($paths) === 1) {
-            return [(string) array_key_first($paths), (string) reset($paths)];
+    /**
+     * @return array<int, InputOption>
+     */
+    #[\Override]
+    protected function getOptions(): array
+    {
+        return [
+            new InputOption('target-path', null, InputOption::VALUE_REQUIRED, 'Directory to create the layer in (default: the osdd.layers.paths entry named after the vendor)'),
+            new InputOption('generators', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Generators to run, repeated or comma-separated: '.implode(', ', LayerGenerator::names())),
+            new InputOption('force', null, InputOption::VALUE_NONE, 'Overwrite the files of an existing layer'),
+            $this->composerUpdateOption(),
+        ];
+    }
+
+    /**
+     * @return array{LayerName, string}
+     */
+    private function layerNameAndTargetPath(): array
+    {
+        $argument = $this->argument('name');
+
+        if (is_string($argument) && $argument !== '') {
+            $name = LayerName::fromString($argument);
+
+            return [$name, $this->targetPathFor($name)];
         }
 
-        $key = (string) select(
-            label: 'Where should the layer be created?',
-            options: array_keys($paths),
-        );
+        if (! $this->canPrompt()) {
+            throw new MissingLayerNameException;
+        }
 
-        return [$key, $paths[$key]];
-    }
-
-    private function askForTargetPath(): string
-    {
-        return $this->askForVendorAndPath()[1];
-    }
-
-    private function askForPackage(): string
-    {
-        return text(
+        $vendor = $this->askForBucket();
+        $package = text(
             label: 'Layer name',
             placeholder: 'my-layer',
             required: true,
-            validate: fn (string $value) => preg_match('/^[a-z0-9-]+$/', $value)
-                ? null
-                : 'Name must use lowercase letters, numbers and hyphens.',
+            validate: fn (string $value): ?string => LayerName::validationError($vendor.'/'.$value),
         );
+        $name = LayerName::fromString($vendor.'/'.$package);
+
+        return [$name, LayerBuckets::fromConfig()->path($vendor)];
+    }
+
+    private function targetPathFor(LayerName $name): string
+    {
+        $targetPath = $this->option('target-path');
+
+        if (is_string($targetPath) && $targetPath !== '') {
+            return $targetPath;
+        }
+
+        $buckets = LayerBuckets::fromConfig();
+
+        if (($path = $buckets->pathForVendor($name->vendor)) !== null) {
+            return $path;
+        }
+
+        if (! $this->canPrompt()) {
+            throw new UnknownLayerBucketException($name->vendor, $buckets->names());
+        }
+
+        return $buckets->path($this->askForBucket());
+    }
+
+    private function askForBucket(): string
+    {
+        $buckets = LayerBuckets::fromConfig();
+
+        return $buckets->onlyBucket() ?? (string) select(label: 'Where should the layer be created?', options: $buckets->names());
     }
 
     /**
-     * @return array<int|string>
+     * @return list<LayerGenerator>
      */
-    private function askForGenerators(): array
+    private function generators(): array
     {
-        return multiselect(
+        /** @var list<string> $option */
+        $option = $this->option('generators');
+
+        if ($option !== []) {
+            return LayerGenerator::parse($option);
+        }
+
+        if (! $this->canPrompt()) {
+            return LayerGenerator::defaults();
+        }
+
+        return LayerGenerator::parse(multiselect(
             label: 'Which generators should be run?',
-            options: self::GENERATORS,
-            default: self::DEFAULT_GENERATORS,
-        );
+            options: LayerGenerator::names(),
+            default: array_map(fn (LayerGenerator $generator): string => $generator->value, LayerGenerator::defaults()),
+        ));
     }
 
     /**
-     * @param  array<int|string|null>  $generators
+     * @param  list<LayerGenerator>  $generators
      */
-    private function generate(string $name, string $targetPath, array $generators): void
+    private function generate(LayerName $name, string $layerPath, array $generators): void
     {
-        [$vendor, $package] = explode('/', $name);
+        $this->stubs->write('layer/composer', $layerPath.'/composer.json', [
+            '{{ name }}' => $name->toString(),
+            '{{ namespace }}' => str_replace('\\', '\\\\', $name->namespace()),
+        ]);
 
-        $layerPath = $targetPath.'/'.$package;
-        $namespace = $this->toNamespace($vendor, $package);
-        $singular = Str::singular(Str::studly($package));
-        $pascal = Str::studly($package);
-        $pluralSnake = Str::snake(Str::pluralStudly($pascal));
+        (new LayerGeneratorRunner(
+            command: $this,
+            stubs: $this->stubs,
+            files: $this->files,
+            name: $name,
+            layerPath: $layerPath,
+            generators: $generators,
+            force: (bool) $this->option('force'),
+        ))->run();
 
-        // Create composer.json first — layer must be discoverable before make commands run
-        $this->stubs->write(
-            'layer/composer',
-            $layerPath.'/composer.json',
-            [
-                '{{ name }}' => $name,
-                '{{ namespace }}' => str_replace('\\', '\\\\', $namespace),
-            ],
-        );
-
-        $withFactory = in_array('factory', $generators);
-        $withModel = in_array('model', $generators);
-
-        // When model is also generated, --factory on osdd:model handles factory creation.
-        // Remove it from the loop so we don't duplicate it.
-        $effectiveGenerators = ($withFactory && $withModel)
-            ? array_diff($generators, ['factory'])
-            : $generators;
-
-        foreach ($effectiveGenerators as $generator) {
-            match ($generator) {
-                'migration' => $this->call('osdd:migration', ['name' => "create_{$pluralSnake}_table", '--create' => $pluralSnake, '--layer' => $name]),
-                'model' => $this->call('osdd:model', array_filter(['name' => $singular, '--layer' => $name, '--factory' => $withFactory ?: null])),
-                'factory' => $this->call('osdd:factory', ['name' => "{$singular}Factory", '--layer' => $name]),
-                'seeder' => $this->call('osdd:seeder', ['name' => "{$pascal}Seeder", '--layer' => $name]),
-                'service-provider' => $this->generateServiceProvider($layerPath.'/src/Providers', $namespace, $package, $layerPath),
-                'test' => $this->call('osdd:test', ['name' => "{$pascal}Test", '--layer' => $name]),
-                'controller' => $this->call('osdd:controller', ['name' => "{$pascal}Controller", '--layer' => $name]),
-                'policy' => $this->call('osdd:policy', array_filter(['name' => "{$pascal}Policy", '--layer' => $name, '--model' => $withModel ? $singular : null])),
-                'routes' => $this->generateRoutes($layerPath),
-                default => null,
-            };
-        }
-
-        $this->registerLayerInComposer($name, $layerPath);
-    }
-
-    private function generateRoutes(string $layerPath): void
-    {
-        foreach (['web', 'api', 'console', 'channels'] as $file) {
-            $this->stubs->write('layer/routes/'.$file, $layerPath.'/routes/'.$file.'.php');
-        }
-    }
-
-    private function generateServiceProvider(string $path, string $namespace, string $package, string $layerPath): void
-    {
-        $serviceProviderClass = $this->toServiceProviderClass($package);
-
-        $this->stubs->write(
-            'layer/service-provider',
-            $path.'/'.$serviceProviderClass.'.php',
-            [
-                '{{ namespace }}' => $namespace,
-                '{{ class }}' => $serviceProviderClass,
-                '{{ seederClass }}' => $this->toSeederClass($package),
-            ],
-        );
-
-        $this->injectProviderInComposerJson(
-            $layerPath.'/composer.json',
-            $namespace.'\\Providers\\'.$serviceProviderClass,
-        );
-    }
-
-    private function toNamespace(string $vendor, string $package): string
-    {
-        return Str::pascal($vendor).'\\'.Str::pascal($package);
-    }
-
-    private function toServiceProviderClass(string $package): string
-    {
-        return Str::pascal($package).'ServiceProvider';
-    }
-
-    private function toSeederClass(string $package): string
-    {
-        return Str::pascal($package).'Seeder';
+        $this->registerLayerInComposer($name->toString(), $layerPath);
     }
 }

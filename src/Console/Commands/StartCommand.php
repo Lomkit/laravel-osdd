@@ -9,6 +9,7 @@ use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
 use Lomkit\Osdd\Console\StubWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputOption;
 
 #[AsCommand(name: 'osdd:start')]
 class StartCommand extends Command
@@ -48,6 +49,15 @@ class StartCommand extends Command
         $this->offerComposerUpdate(self::USERS_LAYER_NAME, self::OSDD_LAYER_NAME);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @return array<int, InputOption>
+     */
+    #[\Override]
+    protected function getOptions(): array
+    {
+        return [$this->composerUpdateOption()];
     }
 
     private function resolveLayerBasePath(): string
