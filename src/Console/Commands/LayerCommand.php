@@ -5,6 +5,7 @@ namespace Lomkit\Osdd\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\ComposerUpdateReason;
 use Lomkit\Osdd\Composer\LayerComposerManifest;
 use Lomkit\Osdd\Console\Concerns\ChoosesLayerGenerators;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
@@ -63,7 +64,7 @@ class LayerCommand extends Command
             (bool) $this->option('force'),
         );
 
-        return $this->offerComposerUpdate($name->toString()) ? self::SUCCESS : self::FAILURE;
+        return $this->offerComposerUpdate(ComposerUpdateReason::LayersAdded, $name->toString()) ? self::SUCCESS : self::FAILURE;
     }
 
     /**
@@ -86,7 +87,7 @@ class LayerCommand extends Command
             new InputOption('generators', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Generators to run, repeated or comma-separated: '.implode(', ', $this->scaffolds->keys())),
             new InputOption('requires', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Layers the new layer requires, repeated or comma-separated (full or package name)'),
             new InputOption('force', null, InputOption::VALUE_NONE, 'Overwrite the files of an existing layer'),
-            $this->composerUpdateOption(),
+            $this->composerUpdateOption(ComposerUpdateReason::LayersAdded),
         ];
     }
 

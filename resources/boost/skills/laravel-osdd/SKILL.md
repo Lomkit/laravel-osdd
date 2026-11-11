@@ -1,6 +1,6 @@
 ---
 name: laravel-osdd
-description: Use when working in a Laravel application that depends on lomkit/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, asks to scaffold a new domain, asks where code belongs, which layer depends on which, or about layer boundaries, dependencies or cycles.
+description: Use when working in a Laravel application that depends on lomkit/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, asks to scaffold or remove a domain, asks where code or a listener belongs, which layer depends on which, or about layer boundaries, dependencies or cycles.
 ---
 
 # Laravel OSDD
@@ -78,6 +78,14 @@ php artisan osdd:layer functional/orders --generators=provider,routes
 
 ```bash
 php artisan osdd:phpunit
+```
+
+- **Layer event discovery** (opt-in): with `osdd.events.discover` set to `true`, the listeners in each layer's `src/Listeners` are registered for the event their `handle*()` or `__invoke()` method takes, and `php artisan event:cache` / `optimize` caches them. Laravel's own discovery only covers `app/Listeners`. Example: `functional/billing/src/Listeners/SendInvoice.php` with `handle(OrderPlaced $event)` runs on `OrderPlaced::dispatch()`.
+
+- **Layer removal**: `osdd:remove` refuses a layer that another layer requires, prints what it will change, asks for confirmation, then removes the root `require` entry, the path repository when no other package uses it, the `phpunit.xml` entries and the directory. Example usage:
+
+```bash
+php artisan osdd:remove functional/legacy --force --composer-update
 ```
 
 - **`LayerServiceProvider` base class**: every layer's own provider extends `Lomkit\Osdd\LayerServiceProvider` (not Laravel's `ServiceProvider`) to gain `loadSeeders()`, `overrideConfigFrom()`, `withRouting()`, `withViews()`, `withTranslations()` and `withComponents()`. Example usage:
@@ -162,7 +170,7 @@ Don't put HTTP plumbing (controllers, requests, routes) in a `technical/` layer 
 
 ## The two service providers
 
-- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `Lomkit\Osdd\Layers\Layers` (the discovered layers, from `bootstrap/cache/osdd.php` when `php artisan optimize` cached them), `Lomkit\Osdd\Seeders\SeederRegistry` and `Lomkit\Osdd\Resources\ResourceNamespaces` (which view, translation and component namespace each layer provider claimed) singletons, an `OSDD` section in `php artisan about`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers. The `technical/osdd` layer has its own `Technical\Osdd\Providers\OsddServiceProvider`, unrelated to the package's: it is a layer provider like any other.
+- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `Lomkit\Osdd\Layers\Layers` (the discovered layers, from `bootstrap/cache/osdd.php` when `php artisan optimize` cached them), `Lomkit\Osdd\Seeders\SeederRegistry` and `Lomkit\Osdd\Resources\ResourceNamespaces` (which view, translation and component namespace each layer provider claimed) singletons, an `OSDD` section in `php artisan about`, `Lomkit\Osdd\Events\LayerEventServiceProvider` when `osdd.events.discover` is on (see "Layer event discovery"), and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers. The `technical/osdd` layer has its own `Technical\Osdd\Providers\OsddServiceProvider`, unrelated to the package's: it is a layer provider like any other.
 
 - **`Lomkit\Osdd\LayerServiceProvider`** — the abstract base class **every layer's own provider must extend** (not Laravel's `ServiceProvider`). It exposes:
   - `loadSeeders(array $seeders, int $priority = 0)` — registers seeder classes with the global registry. Lower priority runs first. This is the **only** way to make a seeder runnable by `LayersSeeder` and `osdd:seed`.
@@ -398,7 +406,26 @@ Walks every discovered layer and:
 - for each one with a `tests/` directory, adds a `<testsuite name="vendor/package"><directory>relative/path/to/tests</directory></testsuite>` entry to the root `phpunit.xml`;
 - adds its source directory (`functional/orders/src`) to `<source><include>`, so code coverage covers the layers.
 
-It also excludes `<path>/*/database/migrations` under `<source><exclude>` for each configured layer path (`functional/*/database/migrations`, `technical/*/database/migrations`), so layer migrations don't count against code coverage. Everything is idempotent — existing entries are skipped. `--prune` also removes the test suites named after a layer that no longer exists and the `<source><include>` directories that are gone (such as `app` after `osdd:start`). Run after creating or deleting a layer.
+It also excludes `<path>/*/database/migrations` under `<source><exclude>` for each configured layer path (`functional/*/database/migrations`, `technical/*/database/migrations`), so layer migrations don't count against code coverage. Everything is idempotent — existing entries are skipped. `--prune` also removes the test suites named after a layer that no longer exists and the `<source><include>` directories that are gone (such as `app` after `osdd:start`). Run after creating a layer, or after deleting one by hand (`osdd:remove` already drops the entries of the layer it removes).
+
+### Remove a layer
+
+```bash
+php artisan osdd:remove functional/legacy                    # prints the changes, then asks (default: no)
+php artisan osdd:remove legacy --force --composer-update     # scripts: no question, then composer update
+php artisan osdd:remove functional/legacy --keep-files --force
+```
+
+The rules, in order:
+
+1. **Refusal.** When another layer lists it in its `require` or `require-dev`, the command exits with 1 and changes nothing: `Layer [functional/legacy] is required by functional/orders: remove it from their require or require-dev first.` Remove the dependency (and the code that uses the layer, `osdd:check` finds it) first.
+2. **Summary.** It prints every change as a dry run: the root `composer.json` `require`/`require-dev` entry, each path repository covering the layer (`REMOVE`, or `KEEP` when it still covers another package directory, layer or not), the `phpunit.xml` test suite and coverage source (the ones `osdd:phpunit` writes), the directory (`DELETE`, or `KEEP` with `--keep-files`), and the database tables of its migrations (`KEEP`).
+3. **Confirmation.** It asks `Remove the layer [functional/legacy]?` (default no). Without a terminal or with `-n` it removes nothing and exits with 1 unless `--force` is given. Pass `--force` only when the user asked for the removal.
+4. **Removal.** It writes the root `composer.json` and `phpunit.xml`, deletes the directory unless `--keep-files`, and refreshes the layer cache.
+5. **Migrations.** When the layer has migrations, it warns that their tables stay in the database: dropping them is a migration of another layer, if the user wants it.
+6. **Composer.** It offers `composer update functional/legacy` (`--composer-update` / `--no-composer-update`; skipped without a terminal). Until Composer runs, Laravel's package manifest still lists the deleted layer's provider and every `artisan` command fails with a class-not-found error, so run the update right away (`composer update` itself works).
+
+With `--keep-files`, the directory stays in its layer folder, so it is still discovered as a layer (`osdd:list` shows it as not required): move it out of `osdd.layers.paths` or delete it later.
 
 ### Cache the layers
 
@@ -407,7 +434,7 @@ php artisan osdd:cache   # also run by php artisan optimize
 php artisan osdd:clear   # also run by php artisan optimize:clear
 ```
 
-`osdd:cache` writes the discovered layers to `bootstrap/cache/osdd.php`, which every process then reads instead of scanning the layer folders. It fails and writes nothing while a layer `composer.json` is invalid. Development rarely needs it: `osdd:layer`, `osdd:start`, `osdd:provider` and Composer refresh an existing cache, and a layer copied by hand needs `php artisan osdd:clear` to show up.
+`osdd:cache` writes the discovered layers to `bootstrap/cache/osdd.php`, which every process then reads instead of scanning the layer folders. It fails and writes nothing while a layer `composer.json` is invalid. Development rarely needs it: `osdd:layer`, `osdd:start`, `osdd:provider`, `osdd:remove` and Composer refresh an existing cache, and a layer copied by hand needs `php artisan osdd:clear` to show up.
 
 ### Check layer boundaries
 
@@ -469,6 +496,10 @@ return [
     'boundaries' => [
         'ignore' => [],
     ],
+
+    'events' => [
+        'discover' => false,
+    ],
 ];
 ```
 
@@ -487,7 +518,16 @@ A class prefix matches on namespace boundaries: `Functional\Billing` ignores `Fu
 
 The layers are discovered once per process and resolved from the container: `app(\Lomkit\Osdd\Layers\Layers::class)` (`names()`, `find('orders')`, `owning($class)`; each `Layer` has `name`, `directory`, `rootNamespace`, `sourceDirectory`, `providers` and `requires`). Discovery reads `config('osdd.layers.paths')`, scans each path **recursively**, and treats any directory containing a `composer.json` with `"type": "layer"` as a layer. Nested layers (e.g. `functional/billing/invoices/`) are supported when the directories above them have no `composer.json`; scanning never descends into a directory that has one (a layer or any other package).
 
-`php artisan optimize` runs `osdd:cache`, which writes the discovered layers to `bootstrap/cache/osdd.php`; `optimize:clear` runs `osdd:clear`, which deletes it. With the cache, a request reads that file instead of scanning the layer folders. `osdd:layer`, `osdd:start`, `osdd:provider` and Composer (through `package:discover`) rewrite an existing cache, and a cache built for other `osdd.layers.paths` is ignored. A layer added by hand without running Composer stays invisible until `php artisan osdd:cache` (or `osdd:clear`), as with `event:cache`.
+`php artisan optimize` runs `osdd:cache`, which writes the discovered layers to `bootstrap/cache/osdd.php`; `optimize:clear` runs `osdd:clear`, which deletes it. With the cache, a request reads that file instead of scanning the layer folders. `osdd:layer`, `osdd:start`, `osdd:provider`, `osdd:remove` and Composer (through `package:discover`) rewrite an existing cache, and a cache built for other `osdd.layers.paths` is ignored. A layer added by hand without running Composer stays invisible until `php artisan osdd:cache` (or `osdd:clear`), as with `event:cache`.
+
+### Layer event discovery (`osdd.events.discover`)
+
+Off by default. Set `'events' => ['discover' => true]` in `technical/osdd/config/osdd.php` to turn it on. Laravel's own discovery only covers `app/Listeners`: it guesses class names from the path under `base_path()` and silently skips the files of a layer. With the key on:
+
+- every class in a layer's `{source directory}/Listeners` (sub-folders included; `src/Listeners` for a layer mapped to `src/`) is named through the layer's `autoload.psr-4` (`Functional\Billing\Listeners\SendInvoice`), and each public `handle*()` or `__invoke()` method listens to the event class of its first parameter, with Laravel's own rules (`ShouldBeDiscovered`, union types). A file that does not declare the class its path names is skipped;
+- the listeners are registered once the application has booted, after every provider's `boot()`;
+- **a listener already registered for the same event and method is not registered again**: `Event::listen(OrderPlaced::class, SendInvoice::class)`, `SendInvoice::class.'@handle'` or `[SendInvoice::class, 'handle']` in a provider's `boot()` (or in an app `$listen`) runs once. A listener registered later (in a `booted()` callback or at runtime) is not seen and runs twice: remove the hand-written registration when you turn discovery on;
+- `php artisan event:cache` (run by `optimize`) stores them under `Lomkit\Osdd\Events\LayerEventServiceProvider`, so production never scans the folders. As with `app/Listeners`, a listener added after `event:cache` stays unregistered until `event:cache` runs again, and `event:clear` goes back to scanning. Check with `php artisan event:list`.
 
 To add a new category (e.g. `support/`), append it to `osdd.layers.paths` from inside the `technical/osdd` layer's `Technical\Osdd\Providers\OsddServiceProvider::register()` using `$this->overrideConfigFrom(...)`. Don't edit the package's own `config/osdd.php` directly.
 
@@ -659,6 +699,7 @@ Before adding code, locate the right layer. The `app/` and root `database/` dire
 3. **Find where a class lives.** Search for the class name in the relevant layer's `src/`. Layers don't share code by accident — if a class isn't there, it's in another layer, in the package itself, or in `vendor/`.
 4. **Find a route.** Routes are layer-local. Check each layer's `routes/` directory (`web.php`, `api.php`, `console.php`, `channels.php`) — they're mounted by the `$this->withRouting(...)` call in the layer's `LayerServiceProvider::boot()`. Routes only exist if the layer ships the file and the provider's `withRouting()` references it.
 5. **Find a config key.** Layer-defined config lives in `{layer}/config/{name}.php` and is loaded into `config('{name}')` via `overrideConfigFrom`. Look at the layer's `LayerServiceProvider` (`osdd:config` injects the call into `register()`) to see what keys it overrides.
+6. **Find who handles an event.** Run `php artisan event:list --event=OrderPlaced`. With `osdd.events.discover` on, look in each layer's `src/Listeners`; otherwise the listeners are registered with `Event::listen()` in the layer providers' `boot()`.
 
 When a user asks "where should I add X?", the answer is always "in the layer responsible for X" — never `app/`. If no layer matches, the answer is "create a new layer with `osdd:layer`."
 
@@ -841,6 +882,8 @@ If you write a test by hand, match the layer's namespace — a test class in `Te
 | Cache, session, queue or notifications table | `osdd:cache-table` / `osdd:session-table` / `osdd:queue-table` / `osdd:queue-failed-table` / `osdd:queue-batches-table` / `osdd:notifications-table --layer=…` |
 | Layer-scoped config file | `osdd:config name --layer=…` (auto-injects override) |
 | Register layer test suite in phpunit.xml | `osdd:phpunit` |
+| Remove a layer no other layer requires | `osdd:remove vendor/package [--keep-files] [--force] [--composer-update]` |
+| Listener for an event | `osdd:listener Name --event=OrderPlaced --layer=…` (registered automatically when `osdd.events.discover` is on, else `Event::listen()` in the layer provider) |
 | Arbitrary class | `osdd:class Path/To/Class --layer=…` |
 
 ## Pre-flight checklist before generating code
@@ -867,6 +910,10 @@ Before running any `osdd:*` make command, confirm:
 - **Using a class of a layer the current layer does not require**: it works at runtime (one shared autoloader) but breaks the layer contract, and `osdd:check` fails in CI. Add the layer to `require` (or `require-dev` for tests only) when you add the reference.
 - **Forgetting to run `osdd:phpunit`** after creating a layer: new tests are invisible to `vendor/bin/phpunit` until the suite is added.
 - **Composer not seeing a new layer**: after `osdd:layer`, run `composer update vendor/package` (or pass `--composer-update`, or accept the prompt). Without it, the layer's classes aren't installed in `vendor/composer/autoload_psr4.php`.
+- **Deleting a layer directory by hand**: the root `composer.json`, `phpunit.xml` and the layer cache still name it, and the layers that require it break. Use `osdd:remove`, which checks the dependents first.
+- **Skipping `composer update` after `osdd:remove`**: Composer still lists the removed layer, so Laravel tries to register its deleted provider and every `artisan` command fails with a class-not-found error until `composer update vendor/package` runs. With cached config, routes or events (`php artisan optimize`), run `optimize` again too: those caches still name the layer's classes.
+- **A listener registered by hand and discovered**: with `osdd.events.discover` on, a listener already registered in a provider's `boot()` for the same event and method is skipped, but one registered later (a `booted()` callback, at runtime) runs twice. Drop the hand-written `Event::listen()` when you turn discovery on.
+- **A new listener that never runs in production**: `event:cache` (or `optimize`) froze the listener list; run it again after adding a listener, as with `app/Listeners`.
 
 ## Quick reference: what NEVER goes where
 
@@ -884,5 +931,6 @@ Before running any `osdd:*` make command, confirm:
 | A Blade component | `app/View/Components/` | `osdd:component Name --layer=…` (wires `withViews()` and `withComponents()`) |
 | A translation file | `lang/` (root) | `{layer}/lang/` + `withTranslations()` (in generated providers) |
 | An Artisan command | `app/Console/Commands/` | `osdd:command Name --layer=…` (wires `$this->commands([...])`) |
+| An event listener | `app/Listeners/` | `osdd:listener Name --layer=…` (in `src/Listeners`, discovered when `osdd.events.discover` is on) |
 | A cache / session / queue / notifications table | `make:*-table` (writes root `database/migrations/`) | `osdd:*-table --layer=…` |
 | A policy | `app/Policies/` | `osdd:policy … --layer=…` + `Gate::policy()` in the provider |

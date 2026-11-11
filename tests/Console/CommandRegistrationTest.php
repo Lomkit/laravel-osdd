@@ -56,6 +56,7 @@ class CommandRegistrationTest extends TestCase
         'osdd:layer',
         'osdd:list',
         'osdd:phpunit',
+        'osdd:remove',
         'osdd:seed',
         'osdd:start',
     ];

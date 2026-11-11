@@ -42,15 +42,20 @@ final readonly class PathRepository
 
     public function covers(string $directory): bool
     {
-        $wanted = Path::normalize((string) realpath($directory));
+        return in_array(Path::normalize((string) realpath($directory)), $this->coveredDirectories(), true);
+    }
 
-        foreach (glob($this->pattern, GLOB_ONLYDIR) ?: [] as $covered) {
-            if (Path::normalize((string) realpath($covered)) === $wanted) {
-                return true;
-            }
-        }
-
-        return false;
+    /**
+     * The existing directories the url matches, as normalized real paths.
+     *
+     * @return list<string>
+     */
+    public function coveredDirectories(): array
+    {
+        return array_map(
+            fn (string $covered): string => Path::normalize((string) realpath($covered)),
+            glob($this->pattern, GLOB_ONLYDIR) ?: [],
+        );
     }
 
     public function toObject(): stdClass

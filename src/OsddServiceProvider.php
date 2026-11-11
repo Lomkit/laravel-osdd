@@ -54,9 +54,11 @@ use Lomkit\Osdd\Console\Commands\Make\TestMakeCommand;
 use Lomkit\Osdd\Console\Commands\Make\TraitMakeCommand;
 use Lomkit\Osdd\Console\Commands\Make\ViewMakeCommand;
 use Lomkit\Osdd\Console\Commands\PhpunitCommand;
+use Lomkit\Osdd\Console\Commands\RemoveCommand;
 use Lomkit\Osdd\Console\Commands\SeedCommand;
 use Lomkit\Osdd\Console\Commands\StartCommand;
 use Lomkit\Osdd\Console\OsddAboutSection;
+use Lomkit\Osdd\Events\LayerEventServiceProvider;
 use Lomkit\Osdd\IdeHelper\IdeHelperModelLocations;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerCache;
@@ -75,6 +77,8 @@ class OsddServiceProvider extends ServiceProvider
     private const string LAYER_CACHE_FILE = 'cache/osdd.php';
 
     private const string COMPOSER_BINARY_VARIABLE = 'COMPOSER_BINARY';
+
+    private const string EVENT_DISCOVERY = 'osdd.events.discover';
 
     public function boot(): void
     {
@@ -103,6 +107,12 @@ class OsddServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/osdd.php', 'osdd');
+
+        $this->app->booting(function (Application $app): void {
+            if ($app->make('config')->boolean(self::EVENT_DISCOVERY, false)) {
+                $app->register(LayerEventServiceProvider::class);
+            }
+        });
 
         $this->app->singleton(LayerBuckets::class, fn (Application $app): LayerBuckets => LayerBuckets::fromConfig($app->make('config')));
         $this->app->singleton(LayerCache::class, fn (Application $app): LayerCache => new LayerCache(
@@ -133,6 +143,7 @@ class OsddServiceProvider extends ServiceProvider
     {
         $this->commands([
             LayerCommand::class,
+            RemoveCommand::class,
             CacheCommand::class,
             ClearCommand::class,
             ListCommand::class,

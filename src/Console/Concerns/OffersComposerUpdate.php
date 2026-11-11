@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Concerns;
 
 use Lomkit\Osdd\Composer\ComposerUpdate;
+use Lomkit\Osdd\Composer\ComposerUpdateReason;
 use Symfony\Component\Console\Input\InputOption;
 
 use function Laravel\Prompts\confirm;
@@ -11,23 +12,20 @@ trait OffersComposerUpdate
 {
     use DetectsInteractiveInput;
 
-    protected function composerUpdateOption(): InputOption
+    protected function composerUpdateOption(ComposerUpdateReason $reason): InputOption
     {
-        return new InputOption(
-            'composer-update',
-            null,
-            InputOption::VALUE_NEGATABLE,
-            'Run composer update for the new layers (asked when interactive, skipped otherwise)',
-        );
+        return new InputOption('composer-update', null, InputOption::VALUE_NEGATABLE, $reason->optionDescription());
     }
 
     /**
      * Whether the layers are left in a consistent state: false only when the composer update that ran failed.
      */
-    protected function offerComposerUpdate(string ...$packages): bool
+    protected function offerComposerUpdate(ComposerUpdateReason $reason, string ...$packages): bool
     {
+        $command = 'composer update '.implode(' ', $packages);
+
         if (! $this->wantsComposerUpdate()) {
-            $this->components->info('Run <options=bold>composer update '.implode(' ', $packages).'</> to install the new layers.');
+            $this->components->info($reason->skippedHint($command));
 
             return true;
         }
@@ -35,7 +33,7 @@ trait OffersComposerUpdate
         $this->components->info('Running composer update...');
 
         if (! $this->laravel->make(ComposerUpdate::class)->update(array_values($packages), $this->output)) {
-            $this->components->error('composer update failed: run composer update '.implode(' ', $packages).' after fixing the error above.');
+            $this->components->error("composer update failed: run {$command} after fixing the error above.");
 
             return false;
         }
