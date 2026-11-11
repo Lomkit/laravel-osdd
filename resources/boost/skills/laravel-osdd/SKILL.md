@@ -27,7 +27,7 @@ php artisan osdd:start --force
 - **Layer creation**: scaffold a new self-contained layer (Composer package with its own `src/`, `database/`, `tests/`, and service provider) and register it in the root `composer.json` via a wildcard path repository. The vendor of the name picks the layer path (`functional/orders` goes to `osdd.layers.paths.functional`). Example usage:
 
 ```bash
-php artisan osdd:layer functional/orders --generators=migration,model,factory,service-provider,test --composer-update
+php artisan osdd:layer functional/orders --generators=migration,model,factory,provider,test --composer-update
 ```
 
 - **`osdd:*` make mirrors**: every Laravel `make:*` generator has an `osdd:*` equivalent that targets a layer via `--layer=vendor/package`, or `--layer=package` when no other layer has that package name (covers `model`, `controller`, `migration`, `factory`, `seeder`, `policy`, `request`, `resource`, `test`, `config`, `view`, `class`, and more). Example usage:
@@ -71,7 +71,7 @@ php artisan osdd:config orders --layer=functional/orders
 - **Layer-scoped routing**: a generated layer provider calls `$this->withRouting(...)`, which mounts `routes/web.php` (in the `web` group), `routes/api.php` (in the `api` group, prefixed `api`), `routes/console.php`, and `routes/channels.php` — each only if the file exists. Once routes are cached, the web and api routes come from the route cache; the console and channels files are still loaded. Scaffold the route files with the `routes` generator when you create the layer. Example usage:
 
 ```bash
-php artisan osdd:layer functional/orders --generators=service-provider,routes
+php artisan osdd:layer functional/orders --generators=provider,routes
 ```
 
 - **PHPUnit suite sync**: `osdd:phpunit` walks every discovered layer, adds a `<testsuite>` entry for each one to the root `phpunit.xml` and adds its source directory to `<source><include>`. Idempotent; `--prune` removes the suites of deleted layers. Example usage:
@@ -277,11 +277,11 @@ php artisan osdd:layer
 
 # Non-interactive: the vendor picks the layer path (functional/… → osdd.layers.paths.functional)
 php artisan osdd:layer functional/orders \
-  --generators=migration,model,factory,service-provider,test \
+  --generators=migration,model,factory,provider,test \
   --composer-update
 ```
 
-Available generators: `migration`, `model`, `factory`, `seeder`, `service-provider`, `test`, `controller`, `policy`, `routes`. Pass them comma-separated (`--generators=model,policy`) or repeat the option (`--generators=model --generators=policy`); an unknown name fails the command with the list of valid ones. Defaults, also used without a terminal when `--generators` is omitted: `migration, model, factory, service-provider, test` (note: `routes` is **not** a default — add it explicitly when the layer needs route files).
+Available generators: `migration`, `model`, `factory`, `seeder`, `provider`, `test`, `controller`, `policy`, `routes`. Pass them comma-separated (`--generators=model,policy`) or repeat the option (`--generators=model --generators=policy`); an unknown name fails the command with the list of valid ones. Defaults, also used without a terminal when `--generators` is omitted: `migration, model, factory, provider, test` (note: `routes` is **not** a default — add it explicitly when the layer needs route files).
 
 Options:
 
@@ -293,8 +293,8 @@ Options:
 Behind the scenes `osdd:layer`:
 
 1. Writes the layer's `composer.json` first (so make commands can discover it).
-2. Generates the service provider first, from `stubs/layer/service-provider.stub`, and injects its FQCN into `extra.laravel.providers` in the layer's `composer.json`.
-3. Calls each other chosen generator (e.g. `osdd:migration --create=orders --layer=functional/orders`); `seeder` registers the seeder in the provider.
+2. Runs the `provider` generator before the generators that register themselves in the provider (`migration`, `seeder`): it writes `src/Providers/{Package}ServiceProvider.php` and adds its FQCN to `extra.laravel.providers` in the layer's `composer.json`.
+3. Calls each other chosen generator (e.g. `osdd:migration --create=orders --layer=functional/orders`) in the order given; `seeder` registers the seeder in the provider, and `policy` runs after `model` so it can take `--model`.
 4. When both `model` and `factory` are selected, it passes `--factory` to `osdd:model` instead of running `osdd:factory` twice.
 5. Registers a path repository in the root `composer.json` using a **wildcard URL** (`./functional/*`, or a `../` path for a layer path outside the project) and adds `"vendor/package": "*"` under `require` (sorted when `config.sort-packages` is on). Empty objects such as `"require-dev": {}` stay objects.
 6. Runs `composer update vendor/package` when asked (see `--composer-update`).
@@ -710,7 +710,7 @@ php artisan migrate
 ### Add a new domain to an existing OSDD project
 
 ```bash
-php artisan osdd:layer functional/billing --generators=migration,model,factory,service-provider,seeder,test
+php artisan osdd:layer functional/billing --generators=migration,model,factory,provider,seeder,test
 # Edit functional/billing/database/seeders/BillingSeeder.php as needed
 php artisan osdd:phpunit          # add the layer's testsuite to phpunit.xml
 php artisan osdd:seed --fresh     # seed the new layer

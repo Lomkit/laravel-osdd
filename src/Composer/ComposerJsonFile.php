@@ -33,6 +33,11 @@ final class ComposerJsonFile
         return new self($files, $path, $contents, $indent);
     }
 
+    public static function create(Filesystem $files, string $path): self
+    {
+        return new self($files, $path, new stdClass, self::DEFAULT_INDENT);
+    }
+
     public function save(): void
     {
         $json = json_encode($this->contents, self::ENCODING);
@@ -88,16 +93,10 @@ final class ComposerJsonFile
     }
 
     /**
-     * Add the keys of $json that this file does not have yet, at every depth; existing values win.
+     * Add the keys of $defaults that this file does not have yet, at every depth; existing values win.
      */
-    public function addMissing(string $json): void
+    public function addMissing(stdClass $defaults): void
     {
-        $defaults = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
-
-        if (! $defaults instanceof stdClass) {
-            throw new InvalidComposerJsonException($this->path, 'root');
-        }
-
         MissingKeys::copy($defaults, $this->contents);
     }
 

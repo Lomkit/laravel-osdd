@@ -5,6 +5,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Lomkit\Osdd\Layers\LayerFolder;
+use Lomkit\Osdd\Stubs\Stub;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:model')]
@@ -16,7 +17,7 @@ final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCom
     protected function getStub(): string
     {
         if ($this->option('factory')) {
-            return __DIR__.'/../../../Stubs/make/model.factory.stub';
+            return Stub::ModelWithFactory->path();
         }
 
         return parent::getStub();

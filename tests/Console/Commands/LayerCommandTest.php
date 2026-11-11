@@ -149,7 +149,7 @@ class LayerCommandTest extends TestCase
         $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
 
         foreach (['functional/orders', 'technical/orders'] as $name) {
-            $this->artisan('osdd:layer', ['name' => $name, '--generators' => ['service-provider'], '--no-composer-update' => true])->assertExitCode(0);
+            $this->artisan('osdd:layer', ['name' => $name, '--generators' => ['provider'], '--no-composer-update' => true])->assertExitCode(0);
         }
 
         $this->assertFileContains([
@@ -341,7 +341,7 @@ class LayerCommandTest extends TestCase
             }
             JSON);
 
-        $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--generators' => ['service-provider']])
+        $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--generators' => ['provider']])
             ->expectsConfirmation('Run composer update now?', 'no')
             ->assertExitCode(0);
 
@@ -358,7 +358,7 @@ class LayerCommandTest extends TestCase
         $this->app['config']->set('osdd.layers.paths.functional', $outside);
 
         try {
-            $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--target-path' => $outside, '--generators' => ['service-provider']])
+            $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--target-path' => $outside, '--generators' => ['provider']])
                 ->expectsConfirmation('Run composer update now?', 'no')
                 ->assertExitCode(0);
 
@@ -426,7 +426,7 @@ class LayerCommandTest extends TestCase
             'model',
             'factory',
             'seeder',
-            'service-provider',
+            'provider',
             'test',
             'controller',
             'policy',
@@ -436,6 +436,6 @@ class LayerCommandTest extends TestCase
 
     private function defaultGenerators(): array
     {
-        return ['migration', 'model', 'factory', 'service-provider', 'test'];
+        return ['migration', 'model', 'factory', 'provider', 'test'];
     }
 }

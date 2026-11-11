@@ -3,34 +3,35 @@
 namespace Lomkit\Osdd\Console\Concerns;
 
 use Lomkit\Osdd\Console\Exceptions\UnknownLayerGeneratorException;
-use Lomkit\Osdd\Scaffolding\LayerGenerator;
+use Lomkit\Osdd\Scaffolding\LayerScaffold;
+use Lomkit\Osdd\Scaffolding\LayerScaffolds;
 
 use function Laravel\Prompts\multiselect;
 
 trait ChoosesLayerGenerators
 {
     /**
-     * @return list<LayerGenerator>
+     * @return list<LayerScaffold>
      *
      * @throws UnknownLayerGeneratorException
      */
-    private function generators(): array
+    private function chosenScaffolds(LayerScaffolds $scaffolds): array
     {
         /** @var list<string> $option */
         $option = $this->option('generators');
 
         if ($option !== []) {
-            return LayerGenerator::parse($option);
+            return $scaffolds->parse($option);
         }
 
         if (! $this->canPrompt()) {
-            return LayerGenerator::defaults();
+            return $scaffolds->parse($scaffolds->defaultKeys());
         }
 
-        return LayerGenerator::parse(multiselect(
+        return $scaffolds->parse(multiselect(
             label: 'Which generators should be run?',
-            options: LayerGenerator::names(),
-            default: array_map(fn (LayerGenerator $generator): string => $generator->value, LayerGenerator::defaults()),
+            options: $scaffolds->keys(),
+            default: $scaffolds->defaultKeys(),
         ));
     }
 }

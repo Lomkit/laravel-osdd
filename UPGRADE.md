@@ -140,7 +140,7 @@ The `osdd:*` generator classes in `Lomkit\Osdd\Console\Commands\Make` are now `f
 
 #### Other internal classes
 
-These classes are internal, but code that used them must follow the move: `Lomkit\Osdd\Support\Path` is now `Lomkit\Osdd\Filesystem\Path`; `Lomkit\Osdd\Console\StubWriter` is now `Lomkit\Osdd\Stubs\StubWriter`; `LayerGenerator`, `LayerGeneratorRunner` and `LayerComposerJson` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Scaffolding`; `MissingLayerNameException`, `MissingLayerOptionException`, `UnknownLayerBucketException` and `UnknownLayerGeneratorException` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Console\Exceptions`.
+These classes are internal, but code that used them must follow the move: `Lomkit\Osdd\Support\Path` is now `Lomkit\Osdd\Filesystem\Path`; `Lomkit\Osdd\Console\StubWriter` is now `Lomkit\Osdd\Stubs\StubWriter`, and takes a `Lomkit\Osdd\Stubs\Stub` case instead of a stub path; `LayerComposerJson` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Scaffolding`; `LayerGenerator`, `LayerGeneratorRunner` and the `RegistersLayerInComposer` trait are removed, as `osdd:layer` and `osdd:start` now create layers through `Lomkit\Osdd\Scaffolding\LayerScaffolder`, with one `Lomkit\Osdd\Scaffolding\LayerScaffold` class per generator; `MissingLayerNameException`, `MissingLayerOptionException`, `UnknownLayerBucketException` and `UnknownLayerGeneratorException` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Console\Exceptions`.
 
 ### Changed behaviour
 
@@ -180,9 +180,13 @@ Without a terminal, the command also stops asking for the rest:
 
 - the bucket comes from the vendor of the name when it matches a key of `osdd.layers.paths` (`functional/orders` goes to the `functional` path). Pass `--target-path` for any other vendor;
 - the name argument is required;
-- without `--generators`, the default generators run (`migration`, `model`, `factory`, `service-provider`, `test`).
+- without `--generators`, the default generators run (`migration`, `model`, `factory`, `provider`, `test`).
 
 `--generators` accepts comma-separated lists (`--generators=model,policy`) as well as repeated options, and an unknown generator name now fails the command with the list of valid names. In 2.x, `--generators=model,policy` matched no generator and created a layer with only its `composer.json`.
+
+#### The `service-provider` generator of `osdd:layer` is now `provider`
+
+The generator that writes the layer provider is now named `provider`, like the `osdd:provider` command. Replace `service-provider` with `provider` in your scripts: `php artisan osdd:layer functional/orders --generators=migration,model,factory,provider,test`. `--generators=service-provider` now fails with the list of valid generators.
 
 #### `osdd:layer` refuses an existing layer
 
