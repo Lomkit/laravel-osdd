@@ -7,4 +7,9 @@ return [
             'technical' => base_path('technical'),
         ],
     ],
+
+    'tenancy' => [
+        'migrations' => 'database/migrations/tenant',
+        'expose_migration_paths_to' => null,
+    ],
 ];

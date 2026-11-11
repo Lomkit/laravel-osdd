@@ -40,6 +40,7 @@ use Lomkit\Osdd\Console\Commands\SeedCommand;
 use Lomkit\Osdd\Console\Commands\StartCommand;
 use Lomkit\Osdd\Console\OsddAboutSection;
 use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Tenancy\ExposeTenantMigrationPaths;
 use Lomkit\Osdd\Tenancy\TenantMigrationPaths;
 use Lomkit\Osdd\Tenancy\TenantSeederRegistry;
 use Symfony\Component\Finder\Finder;
@@ -54,6 +55,8 @@ class OsddServiceProvider extends ServiceProvider
         }
 
         $this->app->booted(function () {
+            $this->app->make(ExposeTenantMigrationPaths::class)();
+
             /** @var list<string> $argv */
             $argv = $_SERVER['argv'] ?? [];
 
