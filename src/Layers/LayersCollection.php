@@ -28,6 +28,52 @@ class LayersCollection extends Collection
     }
 
     /**
+     * @throws LayerNotFoundException
+     * @throws AmbiguousLayerNameException
+     */
+    public function findByName(string $name): Layer
+    {
+        $layer = $this->first(fn (Layer $layer): bool => $layer->manifest->name() === $name);
+
+        if ($layer !== null) {
+            return $layer;
+        }
+
+        $packageMatches = $this->filter(fn (Layer $layer): bool => $layer->manifest->package() === $name);
+
+        return match ($packageMatches->count()) {
+            0 => throw new LayerNotFoundException($name, $this->names(), $this->closestName($name)),
+            1 => $packageMatches->sole(),
+            default => throw new AmbiguousLayerNameException($name, $packageMatches->names()),
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function names(): array
+    {
+        return array_values($this->toBase()->map(fn (Layer $layer): string => $layer->manifest->name())->sort()->all());
+    }
+
+    private function closestName(string $name): ?string
+    {
+        $maximumDistance = max(1, intdiv(strlen($name), 3));
+        $closest = null;
+
+        foreach ($this as $layer) {
+            $distance = min(levenshtein($name, $layer->manifest->name()), levenshtein($name, $layer->manifest->package()));
+
+            if ($distance <= $maximumDistance) {
+                $closest = $layer->manifest->name();
+                $maximumDistance = $distance - 1;
+            }
+        }
+
+        return $closest;
+    }
+
+    /**
      * @return list<Layer>
      */
     private static function scanPath(string $path): array
