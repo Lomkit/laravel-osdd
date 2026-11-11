@@ -336,7 +336,7 @@ To add a new category (e.g. `support/`), append it to `osdd.layers.paths` from i
 
 ## Idiomatic file content
 
-The package targets Laravel 12+ and uses modern attribute-based metadata on models. When writing or editing layer files by hand, match this style — the generators do.
+The package targets Laravel 13 and uses modern attribute-based metadata on models. When writing or editing layer files by hand, match this style — the generators do.
 
 ### Model (with factory)
 

@@ -13,14 +13,14 @@
     "require": {
         "php": "^8.3",
         "ext-dom": "*",
-        "laravel/framework": "^12.0 || ^13.0"
+        "laravel/framework": "^13.0"
     },
     "require-dev": {
         "larastan/larastan": "^3.13",
         "laravel/pint": "^1.32",
-        "orchestra/testbench": "^10.0 || ^11.0",
+        "orchestra/testbench": "^11.0",
         "phpstan/phpstan-deprecation-rules": "^2.0",
-        "phpunit/phpunit": "^11.5 || ^12.0 || ^13.0",
+        "phpunit/phpunit": "^12.5 || ^13.0",
         "tomasvotruba/type-coverage": "^2.5"
     },
     "conflict": {

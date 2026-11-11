@@ -27,7 +27,7 @@ The full guide lives on the [documentation site](https://laravel-osdd.lomkit.com
 
 ## Requirements
 
-PHP 8.3+ and Laravel 12 or 13.
+PHP 8.3+ and Laravel 13.
 
 ## From app/ to layers
 

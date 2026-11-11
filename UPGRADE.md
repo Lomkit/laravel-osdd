@@ -8,7 +8,8 @@ Version 3.0 moves the package from Xefi to Lomkit. The package is now `lomkit/la
 
 ### Requirements
 
-Unchanged: PHP 8.3 or later, Laravel 12 or 13.
+- PHP 8.3 or later.
+- Laravel 13 or later. Applications on Laravel 12 stay on 2.x, or update Laravel first: `composer update laravel/framework`.
 
 ### Package name
 
