@@ -2,13 +2,16 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputOption;
 
 #[AsCommand(name: 'osdd:model')]
 class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
 {
-    use ChoosesOsddLayer;
+    use ChoosesOsddLayer {
+        configureUsingFluentDefinition as configureLayerDefinition;
+    }
+    use CreatesModelCompanions;
 
     /**
      * The console command name.
@@ -98,6 +101,14 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
     }
 
     #[\Override]
+    protected function configureUsingFluentDefinition(): void
+    {
+        $this->configureLayerDefinition();
+
+        $this->getDefinition()->addOption(new InputOption('tenant', null, InputOption::VALUE_NONE, 'Create the migration and the seeder for the tenant databases'));
+    }
+
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
@@ -113,86 +124,5 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
     protected function getPath($name): string
     {
         return $this->layerSourcePath($name);
-    }
-
-    #[\Override]
-    protected function createFactory(): void
-    {
-        $factory = Str::studly($this->argument('name'));
-
-        $this->call('osdd:factory', [
-            'name' => "{$factory}Factory",
-            '--model' => $this->qualifyClass($this->getNameInput()),
-            '--layer' => $this->resolveLayer()->manifest->name(),
-        ]);
-    }
-
-    #[\Override]
-    protected function createController(): void
-    {
-        $controller = Str::studly($this->argument('name'));
-
-        $this->call('osdd:controller', array_filter([
-            'name' => "{$controller}Controller",
-            '--model' => $this->qualifyClass($this->getNameInput()),
-            '--resource' => true,
-            '--requests' => $this->option('requests'),
-            '--layer' => $this->resolveLayer()->manifest->name(),
-        ]));
-    }
-
-    #[\Override]
-    protected function createFormRequests(): void
-    {
-        $request = Str::studly($this->argument('name'));
-
-        $this->call('osdd:request', [
-            'name' => "Store{$request}Request",
-            '--layer' => $this->resolveLayer()->manifest->name(),
-        ]);
-
-        $this->call('osdd:request', [
-            'name' => "Update{$request}Request",
-            '--layer' => $this->resolveLayer()->manifest->name(),
-        ]);
-    }
-
-    #[\Override]
-    protected function createPolicy(): void
-    {
-        $policy = Str::studly($this->argument('name'));
-
-        $this->call('osdd:policy', [
-            'name' => "{$policy}Policy",
-            '--model' => $this->qualifyClass($this->getNameInput()),
-            '--layer' => $this->resolveLayer()->manifest->name(),
-        ]);
-    }
-
-    #[\Override]
-    protected function createSeeder(): void
-    {
-        $seeder = Str::studly($this->argument('name'));
-
-        $this->call('osdd:seeder', [
-            'name' => "{$seeder}Seeder",
-            '--layer' => $this->resolveLayer()->manifest->name(),
-        ]);
-    }
-
-    #[\Override]
-    protected function createMigration(): void
-    {
-        $table = Str::snake(Str::pluralStudly(class_basename($this->argument('name'))));
-
-        if ($this->option('pivot')) {
-            $table = Str::singular($table);
-        }
-
-        $this->call('osdd:migration', [
-            'name' => "create_{$table}_table",
-            '--create' => $table,
-            '--layer' => $this->resolveLayer()->manifest->name(),
-        ]);
     }
 }

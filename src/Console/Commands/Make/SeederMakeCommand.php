@@ -5,11 +5,14 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputOption;
 
 #[AsCommand(name: 'osdd:seeder')]
 class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCommand
 {
-    use ChoosesOsddLayer;
+    use ChoosesOsddLayer {
+        configureUsingFluentDefinition as configureLayerDefinition;
+    }
     use RegistersInLayerProvider;
 
     /**
@@ -25,12 +28,21 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
         parent::handle();
 
         $seederClass = $this->qualifyClass($this->getNameInput());
+        $loader = $this->option('tenant') ? 'loadTenantSeeders' : 'loadSeeders';
 
         $this->registerInLayerProvider(
             ProviderMethod::Boot,
-            fn (): string => "\$this->loadSeeders([\\{$seederClass}::class]);",
+            fn (): string => "\$this->{$loader}([\\{$seederClass}::class]);",
             $seederClass,
         );
+    }
+
+    #[\Override]
+    protected function configureUsingFluentDefinition(): void
+    {
+        $this->configureLayerDefinition();
+
+        $this->getDefinition()->addOption(new InputOption('tenant', null, InputOption::VALUE_NONE, 'Register the seeder for the tenant databases with loadTenantSeeders()'));
     }
 
     #[\Override]
