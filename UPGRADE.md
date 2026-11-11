@@ -159,3 +159,14 @@ Projects already converted with 2.x keep working. If yours lost the sessions, ca
 ```
 
 The new `--prune` option removes the test suites of layers that no longer exist and the `<source><include>` directories that are gone, such as `app` after `osdd:start`.
+
+#### Other changes in the generators and the base provider
+
+These fix 2.x bugs; existing layers keep working without changes.
+
+- `withRouting()` now loads the `commands` and `channels` files when routes are cached (after `php artisan optimize`), as Laravel does. In 2.x, the `routes/console.php` commands and schedules and the broadcast channels of every layer disappeared once routes were cached. If you worked around it by loading these files yourself, remove the workaround.
+- `osdd:config` injects `overrideConfigFrom()` into `register()` instead of `boot()`. Earlier overrides stay where they are; move them to `register()` if another package reads that config while it boots.
+- `osdd:migration`, `osdd:seeder` and `osdd:config` find the method to edit by parsing the provider, take the provider from the layer's `extra.laravel.providers` when it is declared there, and print the line to add when the layer has no provider or the method is missing. In 2.x they edited the method placed before `register()`, or did nothing.
+- Generators write classes under the directory of the layer's root psr-4 entry (the shortest namespace prefix), not always under `src/`.
+- `--model` on `osdd:policy`, `osdd:controller`, `osdd:observer` and `osdd:factory` keeps a model of another layer (`--model='Functional\Users\Models\User'`) instead of nesting it under the current layer.
+- `osdd:layer`, `osdd:start` and `osdd:provider` keep empty objects such as `"require-dev": {}` in `composer.json`, follow `config.sort-packages`, and write a `../` repository URL for a layer path outside the project.

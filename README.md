@@ -38,7 +38,7 @@ composer require lomkit/laravel-osdd
 php artisan osdd:start
 ```
 
-`osdd:start` creates the `functional/users` layer (the `User` model, its migration, factory and seeder) and the `technical/osdd` configuration layer, then removes `app/`, `database/` and the root `config/`.
+`osdd:start` creates the `functional/users` layer (the `User` model, its migration, factory and seeder) and the `technical/osdd` configuration layer, which also holds the cache and queue tables. After you confirm, it removes `app/` and the root `config/`, and empties `database/` except the SQLite database. Pass `--force` to run it from a script.
 
 **2. Create a layer for each domain.**
 
@@ -46,7 +46,11 @@ php artisan osdd:start
 php artisan osdd:layer
 ```
 
-The command asks where to create the layer (functional or technical), its name and the files to generate, then registers the layer in your root `composer.json`.
+The command asks where to create the layer (functional or technical), its name and the files to generate, then registers the layer in your root `composer.json`. In a script, name the layer and pick the generators:
+
+```bash
+php artisan osdd:layer functional/orders --generators=migration,model,factory,service-provider,test --composer-update
+```
 
 ```
 functional/
@@ -77,7 +81,7 @@ The controller lands in `functional/orders/src/Http/Controllers`, not in `app/`.
 | `osdd:start` | Prepare a fresh Laravel project for layers |
 | `osdd:layer` | Create a new layer |
 | `osdd:seed` | Run the seeders registered by every layer |
-| `osdd:phpunit` | Sync `phpunit.xml` with the test suite of each layer |
+| `osdd:phpunit` | Sync `phpunit.xml` with the test suite and the source directory of each layer |
 | `osdd:*` | Twins of most `make:*` class generators, writing inside a layer |
 
 See the [command reference](https://laravel-osdd.lomkit.com/commands) for every option.
