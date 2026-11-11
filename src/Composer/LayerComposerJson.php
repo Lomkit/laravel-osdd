@@ -1,17 +1,17 @@
 <?php
 
-namespace Lomkit\Osdd\Scaffolding;
+namespace Lomkit\Osdd\Composer;
 
 use Illuminate\Filesystem\Filesystem;
-use Lomkit\Osdd\Composer\ComposerJsonFile;
-use Lomkit\Osdd\Composer\LayerComposerManifest;
 
-final class LayerComposerJson
+final readonly class LayerComposerJson
 {
-    public function __construct(private readonly Filesystem $files) {}
+    public function __construct(private Filesystem $files) {}
 
     /**
      * A new layer gets the whole manifest; an existing composer.json keeps its content and only gains the keys it lacks.
+     *
+     * @throws MalformedComposerJsonException
      */
     public function write(LayerComposerManifest $manifest, string $path): void
     {
@@ -27,6 +27,16 @@ final class LayerComposerJson
             $composer->requirePackage($requiredLayer, LayerComposerManifest::CONSTRAINT);
         }
 
+        $composer->save();
+    }
+
+    /**
+     * @throws MalformedComposerJsonException
+     */
+    public function declareProvider(string $path, string $provider): void
+    {
+        $composer = ComposerJsonFile::open($this->files, $path);
+        $composer->addLaravelProvider($provider);
         $composer->save();
     }
 }

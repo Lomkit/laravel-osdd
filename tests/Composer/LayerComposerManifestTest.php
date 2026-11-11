@@ -3,10 +3,10 @@
 namespace Lomkit\Osdd\Tests\Composer;
 
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\LayerComposerJson;
 use Lomkit\Osdd\Composer\LayerComposerManifest;
 use Lomkit\Osdd\Layers\LayerManifest;
 use Lomkit\Osdd\Layers\LayerName;
-use Lomkit\Osdd\Scaffolding\LayerComposerJson;
 use PHPUnit\Framework\TestCase;
 
 class LayerComposerManifestTest extends TestCase

@@ -2,7 +2,8 @@
 
 namespace Lomkit\Osdd\Layers;
 
-use JsonException;
+use Lomkit\Osdd\Composer\ComposerJson;
+use Lomkit\Osdd\Composer\MalformedComposerJsonException;
 
 final class LayerManifest
 {
@@ -16,16 +17,12 @@ final class LayerManifest
     public static function parse(string $json, string $directory): ?Layer
     {
         try {
-            $data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $exception) {
-            throw new InvalidLayerManifestException(self::file($directory), "it is not valid JSON ({$exception->getMessage()}).");
+            $manifest = ComposerJson::decode($json, self::file($directory));
+        } catch (MalformedComposerJsonException $exception) {
+            throw new InvalidLayerManifestException($exception->path, $exception->reason);
         }
 
-        if (! is_array($data)) {
-            throw new InvalidLayerManifestException(self::file($directory), 'it is not a JSON object.');
-        }
-
-        return self::fromData($data, $directory);
+        return self::fromData($manifest->toArray(), $directory);
     }
 
     /**

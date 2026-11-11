@@ -7,6 +7,8 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\ServiceProvider;
+use Lomkit\Osdd\Composer\ComposerUpdate;
+use Lomkit\Osdd\Composer\ProcessComposerUpdate;
 use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Console\Commands\CacheCommand;
 use Lomkit\Osdd\Console\Commands\CheckCommand;
@@ -72,6 +74,8 @@ class OsddServiceProvider extends ServiceProvider
 {
     private const string LAYER_CACHE_FILE = 'cache/osdd.php';
 
+    private const string COMPOSER_BINARY_VARIABLE = 'COMPOSER_BINARY';
+
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
@@ -112,6 +116,11 @@ class OsddServiceProvider extends ServiceProvider
         $this->app->singleton(ResourceNamespaces::class);
         $this->app->singleton(LayerScaffolds::class, fn (): LayerScaffolds => LayerScaffolds::standard());
         $this->app->bind(RootComposerJson::class, fn (Application $app): RootComposerJson => new RootComposerJson($app->make(Filesystem::class), $app->basePath()));
+        $this->app->bind(ComposerUpdate::class, fn (Application $app): ComposerUpdate => new ProcessComposerUpdate(
+            $app->make('composer'),
+            $app->basePath(),
+            getenv(self::COMPOSER_BINARY_VARIABLE) ?: null,
+        ));
         $this->app->bind(SeederSelection::class, AllRegisteredSeeders::class);
 
         $this->app->singleton(MigrateMakeCommand::class, fn (Application $app): MigrateMakeCommand => new MigrateMakeCommand(

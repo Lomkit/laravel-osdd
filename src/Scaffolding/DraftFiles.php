@@ -3,7 +3,7 @@
 namespace Lomkit\Osdd\Scaffolding;
 
 use Illuminate\Filesystem\Filesystem;
-use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Composer\LayerComposerJson;
 use Lomkit\Osdd\Layers\LayerDirectory;
 use Lomkit\Osdd\Layers\LayerFolder;
 use Lomkit\Osdd\Layers\RefreshLayers;
@@ -15,6 +15,7 @@ final readonly class DraftFiles
     public function __construct(
         private Filesystem $files,
         private StubWriter $stubs,
+        private LayerComposerJson $composerJson,
         private RefreshLayers $refreshLayers,
         private LayerDirectory $directory,
     ) {}
@@ -53,9 +54,7 @@ final readonly class DraftFiles
      */
     public function declareProvider(string $provider): void
     {
-        $composer = ComposerJsonFile::open($this->files, $this->directory->manifestFile());
-        $composer->addLaravelProvider($provider);
-        $composer->save();
+        $this->composerJson->declareProvider($this->directory->manifestFile(), $provider);
 
         ($this->refreshLayers)();
     }

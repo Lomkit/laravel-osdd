@@ -5,6 +5,7 @@ namespace Lomkit\Osdd\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Start\SkeletonCleaner;
 use Lomkit\Osdd\Layers\LayerBuckets;
@@ -53,7 +54,7 @@ class StartCommand extends Command
             $scaffolder->scaffold($blueprint, $console);
         }
 
-        (new SkeletonCleaner($this->files, $this->components, $this->laravel->basePath()))->clean();
+        (new SkeletonCleaner($this->files, $this->components, $this->laravel->make(RootComposerJson::class)))->clean();
 
         $this->components->info('Congratulations! Your project is ready for OSDD. Create your first layer with <options=bold>php artisan osdd:layer</>.');
 

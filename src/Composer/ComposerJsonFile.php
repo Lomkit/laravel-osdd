@@ -3,59 +3,36 @@
 namespace Lomkit\Osdd\Composer;
 
 use Illuminate\Filesystem\Filesystem;
-use Lomkit\Osdd\Filesystem\Path;
 use stdClass;
 
 final class ComposerJsonFile
 {
-    private const int ENCODING = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR;
-
-    private const string DEFAULT_INDENT = '    ';
-
     private function __construct(
         private readonly Filesystem $files,
-        public readonly string $path,
-        private readonly stdClass $contents,
-        private readonly string $indent,
+        private readonly ComposerJson $json,
     ) {}
 
+    /**
+     * @throws MalformedComposerJsonException
+     */
     public static function open(Filesystem $files, string $path): self
     {
-        $json = $files->get($path);
-        $contents = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
-
-        if (! $contents instanceof stdClass) {
-            throw new InvalidComposerJsonException($path, 'root');
-        }
-
-        $indent = preg_match('#^([ \t]+)"#m', $json, $match) === 1 ? $match[1] : self::DEFAULT_INDENT;
-
-        return new self($files, $path, $contents, $indent);
+        return new self($files, ComposerJson::decode($files->get($path), $path));
     }
 
     public static function create(Filesystem $files, string $path): self
     {
-        return new self($files, $path, new stdClass, self::DEFAULT_INDENT);
+        return new self($files, ComposerJson::blank($path));
     }
 
     public function save(): void
     {
-        $json = json_encode($this->contents, self::ENCODING);
-
-        if ($this->indent !== self::DEFAULT_INDENT) {
-            $json = (string) preg_replace_callback(
-                '#^(?: {4})+#m',
-                fn (array $spaces): string => str_repeat($this->indent, intdiv(strlen($spaces[0]), 4)),
-                $json,
-            );
-        }
-
-        $this->files->put($this->path, $json.PHP_EOL);
+        $this->files->put($this->json->path, $this->json->encode());
     }
 
     public function requirePackage(string $name, string $constraint): void
     {
-        $require = $this->object($this->contents, 'require');
+        $require = $this->json->object('require');
 
         if (isset($require->{$name})) {
             return;
@@ -66,30 +43,58 @@ final class ComposerJsonFile
         if ($this->sortsPackages()) {
             /** @var array<string, mixed> $packages */
             $packages = (array) $require;
-            $this->contents->require = (object) ComposerPackageOrder::sort($packages);
+            $this->json->set('require', (object) ComposerPackageOrder::sort($packages));
         }
     }
 
-    public function addPathRepository(string $url): void
+    public function addPathRepository(PathRepository $wanted): void
     {
-        $repositories = $this->contents->repositories ?? [];
-        $wanted = $this->resolveUrl($url);
+        $repositories = $this->json->find('repositories') ?? [];
 
-        foreach (is_array($repositories) || $repositories instanceof stdClass ? (array) $repositories : [] as $repository) {
-            if ($repository instanceof stdClass && is_string($repository->url ?? null) && $this->resolveUrl($repository->url) === $wanted) {
+        foreach ($this->repositoryEntries() as $repository) {
+            if (is_string($repository->url ?? null) && PathRepository::fromUrl($this->directory(), $repository->url)->isSameAs($wanted)) {
                 return;
             }
         }
 
-        $repository = (object) ['type' => 'path', 'url' => $url];
-
         if ($repositories instanceof stdClass) {
-            $repositories->{$url} = $repository;
+            $repositories->{$wanted->url} = $wanted->toObject();
 
             return;
         }
 
-        $this->contents->repositories = [...(is_array($repositories) ? $repositories : []), $repository];
+        $this->json->set('repositories', [...(is_array($repositories) ? $repositories : []), $wanted->toObject()]);
+    }
+
+    /**
+     * @return list<PathRepository>
+     */
+    public function pathRepositories(): array
+    {
+        $pathRepositories = [];
+
+        foreach ($this->repositoryEntries() as $repository) {
+            if (($repository->type ?? null) === PathRepository::TYPE && is_string($repository->url ?? null)) {
+                $pathRepositories[] = PathRepository::fromUrl($this->directory(), $repository->url);
+            }
+        }
+
+        return $pathRepositories;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function requiredPackages(): array
+    {
+        $packages = [];
+
+        foreach (['require', 'require-dev'] as $section) {
+            $links = $this->json->find($section);
+            $packages = [...$packages, ...array_map(strval(...), array_keys(is_array($links) || $links instanceof stdClass ? (array) $links : []))];
+        }
+
+        return $packages;
     }
 
     /**
@@ -97,12 +102,12 @@ final class ComposerJsonFile
      */
     public function addMissing(stdClass $defaults): void
     {
-        MissingKeys::copy($defaults, $this->contents);
+        MissingKeys::copy($defaults, $this->json->object());
     }
 
     public function addLaravelProvider(string $provider): void
     {
-        $laravel = $this->object($this->object($this->contents, 'extra'), 'laravel');
+        $laravel = $this->json->object('extra', 'laravel');
         $providers = $this->laravelProviders();
 
         if (! in_array($provider, $providers, true)) {
@@ -115,7 +120,7 @@ final class ComposerJsonFile
      */
     public function laravelProviders(): array
     {
-        $providers = $this->find('extra', 'laravel', 'providers');
+        $providers = $this->json->find('extra', 'laravel', 'providers');
 
         return is_array($providers) ? array_values(array_filter($providers, is_string(...))) : [];
     }
@@ -123,7 +128,7 @@ final class ComposerJsonFile
     public function removeAutoloadNamespace(string $namespace): void
     {
         foreach (['autoload', 'autoload-dev'] as $section) {
-            $psr4 = $this->find($section, 'psr-4');
+            $psr4 = $this->json->find($section, 'psr-4');
 
             if ($psr4 instanceof stdClass) {
                 unset($psr4->{$namespace});
@@ -136,7 +141,7 @@ final class ComposerJsonFile
      */
     public function psr4(): array
     {
-        $psr4 = $this->find('autoload', 'psr-4');
+        $psr4 = $this->json->find('autoload', 'psr-4');
         $namespaces = [];
 
         foreach ($psr4 instanceof stdClass ? (array) $psr4 : [] as $namespace => $directory) {
@@ -150,43 +155,24 @@ final class ComposerJsonFile
 
     private function sortsPackages(): bool
     {
-        return $this->find('config', 'sort-packages') === true;
+        return $this->json->find('config', 'sort-packages') === true;
     }
 
-    private function resolveUrl(string $url): string
+    private function directory(): string
     {
-        $directory = dirname($this->path);
-
-        return Path::normalize(Path::isAbsolute($url) ? $url : $directory.'/'.$url);
+        return dirname($this->json->path);
     }
 
-    private function find(string ...$keys): mixed
+    /**
+     * @return list<stdClass>
+     */
+    private function repositoryEntries(): array
     {
-        $node = $this->contents;
+        $repositories = $this->json->find('repositories');
 
-        foreach ($keys as $key) {
-            if (! $node instanceof stdClass || ! property_exists($node, $key)) {
-                return null;
-            }
-
-            $node = $node->{$key};
-        }
-
-        return $node;
-    }
-
-    private function object(stdClass $parent, string $key): stdClass
-    {
-        $value = $parent->{$key} ?? new stdClass;
-
-        if ($value === []) {
-            $value = new stdClass;
-        }
-
-        if (! $value instanceof stdClass) {
-            throw new InvalidComposerJsonException($this->path, $key);
-        }
-
-        return $parent->{$key} = $value;
+        return array_values(array_filter(
+            is_array($repositories) || $repositories instanceof stdClass ? (array) $repositories : [],
+            fn (mixed $repository): bool => $repository instanceof stdClass,
+        ));
     }
 }

@@ -99,6 +99,19 @@ class ListCommandTest extends TestCase
             ->assertExitCode(0);
     }
 
+    public function test_an_unreadable_root_composer_json_counts_as_one_that_requires_nothing(): void
+    {
+        $this->writeFile('composer.json', '{"require": ');
+
+        Artisan::call('osdd:list', ['--json' => true]);
+        $orders = json_decode(Artisan::output(), true)['layers'][0];
+
+        $this->assertSame('functional/orders', $orders['name']);
+        $this->assertFalse($orders['health']['required']);
+        $this->assertFalse($orders['health']['path_repository']);
+        $this->assertTrue($orders['health']['installed']);
+    }
+
     public function test_no_layer_prints_a_warning_and_an_empty_json_list(): void
     {
         $this->app['config']->set('osdd.layers.paths', ['functional' => $this->projectPath.'/missing']);

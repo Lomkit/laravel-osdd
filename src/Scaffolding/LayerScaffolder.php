@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Scaffolding;
 
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\LayerComposerJson;
 use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Layers\RefreshLayers;
 use Lomkit\Osdd\Stubs\StubWriter;
@@ -29,7 +30,7 @@ final readonly class LayerScaffolder
 
         $context = new ScaffoldContext(
             new LayerGenerators($console, $draft->name, $force),
-            new DraftFiles($this->files, $this->stubs, $this->refreshLayers, $draft->directory),
+            new DraftFiles($this->files, $this->stubs, $this->composerJson, $this->refreshLayers, $draft->directory),
             ($this->refreshLayers)(),
             $console,
             $blueprint->keys(),

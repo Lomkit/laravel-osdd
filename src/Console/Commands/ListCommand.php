@@ -3,6 +3,8 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Inventory\InvalidManifestSummary;
 use Lomkit\Osdd\Inventory\LayerSummary;
 use Lomkit\Osdd\Inventory\RootProject;
@@ -24,7 +26,7 @@ class ListCommand extends Command
     public function handle(): int
     {
         $layers = $this->laravel->make(Layers::class);
-        $project = RootProject::load($this->laravel->basePath());
+        $project = RootProject::load($this->laravel->make(RootComposerJson::class), $this->laravel->make(Filesystem::class));
         $summaries = $this->summaries($layers, $project);
         $invalidManifests = array_map(
             fn (InvalidLayerManifestException $exception): InvalidManifestSummary => InvalidManifestSummary::of($exception, $project),

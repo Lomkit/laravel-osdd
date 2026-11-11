@@ -3,8 +3,11 @@
 namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Illuminate\Support\Facades\Artisan;
+use Lomkit\Osdd\Composer\ComposerUpdate;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Seeders\SeederRegistry;
+use Lomkit\Osdd\Tests\Fakes\FakeComposerBinary;
+use Lomkit\Osdd\Tests\Fakes\FakeComposerUpdate;
 use Lomkit\Osdd\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;
@@ -20,7 +23,7 @@ class LayerCommandOptionsTest extends TestCase
 
     private ?string $composerOriginal = null;
 
-    private string $fakeBin;
+    private FakeComposerUpdate $composerUpdate;
 
     protected function setUp(): void
     {
@@ -35,10 +38,8 @@ class LayerCommandOptionsTest extends TestCase
 
         $this->app['files']->put($this->composerPath, json_encode(['require' => new \stdClass], JSON_PRETTY_PRINT).PHP_EOL);
 
-        $this->fakeBin = sys_get_temp_dir().'/osdd-fake-bin-'.uniqid();
-        mkdir($this->fakeBin);
-        file_put_contents($this->fakeBin.'/composer', "#!/bin/sh\necho \"\$@\" >> \"{$this->fakeBin}/calls\"\n");
-        chmod($this->fakeBin.'/composer', 0755);
+        $this->composerUpdate = new FakeComposerUpdate;
+        $this->app->instance(ComposerUpdate::class, $this->composerUpdate);
     }
 
     protected function tearDown(): void
@@ -48,7 +49,6 @@ class LayerCommandOptionsTest extends TestCase
         }
 
         $this->app['files']->deleteDirectory($this->app->basePath('technical'));
-        $this->app['files']->deleteDirectory($this->fakeBin);
 
         if ($this->composerOriginal !== null) {
             $this->app['files']->put($this->composerPath, $this->composerOriginal);
@@ -234,43 +234,74 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_it_does_not_run_composer_update_when_not_interactive(): void
     {
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])
             ->expectsOutputToContain('composer update functional/orders')
-            ->assertExitCode(0));
+            ->assertExitCode(0);
 
-        $this->assertFileDoesNotExist($this->fakeBin.'/calls');
+        $this->assertSame([], $this->composerUpdate->updates);
     }
 
     public function test_composer_update_option_runs_it_without_asking(): void
     {
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--composer-update' => true, '--no-interaction' => true])
-            ->assertExitCode(0));
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--composer-update' => true, '--no-interaction' => true])
+            ->expectsOutputToContain('Running composer update...')
+            ->assertExitCode(0);
 
-        $this->assertSame("update functional/orders\n", file_get_contents($this->fakeBin.'/calls'));
+        $this->assertSame([['functional/orders']], $this->composerUpdate->updates);
     }
 
     public function test_no_composer_update_option_skips_the_question(): void
     {
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-composer-update' => true])
-            ->assertExitCode(0));
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-composer-update' => true])
+            ->assertExitCode(0);
 
-        $this->assertFileDoesNotExist($this->fakeBin.'/calls');
+        $this->assertSame([], $this->composerUpdate->updates);
     }
 
     public function test_without_a_terminal_it_creates_the_layer_and_skips_composer_update(): void
     {
-        $process = new Process(
-            [PHP_BINARY, 'vendor/bin/testbench', 'osdd:layer', 'functional/process-layer', '--generators=provider,test'],
-            dirname(__DIR__, 3),
-            ['PATH' => $this->fakeBin.PATH_SEPARATOR.getenv('PATH')],
-        );
-        $process->setInput('');
-        $process->run();
+        $composer = new FakeComposerBinary;
 
-        $this->assertSame(0, $process->getExitCode(), $process->getOutput().$process->getErrorOutput());
-        $this->assertFileExists($this->app->basePath('functional/process-layer/src/Providers/ProcessLayerServiceProvider.php'));
-        $this->assertFileExists($this->app->basePath('functional/process-layer/tests/Feature/ProcessLayerTest.php'));
-        $this->assertFileDoesNotExist($this->fakeBin.'/calls');
+        try {
+            $process = $this->testbench(['osdd:layer', 'functional/process-layer', '--generators=provider,test'], $composer);
+
+            $this->assertSame(0, $process->getExitCode(), $process->getOutput().$process->getErrorOutput());
+            $this->assertFileExists($this->app->basePath('functional/process-layer/src/Providers/ProcessLayerServiceProvider.php'));
+            $this->assertFileExists($this->app->basePath('functional/process-layer/tests/Feature/ProcessLayerTest.php'));
+            $this->assertSame([], $composer->calls());
+        } finally {
+            $composer->delete();
+        }
+    }
+
+    public function test_without_a_terminal_the_option_runs_the_composer_binary_of_the_environment(): void
+    {
+        $composer = new FakeComposerBinary(output: 'Updating functional/process-layer');
+
+        try {
+            $process = $this->testbench(['osdd:layer', 'functional/process-layer', '--generators=provider', '--composer-update'], $composer);
+
+            $this->assertSame(0, $process->getExitCode(), $process->getOutput().$process->getErrorOutput());
+            $this->assertSame(['update functional/process-layer'], $composer->calls());
+            $this->assertStringContainsString('Updating functional/process-layer', $process->getOutput());
+        } finally {
+            $composer->delete();
+        }
+    }
+
+    public function test_without_a_terminal_a_failed_composer_update_fails_the_command(): void
+    {
+        $composer = new FakeComposerBinary(exitCode: 1);
+
+        try {
+            $process = $this->testbench(['osdd:layer', 'functional/process-layer', '--generators=provider', '--composer-update'], $composer);
+
+            $this->assertSame(1, $process->getExitCode(), $process->getOutput().$process->getErrorOutput());
+            $this->assertStringContainsString('composer update failed: run composer update functional/process-layer after fixing the error above.', $process->getOutput());
+            $this->assertSame(['update functional/process-layer'], $composer->calls());
+        } finally {
+            $composer->delete();
+        }
     }
 
     public function test_force_keeps_the_existing_layer_composer_json(): void
@@ -298,13 +329,13 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_a_failed_composer_update_fails_the_command(): void
     {
-        file_put_contents($this->fakeBin.'/composer', "#!/bin/sh\necho \"\$@\" >> \"{$this->fakeBin}/calls\"\nexit 1\n");
+        $this->app->instance(ComposerUpdate::class, $failing = FakeComposerUpdate::failing());
 
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--composer-update' => true, '--no-interaction' => true])
-            ->expectsOutputToContain('composer update failed')
-            ->assertExitCode(1));
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--composer-update' => true, '--no-interaction' => true])
+            ->expectsOutputToContain('composer update failed: run composer update functional/orders after fixing the error above.')
+            ->assertExitCode(1);
 
-        $this->assertSame("update functional/orders\n", file_get_contents($this->fakeBin.'/calls'));
+        $this->assertSame([['functional/orders']], $failing->updates);
         $this->assertFileExists($this->app->basePath('functional/orders/src/Providers/OrdersServiceProvider.php'));
     }
 
@@ -355,15 +386,19 @@ class LayerCommandOptionsTest extends TestCase
         $this->assertSame(['Functional\\Orders\\Providers\\OrdersServiceProvider'], $manifest['extra']['laravel']['providers']);
     }
 
-    private function withFakeComposer(\Closure $callback): void
+    /**
+     * @param  list<string>  $arguments
+     */
+    private function testbench(array $arguments, FakeComposerBinary $composer): Process
     {
-        $path = (string) getenv('PATH');
-        putenv('PATH='.$this->fakeBin.PATH_SEPARATOR.$path);
+        $process = new Process(
+            [PHP_BINARY, 'vendor/bin/testbench', ...$arguments],
+            dirname(__DIR__, 3),
+            ['COMPOSER_BINARY' => $composer->path],
+        );
+        $process->setInput('');
+        $process->run();
 
-        try {
-            $callback();
-        } finally {
-            putenv('PATH='.$path);
-        }
+        return $process;
     }
 }
