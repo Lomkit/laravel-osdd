@@ -49,6 +49,17 @@ class LayersCollection extends Collection
     }
 
     /**
+     * @param  list<string>  $names
+     *
+     * @throws LayerNotFoundException
+     * @throws AmbiguousLayerNameException
+     */
+    public function findAllByName(array $names): self
+    {
+        return (new self(array_map($this->findByName(...), $names)))->unique(fn (Layer $layer): string => $layer->manifest->name());
+    }
+
+    /**
      * @return list<string>
      */
     public function names(): array

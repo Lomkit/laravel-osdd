@@ -4,6 +4,7 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Console\Concerns\ChoosesLayerGenerators;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
 use Lomkit\Osdd\Console\LayerComposerJson;
@@ -13,20 +14,24 @@ use Lomkit\Osdd\Console\MissingLayerNameException;
 use Lomkit\Osdd\Console\StubWriter;
 use Lomkit\Osdd\Console\UnknownLayerBucketException;
 use Lomkit\Osdd\Console\UnknownLayerGeneratorException;
+use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
 use Lomkit\Osdd\Layers\InvalidLayerNameException;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Layers\LayerNotFoundException;
+use Lomkit\Osdd\Layers\LayerRequiresItselfException;
+use Lomkit\Osdd\Layers\RequiredLayers;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
 
-use function Laravel\Prompts\multiselect;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
 
 #[AsCommand(name: 'osdd:layer')]
 class LayerCommand extends Command
 {
+    use ChoosesLayerGenerators;
     use OffersComposerUpdate;
     use RegistersLayerInComposer;
 
@@ -44,7 +49,8 @@ class LayerCommand extends Command
         try {
             [$name, $targetPath] = $this->layerNameAndTargetPath();
             $generators = $this->generators();
-        } catch (InvalidLayerNameException|MissingLayerNameException|UnknownLayerBucketException|UnknownLayerGeneratorException $exception) {
+            $requiredLayers = RequiredLayers::resolve((array) $this->option('requires'), $name);
+        } catch (InvalidLayerNameException|MissingLayerNameException|UnknownLayerBucketException|UnknownLayerGeneratorException|LayerNotFoundException|AmbiguousLayerNameException|LayerRequiresItselfException $exception) {
             $this->components->error($exception->getMessage());
 
             return self::FAILURE;
@@ -58,7 +64,7 @@ class LayerCommand extends Command
             return self::FAILURE;
         }
 
-        $this->generate($name, $layerPath, $generators);
+        $this->generate($name, $layerPath, $generators, $requiredLayers);
 
         $this->components->info("Layer <options=bold>{$name->toString()}</> created at <options=bold>{$targetPath}</>.");
 
@@ -83,6 +89,7 @@ class LayerCommand extends Command
         return [
             new InputOption('target-path', null, InputOption::VALUE_REQUIRED, 'Directory to create the layer in (default: the osdd.layers.paths entry named after the vendor)'),
             new InputOption('generators', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Generators to run, repeated or comma-separated: '.implode(', ', LayerGenerator::names())),
+            new InputOption('requires', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Layers the new layer requires, repeated or comma-separated (full or package name)'),
             new InputOption('force', null, InputOption::VALUE_NONE, 'Overwrite the files of an existing layer'),
             $this->composerUpdateOption(),
         ];
@@ -146,34 +153,12 @@ class LayerCommand extends Command
     }
 
     /**
-     * @return list<LayerGenerator>
-     */
-    private function generators(): array
-    {
-        /** @var list<string> $option */
-        $option = $this->option('generators');
-
-        if ($option !== []) {
-            return LayerGenerator::parse($option);
-        }
-
-        if (! $this->canPrompt()) {
-            return LayerGenerator::defaults();
-        }
-
-        return LayerGenerator::parse(multiselect(
-            label: 'Which generators should be run?',
-            options: LayerGenerator::names(),
-            default: array_map(fn (LayerGenerator $generator): string => $generator->value, LayerGenerator::defaults()),
-        ));
-    }
-
-    /**
      * @param  list<LayerGenerator>  $generators
+     * @param  list<string>  $requiredLayers
      */
-    private function generate(LayerName $name, string $layerPath, array $generators): void
+    private function generate(LayerName $name, string $layerPath, array $generators, array $requiredLayers): void
     {
-        (new LayerComposerJson($this->files, $this->stubs))->write($name, $layerPath.'/composer.json');
+        (new LayerComposerJson($this->files, $this->stubs))->write($name, $layerPath.'/composer.json', $requiredLayers);
 
         (new LayerGeneratorRunner(
             command: $this,

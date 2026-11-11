@@ -1,0 +1,69 @@
+<?php
+
+namespace Lomkit\Osdd\Tests\Boundaries;
+
+use Illuminate\Filesystem\Filesystem;
+use Illuminate\Support\Str;
+use Lomkit\Osdd\Graph\LayerCycles;
+use Lomkit\Osdd\Graph\LayerGraph;
+use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Tests\TestCase;
+
+class LayerCyclesTest extends TestCase
+{
+    private string $root;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->root = sys_get_temp_dir().'/osdd-cycles-'.Str::random(8);
+    }
+
+    protected function tearDown(): void
+    {
+        (new Filesystem)->deleteDirectory($this->root);
+
+        parent::tearDown();
+    }
+
+    public function test_it_finds_one_shortest_cycle_per_group_of_layers(): void
+    {
+        $this->layer('a/one', ['a/two']);
+        $this->layer('a/two', ['a/three', 'a/one']);
+        $this->layer('a/three', ['a/one']);
+        $this->layer('a/four', ['a/four']);
+        $this->layer('a/five', ['a/one', 'vendor/package']);
+
+        $this->assertSame([
+            ['a/four', 'a/four'],
+            ['a/one', 'a/two', 'a/one'],
+        ], LayerCycles::in(LayerGraph::of(LayersCollection::discover($this->root))));
+    }
+
+    public function test_an_acyclic_graph_has_no_cycle(): void
+    {
+        $this->layer('a/one', ['a/two', 'a/three']);
+        $this->layer('a/two', ['a/three']);
+        $this->layer('a/three', []);
+
+        $graph = LayerGraph::of(LayersCollection::discover($this->root));
+
+        $this->assertSame([], LayerCycles::in($graph));
+        $this->assertSame(['a/three', 'a/two'], $graph->reachableFrom(['a/two']));
+    }
+
+    /**
+     * @param  list<string>  $requires
+     */
+    private function layer(string $name, array $requires): void
+    {
+        $directory = $this->root.'/'.Str::after($name, '/');
+        (new Filesystem)->ensureDirectoryExists($directory);
+        file_put_contents($directory.'/composer.json', json_encode([
+            'name' => $name,
+            'type' => 'layer',
+            'require' => array_fill_keys($requires, '*'),
+        ]));
+    }
+}

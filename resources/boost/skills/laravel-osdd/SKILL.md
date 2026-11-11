@@ -42,6 +42,12 @@ php artisan osdd:model Order --layer=functional/orders --factory --migration
 php artisan osdd:list --json
 ```
 
+- **Layer boundaries**: `osdd:check` reads the PHP files of every layer and fails when a layer uses a class of another layer it does not require in its `composer.json`, or when the layer requirements form a cycle. `osdd:graph` prints the layer graph (Mermaid, DOT or JSON). Example usage:
+
+```bash
+php artisan osdd:check --format=json
+```
+
 - **Views, translations, Blade components and commands per layer**: `LayerServiceProvider::withViews()`, `withTranslations()` and `withComponents()` register a layer's `resources/views`, `lang` and `View\Components` under the layer's package name (`view('orders::index')`, `__('orders::messages.welcome')`, `<x-orders::alert />`). `osdd:view`, `osdd:component` and `osdd:command` add the matching call to the layer provider. Example usage:
 
 ```bash
@@ -280,6 +286,7 @@ Available generators: `migration`, `model`, `factory`, `seeder`, `service-provid
 Options:
 
 - `--target-path=/abs/path` — create the layer in that directory instead of the path named after the vendor. Required without a terminal when the vendor matches no key of `osdd.layers.paths` (the command fails and lists the keys).
+- `--requires=functional/users` — add these layers to the new layer's `composer.json` `require` (`"functional/users": "*"`). Repeat the option or pass a comma-separated list; each name is resolved like `--layer` (full or package name). An unknown or ambiguous name, or the layer itself, fails the command with exit 1 before anything is written. With `--force` on an existing layer, the requirements are added to the ones it has.
 - `--composer-update` / `--no-composer-update` — run or skip `composer update vendor/package` without asking. Without either, the command asks in a terminal and skips the update otherwise (it then prints the command to run).
 - `--force` — overwrite an existing layer. Without it, `osdd:layer` fails when the layer directory exists and is not empty. With it, the provider and route files are rewritten, the existing `composer.json` is kept and only gains the keys of a new layer it lacks (its `require` and `extra.laravel.providers` stay), the model and controller are overwritten, the other generated files are kept, and no second `create_*_table` migration is added. To add files to an existing layer, prefer the `osdd:*` generators.
 
@@ -390,6 +397,50 @@ Walks every discovered layer and:
 
 It also excludes `<path>/*/database/migrations` under `<source><exclude>` for each configured layer path (`functional/*/database/migrations`, `technical/*/database/migrations`), so layer migrations don't count against code coverage. Everything is idempotent — existing entries are skipped. `--prune` also removes the test suites named after a layer that no longer exists and the `<source><include>` directories that are gone (such as `app` after `osdd:start`). Run after creating or deleting a layer.
 
+### Check layer boundaries
+
+```bash
+php artisan osdd:check                       # every layer, text output
+php artisan osdd:check --layer=orders        # some layers (repeatable or comma separated)
+php artisan osdd:check --strict              # direct requirements only
+php artisan osdd:check --format=json         # machine-readable, for agents
+php artisan osdd:check --format=github       # GitHub Actions annotations
+php artisan osdd:graph --format=mermaid      # or dot, json
+```
+
+The rule: a layer may only use the classes of the layers it requires. `osdd:check` reads the `.php` files of each layer's source directory, `database/`, `routes/` and `tests/` (never `vendor/`) with the PHP tokenizer, without loading them, and collects:
+
+- `use` imports, including group uses (`use Functional\Billing\{Models\Invoice, Models\Payment}`), aliases and `use function` / `use const`;
+- fully qualified names (`\Functional\Billing\Models\Invoice::class`, `new \…`, attributes, type hints) and qualified names resolved through the imports and the current namespace (`Billing\Models\Invoice`).
+
+Strings, comments and docblocks are ignored, and an unqualified name only counts through its `use` import. Each name belongs to the layer with the longest matching PSR-4 prefix in `autoload.psr-4` or `autoload-dev.psr-4` of every layer's `composer.json`. Names of the same layer, of `vendor/` packages, of the framework or of `App\` are not layer references and are never reported.
+
+It reports:
+
+- **undeclared dependencies** (error): the layer uses a layer that is not in its `require`. Files under `tests/` may also use the layers of `require-dev`. By default the layers required by a required layer are allowed too (Composer installs them); `--strict` allows the direct requirements only.
+- **cycles** (error): layers requiring each other through `require` (`functional/orders -> functional/users -> functional/orders`).
+- **unused requirements** (warning): a layer in `require` or `require-dev` that the layer's code never references.
+
+Exit code: 1 when there is an undeclared dependency or a cycle, 0 otherwise (warnings do not fail). An unknown `--layer` or `--format` also exits with 1.
+
+`--format=json` output:
+
+```json
+{
+    "layers": ["functional/billing", "functional/orders"],
+    "strict": false,
+    "undeclared": [
+        {"layer": "functional/orders", "uses": "functional/billing", "class": "Functional\\Billing\\Models\\Invoice", "file": "functional/orders/src/Checkout.php", "line": 7}
+    ],
+    "unused": [{"layer": "functional/billing", "requires": "technical/core", "section": "require"}],
+    "cycles": [["functional/orders", "functional/users", "functional/orders"]]
+}
+```
+
+`file` is relative to the project; each file reports a class once, at its first reference. To fix an undeclared dependency, add the used layer to the layer's `require` (or `require-dev` when only its tests use it), or move the shared code to a layer both may require. Never silence a real dependency with the ignore list.
+
+`osdd:graph` prints the `require` edges between layers (other packages are left out), nodes and edges sorted by name. `--format=mermaid` (default) starts with `graph LR`, `--format=dot` with `digraph layers {`, and `--format=json` prints `{"nodes": [...], "edges": [{"from": "functional/orders", "to": "functional/users"}]}`.
+
 ## Configuration
 
 The package's `config/osdd.php` (not published: the root `config/` does not exist after `osdd:start`; override it from the `technical/osdd` layer as shown below):
@@ -402,8 +453,25 @@ return [
             'technical'  => base_path('technical'),
         ],
     ],
+
+    'boundaries' => [
+        'ignore' => [],
+    ],
 ];
 ```
+
+`osdd.boundaries.ignore` lists what `osdd:check` does not report. Each entry is either a class prefix (a string) or a layer pair (a list of two layer names):
+
+```php
+'boundaries' => [
+    'ignore' => [
+        'Technical\\Shared\\Contracts\\',               // references to these classes are allowed from every layer
+        ['functional/orders', 'technical/payments'],    // functional/orders may use technical/payments, its requirement is never "unused", and the edge is left out of cycles
+    ],
+],
+```
+
+Any other entry makes `osdd:check` fail with `Invalid osdd.boundaries.ignore entry […]`. Set it in `technical/osdd/config/osdd.php` (written by `osdd:start`, loaded with `overrideConfigFrom()`), like the other keys.
 
 `LayersCollection::fromConfig()` reads `config('osdd.layers.paths')`, scans each path **recursively**, and treats any directory containing a `composer.json` with `"type": "layer"` as a layer. Nested layers (e.g. `functional/billing/invoices/`) are supported as long as each level satisfies that contract; once a layer is matched at a given depth, scanning stops descending into it.
 
@@ -677,7 +745,7 @@ public function boot(): void
 
 ### Cross-layer code reference
 
-A layer can depend on another layer's public API by typing against its FQCN — there is no special boundary mechanism, the isolation is purely organisational. If layer A needs layer B's models or services, add `"vendor/b-package": "*"` to layer A's `composer.json` `require`. Avoid bidirectional dependencies; if two layers need each other, the shared concept belongs in a third layer (often under `technical/`).
+A layer can depend on another layer's public API by typing against its FQCN. If layer A needs layer B's models or services, add `"vendor/b-package": "*"` to layer A's `composer.json` `require` (or create A with `osdd:layer vendor/a --requires=vendor/b`). Every layer shares one Composer autoloader, so PHP does not stop A from using a layer it does not require: run `php artisan osdd:check` after adding a cross-layer reference, and fix what it reports before finishing. Avoid bidirectional dependencies (`osdd:check` reports cycles); if two layers need each other, the shared concept belongs in a third layer (often under `technical/`).
 
 ### Override a layer's config from another layer
 
@@ -737,6 +805,9 @@ If you write a test by hand, match the layer's namespace — a test class in `Te
 | Run all layer seeders | `osdd:seed [--fresh or --refresh] [--force] [--database=…]` |
 | Run the seeders of some layers | `osdd:seed --layer=orders [--layer=billing]` |
 | List layers, their contents and health | `osdd:list [--json]` |
+| Check that layers only use the layers they require | `osdd:check [--layer=…] [--strict] [--format=json]` |
+| Layer dependency graph | `osdd:graph` (`--format=mermaid`, `dot` or `json`) |
+| New domain that uses another one | `osdd:layer vendor/package --requires=vendor/other` |
 | Show layers, migration paths, seeders | `about --only=osdd` |
 | Artisan command | `osdd:command Name --layer=…` (registers it in the layer provider) |
 | View / Blade component | `osdd:view name --layer=…` / `osdd:component Name --layer=…` (`<x-orders::name />`) |
@@ -766,6 +837,7 @@ Before running any `osdd:*` make command, confirm:
 - **Putting a test class under the default `Tests\` namespace**: the layer's PSR-4 won't autoload it. Always use `…\Tests\Feature` or `…\Tests\Unit` matching the layer namespace.
 - **Editing the package's `config/osdd.php` directly** instead of overriding it from `technical/osdd`: changes get lost on `composer update`. Override via the technical OSDD layer.
 - **Running `osdd:start` on a non-fresh project**: it deletes `app/`, `config/` and most of `database/`. Only ever run it once, on a brand-new Laravel app; it refuses to run again once `functional/users` or `technical/osdd` exists. Never pass `--force` unless the user asked for the conversion.
+- **Using a class of a layer the current layer does not require**: it works at runtime (one shared autoloader) but breaks the layer contract, and `osdd:check` fails in CI. Add the layer to `require` (or `require-dev` for tests only) when you add the reference.
 - **Forgetting to run `osdd:phpunit`** after creating a layer: new tests are invisible to `vendor/bin/phpunit` until the suite is added.
 - **Composer not seeing a new layer**: after `osdd:layer`, run `composer update vendor/package` (or pass `--composer-update`, or accept the prompt). Without it, the layer's classes aren't installed in `vendor/composer/autoload_psr4.php`.
 

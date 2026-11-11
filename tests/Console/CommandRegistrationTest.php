@@ -49,6 +49,8 @@ class CommandRegistrationTest extends TestCase
     ];
 
     private const NON_GENERATOR_COMMANDS = [
+        'osdd:check',
+        'osdd:graph',
         'osdd:layer',
         'osdd:list',
         'osdd:phpunit',
