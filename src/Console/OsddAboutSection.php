@@ -8,6 +8,8 @@ use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayersCollection;
 use Lomkit\Osdd\SeederRegistry;
 use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Tenancy\TenantMigrationPaths;
+use Lomkit\Osdd\Tenancy\TenantSeederRegistry;
 
 class OsddAboutSection
 {
@@ -16,6 +18,8 @@ class OsddAboutSection
     public function __construct(
         private readonly Application $app,
         private readonly SeederRegistry $seeders,
+        private readonly TenantMigrationPaths $tenantMigrationPaths,
+        private readonly TenantSeederRegistry $tenantSeeders,
     ) {}
 
     /**
@@ -28,22 +32,25 @@ class OsddAboutSection
             ->mapWithKeys(fn (Layer $layer): array => [$layer->manifest->name() => $this->relative($layer->path)])
             ->all();
 
-        return [
-            'Layers' => (string) count($layers),
-            ...$layers,
-            'Migration paths' => $this->migrationPaths(),
-            'Seeders' => (string) count($this->seeders->seeders()),
-        ];
-    }
-
-    private function migrationPaths(): string
-    {
         /** @var Migrator $migrator */
         $migrator = $this->app->make('migrator');
 
-        $paths = array_map($this->relative(...), $migrator->paths());
+        return [
+            'Layers' => (string) count($layers),
+            ...$layers,
+            'Migration paths' => $this->listed($migrator->paths()),
+            'Seeders' => (string) count($this->seeders->seeders()),
+            'Tenant migration paths' => $this->listed($this->tenantMigrationPaths->all()),
+            'Tenant seeders' => (string) count($this->tenantSeeders->seeders()),
+        ];
+    }
 
-        return $paths === [] ? self::NONE : implode(', ', $paths);
+    /**
+     * @param  array<array-key, string>  $paths
+     */
+    private function listed(array $paths): string
+    {
+        return $paths === [] ? self::NONE : implode(', ', array_map($this->relative(...), $paths));
     }
 
     private function relative(string $path): string
