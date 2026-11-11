@@ -119,28 +119,23 @@ Most applications only use `LayerServiceProvider` and the seeders, which keep th
 |-----|-----|
 | `LayersCollection::fromConfig()` | `app(Layers::class)`, or inject `Layers` |
 | `LayersCollection::discover($path)` | `(new LayerDiscovery(new LayerBuckets(['functional' => $path]), new Filesystem))->discover()` |
-| `$layers->findByName($name)` | `$layers->find($name)` |
-| `$layers->findAllByName($names)` | `$layers->findAll($names)` |
-| `$layers->map(...)`, `filter(...)` (collection methods) | `$layers->map(...)` returns an array, `$layers->filter(...)` returns `Layers`; `names()`, `owning($class)`, `count()`, `isEmpty()` |
+| `$layers->first(fn ($layer) => $layer->manifest->name() === $name)` | `$layers->find($name)`, which throws `Lomkit\Osdd\Layers\LayerNotFoundException` when no layer has that name |
+| Other collection methods | `$layers->map(...)` returns an array, `$layers->filter(...)` returns `Layers`; `names()`, `count()`, `isEmpty()` |
 | `$layer->path` | `$layer->directory->root` |
-| `$layer->path.'/database/migrations'` | `$layer->directory->path(LayerFolder::Migrations)` |
 | `$layer->manifest->name()` | `$layer->name->toString()` (`$layer->name` is a `LayerName`) |
 | `$layer->manifest->vendor()`, `package()` | `$layer->name->vendor`, `$layer->name->package` |
 | `$layer->manifest->rootNamespace()` | `$layer->rootNamespace` |
 | `$layer->manifest->srcPath($layer->path)` | `$layer->sourceDirectory` |
-| `$layer->manifest->providers()`, `requires()`, `devRequires()` | `$layer->providers`, `$layer->requires`, `$layer->devRequires` |
-| `$layer->manifest->namespaces()`, `devNamespaces()` | `$layer->namespaces()`, `$layer->devNamespaces()` |
-| `$layer->manifest->classPath($layer->path, $class)` | `$layer->classFile($class)` |
 
-`Lomkit\Osdd\Layers\LayerManifest` now only parses a `composer.json` into a `Layer`, and `Lomkit\Osdd\Layers\ProviderLayerManifest` is removed. `Lomkit\Osdd\Layers\LayerManifestNotFoundException` is replaced by `Lomkit\Osdd\Layers\ProviderLayerNotFoundException` (see below).
+`Layer::fromDirectory()`, `Layer::isValidLayerDirectory()`, `LayerManifest::fromPath()` and the `LayerManifest` accessors are removed. `Lomkit\Osdd\Layers\LayerManifest::parse($json, $directory)` now reads a `composer.json` into a `Layer`, or returns `null` when its type is not `layer`.
 
 #### The generator classes are final
 
-The `osdd:*` generator classes in `Lomkit\Osdd\Console\Commands\Make` are now `final`, and the traits they shared are gone: `ChoosesOsddLayer` (with `resolveLayer()`, `$resolvedLayer` and `layerSourcePath()`), `QualifiesModelsAcrossLayers` and `CreatesModelCompanions`. The generators now share `Lomkit\Osdd\Generation\GeneratesInLayer`, which is internal. If you extended a generator, write your own command that extends the Laravel `make:*` command instead, or call the osdd generator with `$this->call(\Lomkit\Osdd\Console\Commands\Make\ModelMakeCommand::class, [..., '--layer' => 'functional/orders'])`.
+The `osdd:*` generator classes in `Lomkit\Osdd\Console\Commands\Make` are now `final`, and the traits they used are gone: `ChoosesOsddLayer` (with `resolveLayer()` and `$resolvedLayer`) and `RegistersInLayerProvider` (with `registerInLayerProvider()`). The generators now share `Lomkit\Osdd\Generation\GeneratesInLayer`, which is internal. If you extended a generator, write your own command that extends the Laravel `make:*` command instead, or call the osdd generator with `$this->call(\Lomkit\Osdd\Console\Commands\Make\ModelMakeCommand::class, [..., '--layer' => 'functional/orders'])`.
 
-#### Other internal classes
+#### `RegistersLayerInComposer`
 
-These classes are internal, but code that used them must follow the move: `Lomkit\Osdd\Support\Path` is now `Lomkit\Osdd\Filesystem\Path`; `Lomkit\Osdd\Console\StubWriter` is now `Lomkit\Osdd\Stubs\StubWriter`, and takes a `Lomkit\Osdd\Stubs\Stub` case instead of a stub path; `LayerComposerJson` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Composer`, which now holds every `composer.json` read and write (`ComposerJsonFile::addPathRepository()` takes a `Lomkit\Osdd\Composer\PathRepository`, and `Lomkit\Osdd\Inventory\RootProject::load()` takes a `Lomkit\Osdd\Composer\RootComposerJson` and a `Filesystem` instead of the base path); the `OffersComposerUpdate` trait runs `composer update` through the `Lomkit\Osdd\Composer\ComposerUpdate` contract, bound to `Lomkit\Osdd\Composer\ProcessComposerUpdate`: bind your own implementation to change how it runs, or a fake in tests; `LayerGenerator`, `LayerGeneratorRunner` and the `RegistersLayerInComposer` trait are removed, as `osdd:layer` and `osdd:start` now create layers through `Lomkit\Osdd\Scaffolding\LayerScaffolder`, with one `Lomkit\Osdd\Scaffolding\LayerScaffold` class per generator; `MissingLayerNameException`, `MissingLayerOptionException`, `UnknownLayerBucketException` and `UnknownLayerGeneratorException` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Console\Exceptions`; the `RegistersInLayerProvider` trait is removed, as each line the generators, `osdd:layer` and `osdd:start` write into a layer provider is now a `Lomkit\Osdd\Console\Providers\Statements\ProviderStatement`, added by `Lomkit\Osdd\Console\Providers\Wiring\ProviderWiring`.
+The `Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer` trait is removed. `osdd:layer` and `osdd:start` now create layers through `Lomkit\Osdd\Scaffolding\LayerScaffolder`, and the classes of `Lomkit\Osdd\Composer` read and write the `composer.json` files.
 
 ### Changed behaviour
 
@@ -171,13 +166,11 @@ Move the classes that must not be discovered out of `src/Listeners`. To keep the
 ],
 ```
 
-#### Default view, translation and component namespace
-
-`withViews()`, `withTranslations()` and `withComponents()` without a namespace now take the package name of the discovered layer that owns the provider: the layer under `osdd.layers.paths` whose `autoload.psr-4` prefix covers the provider class. In 2.x it came from the `composer.json` closest to the provider file, in or out of a layer. A provider that belongs to no discovered layer, or whose layer has no `autoload.psr-4` entry for its namespace, now throws `Lomkit\Osdd\Layers\ProviderLayerNotFoundException` at boot: pass the namespace as second argument (`$this->withViews(__DIR__ . '/../../resources/views', 'orders');`). Layers created by `osdd:layer` or `osdd:start` are not affected.
-
 #### Invalid layer `composer.json` files
 
-A `composer.json` under `osdd.layers.paths` that is not valid JSON, or a `"type": "layer"` file without a valid `name`, with an `autoload.psr-4` that does not map namespaces to directories, or with an `extra.laravel.providers` that is not a list, used to crash every `osdd:*` command with a bare `JsonException` or a PHP error. The generators, `osdd:seed --layer`, `osdd:check`, `osdd:graph`, `osdd:phpunit` and `osdd:cache` now exit with 1 and name the file: `Invalid layer manifest [functional/orders/composer.json]: it has no "name".` `osdd:list` lists the file with its error and keeps listing the valid layers; `osdd:list --json` has a new `invalid_manifests` key next to `layers`.
+A `composer.json` under `osdd.layers.paths` that is not valid JSON, or a `"type": "layer"` file without a `name`, made the generators and `osdd:phpunit` crash with a bare `JsonException` or a PHP error. They now exit with 1 and name the file: `Invalid layer manifest [functional/orders/composer.json]: it has no "name".`
+
+The same error now covers layer files that 2.x read without complaint: a `name` that is not a valid layer name (see "`osdd:layer` validates the name" below), an `extra.laravel.providers` that is not a list of class names, or an `autoload.psr-4`, `require` or `require-dev` that is not an object. After the update, run `php artisan osdd:list`: it lists each invalid file with its error, next to the valid layers.
 
 The layer discovery also stops at any directory that has a `composer.json`: a layer nested inside another package (a directory whose `composer.json` is not of type `layer`) is no longer discovered. Move it next to that package.
 
@@ -226,7 +219,7 @@ The provider created by `osdd:layer` used to import and register `{Package}Seede
 What it does to a fresh project also changed:
 
 - `database/database.sqlite` (and `database/.gitignore`) are kept, so the default SQLite connection keeps working; the rest of `database/` is deleted.
-- The skeleton migrations keep their names and their tables: `0001_01_01_000000_create_users_table` (users, password reset tokens, sessions) goes to `functional/users`, `0001_01_01_000001_create_cache_table` and `0001_01_01_000002_create_jobs_table` go to `technical/osdd`, whose provider now loads them. In 2.x the sessions, cache and jobs tables were lost.
+- The skeleton migrations keep their names and their tables: `0001_01_01_000000_create_users_table` (users, password reset tokens, sessions) goes to `functional/users`, `0001_01_01_000001_create_cache_table` and `0001_01_01_000002_create_jobs_table` go to `technical/osdd`, whose provider now loads them. In 2.x only the `users` table was kept: the password reset tokens, sessions, cache and jobs tables were lost.
 - `bootstrap/providers.php` loses only the providers of the deleted `app/` directory (`App\Providers\...`); the providers of installed packages listed there stay. In 2.x the file was emptied.
 
 Projects already converted with 2.x keep working. If yours lost the sessions, cache or jobs tables, add their migrations to a layer: `php artisan make:session-table`, `make:cache-table` and `make:queue-table` write them under `database/migrations`; move them to `technical/osdd/database/migrations` and call `$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');` in the `boot()` method of `Technical\Osdd\Providers\OsddServiceProvider`.
@@ -251,9 +244,7 @@ $this->app->bind('DatabaseSeeder', \Lomkit\Osdd\Seeders\LayersSeeder::class);
 
 #### Generators report an unresolved `--layer` and exit with 1
 
-The `osdd:*` generators no longer throw `Lomkit\Osdd\Layers\LayerNotFoundException` for an unknown `--layer`: they print one error, which lists the available layers and the closest name, and exit with code 1. Code that calls them with `Artisan::call()` and catches the exception must check the exit code instead. Without a terminal and without `--layer`, they now fail with "The --layer option is required when the command is not interactive." instead of a bare "Required.".
-
-`--layer` also accepts the package name alone when one layer has it: `--layer=orders` for `functional/orders`. When two layers share it (`functional/orders` and `technical/orders`), pass the full name.
+For an unknown `--layer`, the `osdd:*` generators printed an error and then threw a `RuntimeException` ("Layer 'functional/order' not found."). They now print one error, which lists the available layers and the closest name, and exit with code 1. Code that calls them with `Artisan::call()` and catches the exception must check the exit code instead. Without a terminal and without `--layer`, they now fail with "The --layer option is required when the command is not interactive." instead of a bare "Required.".
 
 #### `osdd:phpunit` coverage source
 
@@ -279,7 +270,7 @@ These fix 2.x bugs; existing layers keep working without changes.
 - Generators write classes under the directory of the layer's root psr-4 entry (the shortest namespace prefix), not always under `src/`.
 - `--model` on `osdd:policy`, `osdd:controller`, `osdd:observer` and `osdd:factory` keeps a model of another layer (`--model='Functional\Users\Models\User'`) instead of nesting it under the current layer.
 - `osdd:layer`, `osdd:start` and `osdd:provider` keep empty objects such as `"require-dev": {}` in `composer.json`, follow `config.sort-packages`, and write a `../` repository URL for a layer path outside the project.
-- A generator run twice in the same process (`Artisan::call()` from a command, a seeder or a test) writes each run into the layer given to that run. In 2.x the second run reused the layer of the first, and `osdd:view` and `osdd:component` reused its view namespace.
+- A generator run twice in the same process (`Artisan::call()` from a command, a seeder or a test) writes each run into the layer given to that run. In 2.x the second run reused the layer of the first.
 - `osdd:factory Order` writes `OrderFactory.php`, the file of the `OrderFactory` class it holds, as `make:factory` does. In 2.x it wrote `Order.php`, which the autoloader could not find: rename such files.
 - The generators recognise a call the layer provider already makes whatever its layout: spacing (Pint writes `__DIR__.'/../../database/migrations'`), line breaks, comments, a trailing comma, or the short name of an imported class (`loadSeeders([UsersSeeder::class])`). In 2.x such a call was added again on every run; remove the duplicates it left. A commented-out call no longer counts as made. When the provider imports the class, the added line uses its short name.
 
@@ -296,6 +287,6 @@ These fix 2.x bugs; existing layers keep working without changes.
 In 2.x, a command generated by `osdd:command` was never registered, and a view generated by `osdd:view` could not be resolved by name. Both now edit the layer provider's `boot()`:
 
 - `osdd:command` adds `$this->commands([\Functional\Orders\Console\Commands\SyncOrders::class]);`.
-- `osdd:view` adds `$this->withViews(__DIR__ . '/../../resources/views');` unless the provider already calls `withViews()`. The view then renders as `view('orders::index')`.
+- `osdd:view` adds `$this->withViews(__DIR__ . '/../../resources/views');`, a new helper of `LayerServiceProvider` that registers the layer's views under its package name, unless the provider already calls `withViews()`. The view then renders as `view('orders::index')`.
 
 If you registered such commands or views by hand (`$this->commands([...])` with an import, or `loadViewsFrom()`), remove the duplicate line the generator adds, or drop your own.

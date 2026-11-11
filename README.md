@@ -114,7 +114,7 @@ Run it in CI with `php artisan osdd:check --format=github` to get the violations
 
 `php artisan about --only=osdd` lists the discovered layers, the migration paths and the number of registered seeders.
 
-See the [command reference](https://laravel-osdd.lomkit.com/commands) for every option.
+See the [command reference](https://laravel-osdd.lomkit.com/commands/overview) for every option.
 
 ## Contributing
 
