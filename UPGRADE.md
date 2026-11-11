@@ -147,3 +147,15 @@ Projects already converted with 2.x keep working. If yours lost the sessions, ca
 `osdd:seed` now stops at the first `db:seed` that fails or is cancelled and returns its exit code; in 2.x it ignored the result and exited 0. In production without a terminal, `db:seed` cancels itself: pass the new `--force` option to `osdd:seed` (it is forwarded to `db:seed`, `migrate:fresh` and `migrate:refresh`), as you would to `db:seed`. The new `--database` option is forwarded the same way.
 
 `--fresh` and `--refresh` together now fail; in 2.x `--refresh` was ignored.
+
+#### `osdd:phpunit` coverage source
+
+`osdd:phpunit` now adds each layer's source directory to `<source><include>` and excludes the migrations per layer path (`functional/*/database/migrations`) instead of `**/database/migrations`, which walked the whole project, `vendor/` included. Remove the old entry from your `phpunit.xml`:
+
+```diff
+ <exclude>
+-    <directory suffix=".php">**/database/migrations</directory>
+ </exclude>
+```
+
+The new `--prune` option removes the test suites of layers that no longer exist and the `<source><include>` directories that are gone, such as `app` after `osdd:start`.
