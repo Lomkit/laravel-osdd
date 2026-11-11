@@ -232,6 +232,27 @@ class LayerServiceProviderTest extends TestCase
         $this->assertFileExists($marker);
     }
 
+    public function test_with_routing_still_loads_commands_and_channels_when_routes_are_cached(): void
+    {
+        $this->app->instance('routes.cached', true);
+
+        $consoleMarker = $this->tmpDir.'/console-loaded';
+        $channelsMarker = $this->tmpDir.'/channels-loaded';
+        $web = $this->writeRouteFile('web.php', "<?php\nRoute::get('/cached', fn () => 'ok')->name('web.cached');\n");
+        $console = $this->writeRouteFile('console.php', "<?php file_put_contents('{$consoleMarker}', 'yes');\n");
+        $channels = $this->writeRouteFile('channels.php', "<?php file_put_contents('{$channelsMarker}', 'yes');\n");
+
+        $this->makeProvider()->callWithRouting(web: $web, commands: $console, channels: $channels, health: '/up');
+
+        $this->assertFileExists($consoleMarker);
+        $this->assertFileExists($channelsMarker);
+        $this->assertNull($this->findRouteByName('web.cached'));
+        $this->assertCount(0, array_filter(
+            $this->app['router']->getRoutes()->getRoutes(),
+            fn (Route $route): bool => $route->uri() === 'up',
+        ));
+    }
+
     public function test_with_routing_silently_skips_missing_files(): void
     {
         $this->makeProvider()->callWithRouting(

@@ -56,6 +56,9 @@ abstract class LayerServiceProvider extends ServiceProvider
      *   - channels → required (Broadcast::channel(...) definitions)
      *   - health   → registers a GET endpoint returning {"status":"ok"}
      *
+     * Once routes are cached, web, api and health come from the route cache;
+     * commands and channels are still loaded, as Laravel's withRouting() does.
+     *
      * For anything beyond these conventions (custom prefixes, route groups,
      * domains, ...), use Laravel's Route facade directly in boot().
      *
@@ -70,24 +73,8 @@ abstract class LayerServiceProvider extends ServiceProvider
         ?string $health = null,
         string $apiPrefix = 'api',
     ): void {
-        if ($this->app instanceof CachesRoutes && $this->app->routesAreCached()) {
-            return;
-        }
-
-        foreach (Arr::wrap($web) as $path) {
-            if (is_file($path)) {
-                Route::middleware('web')->group($path);
-            }
-        }
-
-        foreach (Arr::wrap($api) as $path) {
-            if (is_file($path)) {
-                Route::middleware('api')->prefix($apiPrefix)->group($path);
-            }
-        }
-
-        if (is_string($health)) {
-            Route::get($health, fn () => response()->json(['status' => 'ok']));
+        if (! ($this->app instanceof CachesRoutes && $this->app->routesAreCached())) {
+            $this->loadHttpRoutes(Arr::wrap($web), Arr::wrap($api), $health, $apiPrefix);
         }
 
         if (is_string($channels) && is_file($channels)) {
@@ -96,6 +83,29 @@ abstract class LayerServiceProvider extends ServiceProvider
 
         if (is_string($commands) && is_file($commands) && $this->app->runningInConsole()) {
             require $commands;
+        }
+    }
+
+    /**
+     * @param  array<array-key, string>  $web
+     * @param  array<array-key, string>  $api
+     */
+    private function loadHttpRoutes(array $web, array $api, ?string $health, string $apiPrefix): void
+    {
+        foreach ($web as $path) {
+            if (is_file($path)) {
+                Route::middleware('web')->group($path);
+            }
+        }
+
+        foreach ($api as $path) {
+            if (is_file($path)) {
+                Route::middleware('api')->prefix($apiPrefix)->group($path);
+            }
+        }
+
+        if (is_string($health)) {
+            Route::get($health, fn () => response()->json(['status' => 'ok']));
         }
     }
 }
