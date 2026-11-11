@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Console\GeneratorCommand;
 use Illuminate\Foundation\Console\ProviderMakeCommand;
-use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Composer\LayerComposerJson;
 use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Lomkit\Osdd\Layers\RefreshLayers;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -31,9 +31,7 @@ final class ServiceProviderMakeCommand extends ProviderMakeCommand
         $composerPath = $this->target()->layer->directory->manifestFile();
         $providerClass = $this->qualifyClass($this->getNameInput());
 
-        $composer = ComposerJsonFile::open($this->files, $composerPath);
-        $composer->addLaravelProvider($providerClass);
-        $composer->save();
+        $this->laravel->make(LayerComposerJson::class)->declareProvider($composerPath, $providerClass);
 
         $this->laravel->make(RefreshLayers::class)();
 

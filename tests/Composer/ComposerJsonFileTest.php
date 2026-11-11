@@ -5,6 +5,8 @@ namespace Lomkit\Osdd\Tests\Composer;
 use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
 use Lomkit\Osdd\Composer\InvalidComposerJsonException;
+use Lomkit\Osdd\Composer\MalformedComposerJsonException;
+use Lomkit\Osdd\Composer\PathRepository;
 use PHPUnit\Framework\TestCase;
 
 class ComposerJsonFileTest extends TestCase
@@ -132,9 +134,9 @@ class ComposerJsonFileTest extends TestCase
         ]]));
 
         $composer = $this->open();
-        $composer->addPathRepository('./functional/*');
-        $composer->addPathRepository($this->directory.'/functional/*');
-        $composer->addPathRepository('./technical/*');
+        $composer->addPathRepository($this->repository('./functional/*'));
+        $composer->addPathRepository($this->repository($this->directory.'/functional/*'));
+        $composer->addPathRepository($this->repository('./technical/*'));
         $composer->save();
 
         $this->assertSame(
@@ -148,11 +150,43 @@ class ComposerJsonFileTest extends TestCase
         file_put_contents($this->path, json_encode(['repositories' => ['private' => ['type' => 'composer', 'url' => 'https://repo.example.com']]]));
 
         $composer = $this->open();
-        $composer->addPathRepository('./functional/*');
+        $composer->addPathRepository($this->repository('./functional/*'));
         $composer->save();
 
         $this->assertSame(['type' => 'path', 'url' => './functional/*'], $this->decoded()['repositories']['./functional/*']);
         $this->assertArrayHasKey('private', $this->decoded()['repositories']);
+    }
+
+    public function test_it_lists_the_path_repositories_only(): void
+    {
+        file_put_contents($this->path, json_encode(['repositories' => [
+            'local' => ['type' => 'path', 'url' => './functional/*'],
+            'remote' => ['type' => 'vcs', 'url' => 'https://example.com/repo.git'],
+            'broken' => ['type' => 'path'],
+            'absolute' => ['type' => 'path', 'url' => '/srv/technical/*'],
+        ]]));
+
+        $repositories = $this->open()->pathRepositories();
+
+        $this->assertSame(['./functional/*', '/srv/technical/*'], array_map(fn (PathRepository $repository): string => $repository->url, $repositories));
+        $this->assertTrue($repositories[0]->isSameAs($this->repository($this->directory.'/functional/*')));
+    }
+
+    public function test_it_lists_the_required_packages_of_both_sections(): void
+    {
+        file_put_contents($this->path, json_encode(['require' => ['php' => '^8.3', 'functional/orders' => '*'], 'require-dev' => ['phpunit/phpunit' => '^12.0']]));
+
+        $this->assertSame(['php', 'functional/orders', 'phpunit/phpunit'], $this->open()->requiredPackages());
+    }
+
+    public function test_it_refuses_a_file_that_is_not_a_json_object(): void
+    {
+        file_put_contents($this->path, '{"require": ');
+
+        $this->expectException(MalformedComposerJsonException::class);
+        $this->expectExceptionMessage('Cannot read ['.$this->path.']: it is not valid JSON');
+
+        $this->open();
     }
 
     public function test_it_adds_a_laravel_provider_once(): void
@@ -179,6 +213,11 @@ class ComposerJsonFileTest extends TestCase
         $this->expectExceptionMessage('"require" must be a JSON object');
 
         $this->open()->requirePackage('functional/orders', '*');
+    }
+
+    private function repository(string $url): PathRepository
+    {
+        return PathRepository::fromUrl($this->directory, $url);
     }
 
     private function open(): ComposerJsonFile

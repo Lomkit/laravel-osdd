@@ -6,7 +6,7 @@ use Illuminate\Console\View\Components\Factory;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
-use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Filesystem\Path;
 
 final class SkeletonCleaner
@@ -25,7 +25,7 @@ final class SkeletonCleaner
     public function __construct(
         private readonly Filesystem $files,
         private readonly Factory $components,
-        private readonly string $basePath,
+        private readonly RootComposerJson $composer,
     ) {}
 
     public function clean(): void
@@ -42,7 +42,7 @@ final class SkeletonCleaner
      */
     private function removeAppProvidersFromBootstrap(): void
     {
-        $path = $this->basePath.'/bootstrap/providers.php';
+        $path = $this->composer->basePath.'/bootstrap/providers.php';
 
         if (! $this->files->exists($path)) {
             return;
@@ -68,13 +68,7 @@ final class SkeletonCleaner
      */
     private function appNamespaces(): array
     {
-        $composerPath = $this->basePath.'/composer.json';
-
-        if (! $this->files->exists($composerPath)) {
-            return [self::DEFAULT_APP_NAMESPACE];
-        }
-
-        $psr4 = ComposerJsonFile::open($this->files, $composerPath)->psr4();
+        $psr4 = $this->composer->psr4();
         $namespaces = array_keys(array_filter($psr4, fn (string $directory): bool => Path::normalize($directory) === self::APP_DIRECTORY));
 
         return $namespaces === [] ? [self::DEFAULT_APP_NAMESPACE] : $namespaces;
@@ -82,7 +76,7 @@ final class SkeletonCleaner
 
     private function deleteDirectory(string $directory): void
     {
-        $path = $this->basePath.'/'.$directory;
+        $path = $this->composer->basePath.'/'.$directory;
 
         if (! $this->files->isDirectory($path)) {
             $this->components->warn("No {$directory}/ directory found, skipping.");
@@ -101,7 +95,7 @@ final class SkeletonCleaner
 
     private function emptyDatabaseDirectory(): void
     {
-        $path = $this->basePath.'/database';
+        $path = $this->composer->basePath.'/database';
 
         if (! $this->files->exists($path.'/database.sqlite')) {
             $this->deleteDirectory('database');
@@ -126,21 +120,13 @@ final class SkeletonCleaner
 
     private function removeLegacyAutoload(): void
     {
-        $composerPath = $this->basePath.'/composer.json';
-
-        if (! $this->files->exists($composerPath)) {
+        if (! $this->composer->exists()) {
             $this->components->warn('No composer.json found, skipping autoload cleanup.');
 
             return;
         }
 
-        $composer = ComposerJsonFile::open($this->files, $composerPath);
-
-        foreach (self::LEGACY_AUTOLOAD_NAMESPACES as $namespace) {
-            $composer->removeAutoloadNamespace($namespace);
-        }
-
-        $composer->save();
+        $this->composer->removeAutoloadNamespaces(...self::LEGACY_AUTOLOAD_NAMESPACES);
 
         $this->components->info('Cleaned up legacy autoload entries from composer.json.');
     }

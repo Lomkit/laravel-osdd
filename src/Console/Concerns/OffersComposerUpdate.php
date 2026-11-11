@@ -2,8 +2,8 @@
 
 namespace Lomkit\Osdd\Console\Concerns;
 
+use Lomkit\Osdd\Composer\ComposerUpdate;
 use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Process\Process;
 
 use function Laravel\Prompts\confirm;
 
@@ -34,11 +34,7 @@ trait OffersComposerUpdate
 
         $this->components->info('Running composer update...');
 
-        $process = new Process(['composer', 'update', ...$packages], $this->laravel->basePath());
-        $process->setTimeout(null);
-        $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
-
-        if (! $process->isSuccessful()) {
+        if (! $this->laravel->make(ComposerUpdate::class)->update(array_values($packages), $this->output)) {
             $this->components->error('composer update failed: run composer update '.implode(' ', $packages).' after fixing the error above.');
 
             return false;
