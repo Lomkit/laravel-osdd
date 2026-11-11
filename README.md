@@ -101,7 +101,7 @@ Run it in CI with `php artisan osdd:check --format=github` to get the violations
 | `osdd:start` | Prepare a fresh Laravel project for layers |
 | `osdd:layer` | Create a new layer |
 | `osdd:list` | List the layers with their providers, dependencies, file counts and health (`--json`) |
-| `osdd:check` | Check that each layer only uses the layers it requires, and that no requirements form a cycle (`--strict`, `--format=json` or `github`) |
+| `osdd:check` | Check that each layer only uses the layers it requires, and that no requirements form a cycle (`--transitive`, `--format=json` or `github`) |
 | `osdd:graph` | Print the layer graph from the `require` entries (`--format=mermaid`, `dot` or `json`) |
 | `osdd:seed` | Run the seeders registered by every layer (`Lomkit\Osdd\Seeders\LayersSeeder`), or by the layers given with `--layer` |
 | `osdd:phpunit` | Sync `phpunit.xml` with the test suite and the source directory of each layer |
