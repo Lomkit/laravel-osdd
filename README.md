@@ -1,72 +1,91 @@
+<p align="center"><img src="https://raw.githubusercontent.com/Lomkit/art/main/laravel-osdd/cover.png" alt="Laravel OSDD: split your Laravel application into independent layers"></p>
+
+<p align="center">
+<a href="https://github.com/Lomkit/laravel-osdd/actions/workflows/tests.yml"><img src="https://github.com/Lomkit/laravel-osdd/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests"></a>
+<a href="https://packagist.org/packages/lomkit/laravel-osdd"><img src="https://img.shields.io/packagist/v/lomkit/laravel-osdd" alt="Latest version"></a>
+<a href="https://packagist.org/packages/lomkit/laravel-osdd"><img src="https://img.shields.io/packagist/dt/lomkit/laravel-osdd" alt="Total downloads"></a>
+<a href="LICENSE"><img src="https://img.shields.io/packagist/l/lomkit/laravel-osdd" alt="License"></a>
+</p>
+
+<p align="center"><a href="https://laravel-osdd.lomkit.com"><strong>Documentation</strong></a> · <a href="UPGRADE.md">Upgrade from 2.x</a></p>
+
 # Laravel OSDD
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/xefi/laravel-osdd.svg?style=flat-square)](https://packagist.org/packages/xefi/laravel-osdd)
-[![Tests](https://github.com/xefi/laravel-osdd/actions/workflows/tests.yml/badge.svg)](https://github.com/xefi/laravel-osdd/actions/workflows/tests.yml)
-[![License](https://img.shields.io/packagist/l/xefi/laravel-osdd.svg?style=flat-square)](LICENSE)
+**One domain, one layer.**
 
-![Laravel OSDD Landscape](https://raw.githubusercontent.com/xefi/art/main/laravel-osdd-landscape.png)
+Laravel OSDD splits your application into layers. Each layer is a Composer package of its own, with its models, migrations, seeders, tests, routes and service provider. A layer only sees the layers it requires, so the boundaries between domains stay in place as the application grows.
 
-A Laravel package that restructures your application into independently composable **layers** — each one a self-contained Composer package with its own models, migrations, seeders, tests, and service provider.
+- **Independent layers**: every domain lives in its own package, installed through a local path repository.
+- **Artisan ready**: every `make:*` command has an `osdd:*` twin that writes the file inside the layer you pick.
+- **One test suite per layer**: `osdd:phpunit` keeps `phpunit.xml` in sync with your layers.
+- **Seeders and config per layer**: `osdd:seed` runs the seeders every layer registers, and a layer can override the config of another package.
+- **Laravel Boost**: the package ships a Boost skill, so your agent writes files inside layers, not in `app/`.
 
-Full documentation at **[laravel-osdd.xefi.com](https://laravel-osdd.xefi.com/)**.
+## Documentation
 
----
-
-## The Problem
-
-Standard Laravel applications accumulate unrelated code in shared directories. As the application grows, `app/` mixes users, orders, products, and infrastructure with no clear domain boundaries. Refactoring becomes costly and testing becomes slow.
-
-## The Solution
-
-OSDD isolates each domain concern into its own Composer package:
-
-```
-functional/
-  users/       ← Independent layer (composer.json, src/, database/, tests/)
-  billing/
-technical/
-  osdd/        ← OSDD configuration layer
-```
-
----
+The full guide lives on the [documentation site](https://laravel-osdd.lomkit.com): installation, layers, every command and the API reference. Coming from 2.x? Read the [upgrade guide](UPGRADE.md).
 
 ## Requirements
 
-- PHP `^8.3`
-- Laravel `^12.0` or `^13.0`
+PHP 8.3+ and Laravel 12 or 13.
 
----
+## From app/ to layers
 
-## Installation
+**1. Install the package on a fresh Laravel application.**
 
 ```bash
-composer require xefi/laravel-osdd
+composer require lomkit/laravel-osdd
 php artisan osdd:start
 ```
 
----
+`osdd:start` creates the `functional/users` layer (the `User` model, its migration, factory and seeder) and the `technical/osdd` configuration layer, then removes `app/`, `database/` and the root `config/`.
+
+**2. Create a layer for each domain.**
+
+```bash
+php artisan osdd:layer
+```
+
+The command asks for the bucket, the package name and the files to generate, then registers the layer in your root `composer.json`.
+
+```
+functional/
+  users/
+  orders/
+    composer.json
+    src/Models/Order.php
+    src/Providers/OrdersServiceProvider.php
+    database/migrations/
+    database/factories/
+    tests/
+technical/
+  osdd/
+```
+
+**3. Generate code inside the layer.**
+
+```bash
+php artisan osdd:controller OrderController --layer=functional/orders
+```
+
+The controller lands in `functional/orders/src/Http/Controllers`, not in `app/`.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `osdd:start` | Scaffold a fresh project with full OSDD architecture |
-| `osdd:layer` | Create a new layer interactively or with arguments |
-| `osdd:seed` | Run seeders registered across all layers |
-| `osdd:phpunit` | Sync `phpunit.xml` with each layer's test suite |
+| `osdd:start` | Prepare a fresh Laravel project for layers |
+| `osdd:layer` | Create a new layer |
+| `osdd:seed` | Run the seeders registered by every layer |
+| `osdd:phpunit` | Sync `phpunit.xml` with the test suite of each layer |
+| `osdd:*` | The `make:*` commands, writing inside a layer |
 
-All standard `make:*` commands are available as `osdd:*` variants, placing generated files inside the target layer. See the **[full command reference](https://laravel-osdd.xefi.com/commands)**.
+See the [command reference](https://laravel-osdd.lomkit.com/commands) for every option.
 
----
+## Contributing
 
-## Support us
-
-[![](https://raw.githubusercontent.com/xefi/art/main/support-landscape.svg)](https://www.xefi.com)
-
-Since 1997, XEFI is a leader in IT performance support for small and medium-sized businesses through its nearly 200 local agencies based in France, Belgium, Switzerland and Spain. A one-stop shop for IT, office automation, software, [digitalization](https://www.xefi.com/solutions-software/), print and cloud needs. [Want to work with us ?](https://carriere.xefi.fr/metiers-software)
-
----
+Contributions are welcome: open an issue or a pull request.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+Laravel OSDD is open-source software licensed under the [MIT license](LICENSE).

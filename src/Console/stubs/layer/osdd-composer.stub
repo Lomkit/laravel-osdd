@@ -4,7 +4,7 @@
     "type": "layer",
     "version": "1.0.0",
     "require": {
-        "xefi/laravel-osdd": "*"
+        "lomkit/laravel-osdd": "*"
     },
     "autoload": {
         "psr-4": {

@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Concerns;
+namespace Lomkit\Osdd\Console\Concerns;
 
 trait RegistersLayerInComposer
 {

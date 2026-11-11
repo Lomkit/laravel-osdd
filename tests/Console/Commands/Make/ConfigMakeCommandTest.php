@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands\Make;
+namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
-use Xefi\LaravelOSDD\Tests\TestCase;
+use Lomkit\Osdd\Tests\TestCase;
 
 class ConfigMakeCommandTest extends TestCase
 {
@@ -26,7 +26,7 @@ class ConfigMakeCommandTest extends TestCase
 
 namespace Functional\TestLayer\Providers;
 
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class TestLayerServiceProvider extends LayerServiceProvider
 {

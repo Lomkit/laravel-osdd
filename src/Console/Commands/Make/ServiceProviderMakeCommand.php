@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;

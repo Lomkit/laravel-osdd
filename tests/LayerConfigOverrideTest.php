@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests;
+namespace Lomkit\Osdd\Tests;
 
 use Illuminate\Support\ServiceProvider;
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 /**
  * Simulates a third-party package (e.g. Laravel Horizon) that merges its

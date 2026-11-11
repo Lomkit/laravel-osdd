@@ -1,8 +1,8 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands;
+namespace Lomkit\Osdd\Tests\Console\Commands;
 
-use Xefi\LaravelOSDD\Tests\TestCase;
+use Lomkit\Osdd\Tests\TestCase;
 
 class PhpunitCommandTest extends TestCase
 {

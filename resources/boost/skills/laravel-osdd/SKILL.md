@@ -1,15 +1,15 @@
 ---
 name: laravel-osdd
-description: Use when working in a Laravel application that depends on xefi/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, or asks to scaffold a new domain.
+description: Use when working in a Laravel application that depends on lomkit/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, or asks to scaffold a new domain.
 ---
 
 # Laravel OSDD
 
-`xefi/laravel-osdd` restructures a Laravel application into independent **layers**. Each layer is its own Composer package, installed via a local path repository, with its own namespace, service provider, migrations, seeders, and tests. The standard `app/`, `database/` and root `config/` directories are removed by `osdd:start` and never recreated.
+`lomkit/laravel-osdd` restructures a Laravel application into independent **layers**. Each layer is its own Composer package, installed via a local path repository, with its own namespace, service provider, migrations, seeders, and tests. The standard `app/`, `database/` and root `config/` directories are removed by `osdd:start` and never recreated.
 
 ## When to use this skill
 
-Use this skill whenever `xefi/laravel-osdd` is in the project's `composer.json`. From that point on:
+Use this skill whenever `lomkit/laravel-osdd` is in the project's `composer.json`. From that point on:
 
 - **Never** create files under `app/`, `database/migrations/`, `database/seeders/`, `database/factories/`, or root `config/`. Those directories do not exist in an OSDD project.
 - **Never** run a vanilla `make:*` command (`make:model`, `make:migration`, `make:controller`, …). Always use the `osdd:*` equivalent, which targets a specific layer.
@@ -60,10 +60,10 @@ php artisan osdd:layer functional/orders --generators=service-provider,routes
 php artisan osdd:phpunit
 ```
 
-- **`LayerServiceProvider` base class**: every layer's own provider extends `Xefi\LaravelOSDD\LayerServiceProvider` (not Laravel's `ServiceProvider`) to gain `loadSeeders()`, `overrideConfigFrom()`, and `withRouting()`. Example usage:
+- **`LayerServiceProvider` base class**: every layer's own provider extends `Lomkit\Osdd\LayerServiceProvider` (not Laravel's `ServiceProvider`) to gain `loadSeeders()`, `overrideConfigFrom()`, and `withRouting()`. Example usage:
 
 ```php
-class OrdersServiceProvider extends \Xefi\LaravelOSDD\LayerServiceProvider
+class OrdersServiceProvider extends \Lomkit\Osdd\LayerServiceProvider
 {
     public function boot(): void
     {
@@ -79,7 +79,7 @@ class OrdersServiceProvider extends \Xefi\LaravelOSDD\LayerServiceProvider
 
 Three reliable signals (any one is enough):
 
-1. `xefi/laravel-osdd` appears in `composer.json` under `require`.
+1. `lomkit/laravel-osdd` appears in `composer.json` under `require`.
 2. A `functional/` or `technical/` directory exists at the project root with subdirectories containing `composer.json` files of `"type": "layer"`.
 3. `bootstrap/providers.php` is empty (`return [];`) and there is no `app/Models/` directory.
 
@@ -142,9 +142,9 @@ Don't put HTTP plumbing (controllers, requests, routes) in a `technical/` layer 
 
 ## The two service providers
 
-- **`Xefi\LaravelOSDD\LaravelOSDDServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `SeederRegistry` singleton, publishes `config/osdd.php`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers.
+- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `SeederRegistry` singleton, publishes `config/osdd.php`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers.
 
-- **`Xefi\LaravelOSDD\LayerServiceProvider`** — the abstract base class **every layer's own provider must extend** (not Laravel's `ServiceProvider`). It exposes:
+- **`Lomkit\Osdd\LayerServiceProvider`** — the abstract base class **every layer's own provider must extend** (not Laravel's `ServiceProvider`). It exposes:
   - `loadSeeders(array $seeders, int $priority = 0)` — registers seeder classes with the global registry. Lower priority runs first. This is the **only** way to make a seeder runnable by `osdd:seed`.
   - `overrideConfigFrom(string $path, string $key)` — like `mergeConfigFrom`, but the layer's values win over previously-loaded defaults. Used by the technical OSDD layer to override `config('osdd')` from inside the application. Skips the merge when configuration is cached.
   - `withRouting(web:, api:, commands:, channels:, health:, apiPrefix: 'api')` — mounts a layer's route files following Laravel's standard conventions: `web` files in the `web` middleware group, `api` files in the `api` group behind the `apiPrefix`, `commands`/`channels` files `require`d, and `health` registered as a GET endpoint returning `{"status":"ok"}`. Each argument is optional; missing files are skipped, and the whole call is a no-op when routes are cached. For anything beyond these conventions (custom prefixes, domains, named groups), use the `Route` facade directly in `boot()`.
@@ -155,7 +155,7 @@ A freshly generated layer provider looks like:
 namespace Functional\Orders\Providers;
 
 use Functional\Orders\Database\Seeders\OrdersSeeder;
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class OrdersServiceProvider extends LayerServiceProvider
 {
@@ -231,7 +231,7 @@ The `routes/` directory is created by the `routes` generator (`osdd:layer --gene
 php artisan osdd:start
 ```
 
-Run **once**, immediately after `composer require xefi/laravel-osdd`, on a fresh Laravel app. It:
+Run **once**, immediately after `composer require lomkit/laravel-osdd`, on a fresh Laravel app. It:
 
 1. Creates `functional/users/` (a starter Users layer with Model, Factory, Seeder, and migration). Its `UsersServiceProvider::register()` rebinds Laravel's default auth user model with `config(['auth.providers.users.model' => User::class])` so `auth()`/guards resolve the layer's `Functional\Users\Models\User`.
 2. Creates `technical/osdd/` (a layer that owns the `config/osdd.php` override).
@@ -509,8 +509,8 @@ When a user asks "where should I add X?", the answer is always "in the layer res
 
 When debugging an OSDD project:
 
-- **List discovered layers** — start `tinker` and run `Xefi\LaravelOSDD\Layers\LayersCollection::fromConfig()->map(fn($l) => $l->manifest->name())->all();`. If a directory you expect isn't listed, its `composer.json` is missing `"type": "layer"` or the directory isn't under a path in `config('osdd.layers.paths')`.
-- **List registered seeders** — `app(\Xefi\LaravelOSDD\SeederRegistry::class)->seeders();`. Empty? No layer provider called `loadSeeders()`.
+- **List discovered layers** — start `tinker` and run `Lomkit\Osdd\Layers\LayersCollection::fromConfig()->map(fn($l) => $l->manifest->name())->all();`. If a directory you expect isn't listed, its `composer.json` is missing `"type": "layer"` or the directory isn't under a path in `config('osdd.layers.paths')`.
+- **List registered seeders** — `app(\Lomkit\Osdd\SeederRegistry::class)->seeders();`. Empty? No layer provider called `loadSeeders()`.
 - **List layer providers actually loaded** — `app()->getLoadedProviders()` and filter by namespace.
 - **Check Composer wiring** — the root `composer.json` should have a `repositories[]` entry of type `path` with URL `./functional/*` (and/or `./technical/*`) and a `require` entry like `"functional/orders": "*"` for each layer. If a layer's classes don't autoload, run `composer dump-autoload` first; if that fails, the layer's `composer.json` is malformed.
 - **Re-sync `phpunit.xml`** — run `osdd:phpunit` after creating a layer. If `vendor/bin/phpunit --testsuite=functional/orders` reports "unknown testsuite", the sync hasn't run.
@@ -522,7 +522,7 @@ When debugging an OSDD project:
 ```bash
 composer create-project laravel/laravel my-app
 cd my-app
-composer require xefi/laravel-osdd
+composer require lomkit/laravel-osdd
 php artisan osdd:start            # accept "composer update" prompt
 php artisan osdd:layer functional/orders   # or interactive
 php artisan migrate
@@ -659,7 +659,7 @@ Before running any `osdd:*` make command, confirm:
 - **`make:*` instead of `osdd:*`**: the file lands in `app/` (which doesn't exist) or in a stray directory and won't be autoloaded. Always prefix with `osdd:` and pass `--layer`.
 - **Omitting `--layer` in non-interactive contexts**: hangs on `Laravel\Prompts\search`. Always pass `--layer=vendor/package` explicitly when scripting.
 - **Forgetting `"type": "layer"` in a hand-written `composer.json`**: the layer is invisible to `LayersCollection`, so its migrations don't load, its tests aren't synced, and its seeders aren't registered. Symptom: `osdd:seed` says "No OSDD seeders registered" even though the file exists.
-- **Extending `Illuminate\Support\ServiceProvider` in a layer**: works, but loses `loadSeeders()` and `overrideConfigFrom()`. Always extend `Xefi\LaravelOSDD\LayerServiceProvider`.
+- **Extending `Illuminate\Support\ServiceProvider` in a layer**: works, but loses `loadSeeders()` and `overrideConfigFrom()`. Always extend `Lomkit\Osdd\LayerServiceProvider`.
 - **Writing a seeder by hand without calling `loadSeeders()`**: the seeder won't run from `osdd:seed`. `osdd:seeder` injects the call automatically; a hand-written seeder needs it added to the layer provider's `boot()`.
 - **A route file the provider's `withRouting()` doesn't reference**: the route silently doesn't exist at runtime — `php artisan route:list` won't show it. The generated provider's `withRouting()` only mounts the standard `routes/{web,api,console,channels}.php` paths; a route file at a non-standard path (or a regenerated provider that lost the call) needs `withRouting()` updated, or a manual `Route::...->group(...)` in `boot()`.
 - **Registering a policy via `AuthServiceProvider`** (which doesn't exist in an OSDD app): use `Gate::policy()` in the owning layer's `LayerServiceProvider::boot()` instead.

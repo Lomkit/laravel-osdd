@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD;
+namespace Lomkit\Osdd;
 
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Foundation\CachesRoutes;

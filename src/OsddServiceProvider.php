@@ -1,45 +1,45 @@
 <?php
 
-namespace Xefi\LaravelOSDD;
+namespace Lomkit\Osdd;
 
 use Illuminate\Support\ServiceProvider;
 use Symfony\Component\Finder\Finder;
-use Xefi\LaravelOSDD\Console\Commands\LayerCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\CastMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ChannelMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ClassMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ConfigMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ConsoleMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ControllerMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\EnumMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\EventMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ExceptionMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\FactoryMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\InterfaceMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\JobMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ListenerMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\MailMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\MiddlewareMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\MigrateMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ModelMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\NotificationMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ObserverMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\PolicyMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\RequestMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ResourceMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\RuleMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ScopeMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\SeederMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ServiceProviderMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\TestMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\TraitMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\Make\ViewMakeCommand;
-use Xefi\LaravelOSDD\Console\Commands\PhpunitCommand;
-use Xefi\LaravelOSDD\Console\Commands\SeedCommand;
-use Xefi\LaravelOSDD\Console\Commands\StartCommand;
-use Xefi\LaravelOSDD\Layers\LayersCollection;
+use Lomkit\Osdd\Console\Commands\LayerCommand;
+use Lomkit\Osdd\Console\Commands\Make\CastMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ChannelMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ClassMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ConfigMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ConsoleMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ControllerMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\EnumMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\EventMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ExceptionMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\FactoryMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\InterfaceMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\JobMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ListenerMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\MailMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\MiddlewareMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\MigrateMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ModelMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\NotificationMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ObserverMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\PolicyMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\RequestMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ResourceMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\RuleMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ScopeMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\SeederMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ServiceProviderMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\TestMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\TraitMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ViewMakeCommand;
+use Lomkit\Osdd\Console\Commands\PhpunitCommand;
+use Lomkit\Osdd\Console\Commands\SeedCommand;
+use Lomkit\Osdd\Console\Commands\StartCommand;
+use Lomkit\Osdd\Layers\LayersCollection;
 
-class LaravelOSDDServiceProvider extends ServiceProvider
+class OsddServiceProvider extends ServiceProvider
 {
     public function boot(): void
     {

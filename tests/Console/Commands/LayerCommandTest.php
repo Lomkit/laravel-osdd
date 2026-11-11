@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands;
+namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
-use Xefi\LaravelOSDD\Tests\TestCase;
+use Lomkit\Osdd\Tests\TestCase;
 
 class LayerCommandTest extends TestCase
 {
@@ -106,7 +106,7 @@ class LayerCommandTest extends TestCase
             '"Functional\\\\MyLayer\\\\": "src/"',
             '"Functional\\\\MyLayer\\\\Database\\\\Seeders\\\\": "database/seeders/"',
             '"Functional\\\\MyLayer\\\\Database\\\\Factories\\\\": "database/factories/"',
-            '"xefi/laravel-osdd": "*"',
+            '"lomkit/laravel-osdd": "*"',
             'Functional\\\\MyLayer\\\\Providers\\\\MyLayerServiceProvider',
         ], 'functional/my-layer/composer.json');
     }

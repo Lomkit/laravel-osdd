@@ -1,13 +1,13 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands;
+namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Process\Process;
-use Xefi\LaravelOSDD\Console\Concerns\RegistersLayerInComposer;
+use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;

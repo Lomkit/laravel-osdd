@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD;
+namespace Lomkit\Osdd;
 
 class SeederRegistry
 {

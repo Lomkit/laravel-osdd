@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Layers;
+namespace Lomkit\Osdd\Layers;
 
 use Illuminate\Filesystem\Filesystem;
 use Symfony\Component\Finder\SplFileInfo;

@@ -4,7 +4,7 @@ namespace Functional\Users\Providers;
 
 use Functional\Users\Database\Seeders\UsersSeeder;
 use Functional\Users\Models\User;
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class UsersServiceProvider extends LayerServiceProvider
 {

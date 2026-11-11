@@ -1,12 +1,12 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Xefi\LaravelOSDD\Layers\Layer;
-use Xefi\LaravelOSDD\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayersCollection;
 
 use function Laravel\Prompts\search;
 

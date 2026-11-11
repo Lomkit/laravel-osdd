@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Layers;
+namespace Lomkit\Osdd\Layers;
 
 use Illuminate\Support\Collection;
 use Symfony\Component\Finder\Finder;

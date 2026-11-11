@@ -1,13 +1,13 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands;
+namespace Lomkit\Osdd\Console\Commands;
 
 use DOMDocument;
 use DOMXPath;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Xefi\LaravelOSDD\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\LayersCollection;
 
 #[AsCommand(name: 'osdd:phpunit')]
 class PhpunitCommand extends Command

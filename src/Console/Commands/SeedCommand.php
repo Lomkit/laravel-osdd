@@ -1,10 +1,10 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands;
+namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Xefi\LaravelOSDD\SeederRegistry;
+use Lomkit\Osdd\SeederRegistry;
 
 #[AsCommand(name: 'osdd:seed')]
 class SeedCommand extends Command

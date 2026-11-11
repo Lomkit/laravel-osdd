@@ -1,12 +1,12 @@
 {
-    "name": "xefi/laravel-osdd",
+    "name": "lomkit/laravel-osdd",
     "description": "Package to handle OSDD in a Laravel application.",
     "type": "library",
     "license": "MIT",
     "authors": [
         {
             "name": "Gautier DELEGLISE",
-            "email": "g.deleglise@xefi.fr"
+            "email": "gautier@lomkit.com"
         }
     ],
     "require": {
@@ -19,18 +19,18 @@
     },
     "autoload": {
         "psr-4": {
-            "Xefi\\LaravelOSDD\\": "src/"
+            "Lomkit\\Osdd\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Xefi\\LaravelOSDD\\Tests\\": "tests/"
+            "Lomkit\\Osdd\\Tests\\": "tests/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Xefi\\LaravelOSDD\\LaravelOSDDServiceProvider"
+                "Lomkit\\Osdd\\OsddServiceProvider"
             ]
         }
     },

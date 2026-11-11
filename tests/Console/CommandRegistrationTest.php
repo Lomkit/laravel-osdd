@@ -1,10 +1,10 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console;
+namespace Lomkit\Osdd\Tests\Console;
 
 use Illuminate\Contracts\Console\Kernel;
 use Symfony\Component\Console\Command\Command;
-use Xefi\LaravelOSDD\Tests\TestCase;
+use Lomkit\Osdd\Tests\TestCase;
 
 class CommandRegistrationTest extends TestCase
 {

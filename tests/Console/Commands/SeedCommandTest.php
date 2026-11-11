@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands;
+namespace Lomkit\Osdd\Tests\Console\Commands;
 
-use Xefi\LaravelOSDD\SeederRegistry;
-use Xefi\LaravelOSDD\Tests\TestCase;
+use Lomkit\Osdd\SeederRegistry;
+use Lomkit\Osdd\Tests\TestCase;
 
 class SeedCommandTest extends TestCase
 {

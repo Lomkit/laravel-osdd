@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands;
+namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Illuminate\Filesystem\Filesystem;
-use Xefi\LaravelOSDD\Tests\TestCase;
+use Lomkit\Osdd\Tests\TestCase;
 
 class StartCommandTest extends TestCase
 {

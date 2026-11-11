@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests;
+namespace Lomkit\Osdd\Tests;
 
 use Orchestra\Testbench\Concerns\WithWorkbench;
 

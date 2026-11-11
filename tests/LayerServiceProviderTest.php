@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests;
+namespace Lomkit\Osdd\Tests;
 
 use Illuminate\Filesystem\Filesystem;
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class LayerServiceProviderTest extends TestCase
 {
