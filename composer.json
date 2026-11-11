@@ -23,10 +23,6 @@
         "phpunit/phpunit": "^12.5 || ^13.0",
         "tomasvotruba/type-coverage": "^2.5"
     },
-    "suggest": {
-        "filament/filament": "Required by Lomkit\\Osdd\\Filament\\LayersPlugin to discover the Filament classes of the layers (^5.0).",
-        "livewire/livewire": "Required by withLivewire() and osdd:livewire to register and generate Livewire components in the layers (^4.0)."
-    },
     "conflict": {
         "xefi/laravel-osdd": "*"
     },

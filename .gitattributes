@@ -5,6 +5,5 @@
 /.github                  export-ignore
 /pint.json                export-ignore
 /phpstan.neon             export-ignore
-/phpstan                  export-ignore
 /testbench.yaml           export-ignore
 /workbench                export-ignore

@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Lomkit\Osdd\Console\Providers\BootedLayerResources;
 use Lomkit\Osdd\Console\Providers\Statements\WithComponents;
 use Lomkit\Osdd\Console\Providers\Statements\WithViews;
 
@@ -25,13 +24,5 @@ trait InjectsResourceHelpers
     protected function injectWithComponents(string $componentNamespace): void
     {
         $this->wireInTargetLayer(new WithComponents($componentNamespace, $this->target()->resourceNamespace));
-    }
-
-    protected function layerViewNamespace(): string
-    {
-        $target = $this->target();
-
-        return $this->laravel->make(BootedLayerResources::class)->viewNamespace($target->layer)
-            ?? $target->resourceNamespace->name();
     }
 }

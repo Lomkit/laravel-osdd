@@ -1,6 +1,6 @@
 ---
 name: laravel-osdd
-description: Use when working in a Laravel application that depends on lomkit/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, asks to scaffold or remove a domain, asks where code, a listener, a Livewire component or a Filament resource belongs, which layer depends on which, or about layer boundaries, dependencies or cycles.
+description: Use when working in a Laravel application that depends on lomkit/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, asks to scaffold or remove a domain, asks where code or a listener belongs, which layer depends on which, or about layer boundaries, dependencies or cycles.
 ---
 
 # Laravel OSDD
@@ -54,12 +54,6 @@ php artisan osdd:check --format=json
 php artisan osdd:component Alert --layer=functional/orders   # <x-orders::alert />
 ```
 
-- **Livewire and Filament (optional)**: with Livewire 4 installed, `LayerServiceProvider::withLivewire()` registers a layer's `src/Livewire` classes and `resources/views/livewire` components under the layer's package name (`<livewire:orders::cart />`), and `osdd:livewire` generates them. With Filament 5, the `Lomkit\Osdd\Filament\LayersPlugin` panel plugin discovers each layer's `src/Filament/{Panel}/Resources`, `Pages`, `Widgets` and `Clusters`. Neither package is required by OSDD. Example usage:
-
-```bash
-php artisan osdd:livewire Cart --class --layer=functional/orders   # <livewire:orders::cart />
-```
-
 - **Layer-scoped seeders**: every layer registers its seeders through `LayerServiceProvider::loadSeeders([...], priority: 0)`; `Lomkit\Osdd\Seeders\LayersSeeder` runs them all across layers in priority order, and `osdd:seed` runs it (`--layer` limits it to some layers). Example usage:
 
 ```bash
@@ -94,7 +88,7 @@ php artisan osdd:phpunit
 php artisan osdd:remove functional/legacy --force --composer-update
 ```
 
-- **`LayerServiceProvider` base class**: every layer's own provider extends `Lomkit\Osdd\LayerServiceProvider` (not Laravel's `ServiceProvider`) to gain `loadSeeders()`, `overrideConfigFrom()`, `withRouting()`, `withViews()`, `withTranslations()`, `withComponents()` and `withLivewire()`. Example usage:
+- **`LayerServiceProvider` base class**: every layer's own provider extends `Lomkit\Osdd\LayerServiceProvider` (not Laravel's `ServiceProvider`) to gain `loadSeeders()`, `overrideConfigFrom()`, `withRouting()`, `withViews()`, `withTranslations()` and `withComponents()`. Example usage:
 
 ```php
 class OrdersServiceProvider extends \Lomkit\Osdd\LayerServiceProvider
@@ -185,8 +179,7 @@ Don't put HTTP plumbing (controllers, requests, routes) in a `technical/` layer 
   - `withViews(string $path, ?string $namespace = null)` — `loadViewsFrom()` under `$namespace`, by default the package name of the layer that owns the provider (`orders` for `functional/orders`: the discovered layer whose `autoload.psr-4` prefix covers the provider class): `view('orders::index')`. A missing directory is skipped. A provider outside every discovered layer throws `Lomkit\Osdd\Layers\ProviderLayerNotFoundException`: pass the namespace.
   - `withTranslations(string $path, ?string $namespace = null)` — `loadTranslationsFrom()` under the same default namespace (`__('orders::messages.welcome')`) plus `loadJsonTranslationsFrom()` for the `lang/*.json` files. A missing directory is skipped.
   - `withComponents(string $namespace, ?string $prefix = null)` — `Blade::componentNamespace()`: `withComponents('Functional\\Orders\\View\\Components')` makes `<x-orders::alert />` render `Functional\Orders\View\Components\Alert`.
-  - `withLivewire(?string $namespace = null)` — Livewire 4's `Livewire::addNamespace()` for the layer, under the same default namespace: class components `{root namespace}\Livewire\…` in `src/Livewire/`, single-file and multi-file components and the class views in `resources/views/livewire/`. `<livewire:orders::cart />` renders `Functional\Orders\Livewire\Cart` or `resources/views/livewire/⚡cart.blade.php`. It does nothing when Livewire 4 is not installed and registered, so a layer can call it in an app without Livewire.
-  - Two layers with the same package name (`functional/orders`, `technical/orders`) would share the default namespace: the second provider to register it throws `Lomkit\Osdd\Resources\ResourceNamespaceCollisionException` at boot, naming both providers. Pass the second argument in one of them (`'technical-orders'`). The same rule applies to the Livewire namespaces of `withLivewire()`. The generators do it for you when they see another layer with the same package name (they write `vendor-package`).
+  - Two layers with the same package name (`functional/orders`, `technical/orders`) would share the default namespace: the second provider to register it throws `Lomkit\Osdd\Resources\ResourceNamespaceCollisionException` at boot, naming both providers. Pass the second argument in one of them (`'technical-orders'`). The generators do it for you when they see another layer with the same package name (they write `vendor-package`).
 
 A freshly generated layer provider looks like:
 
@@ -233,11 +226,10 @@ The generated provider wires **migrations**, **routing** (`withRouting()`), **vi
 - `osdd:command` injects `$this->commands([\…\Console\Commands\SyncOrders::class]);` into `boot()`, so the command is registered.
 - `osdd:view` injects `$this->withViews(__DIR__ . '/../../resources/views');` into `boot()` unless the provider already calls `withViews()`.
 - `osdd:component` injects `withViews()` (unless `--inline`) and `$this->withComponents('Functional\\Orders\\View\\Components');` (unless `--view`), each only when the provider does not call it yet.
-- `osdd:livewire` injects `$this->withLivewire();` and, for a class component (`--class`), `withViews()`, each only when the provider does not call it yet.
 - `osdd:seeder` injects `$this->loadSeeders([...])` into `boot()`.
 - `osdd:config` injects `$this->overrideConfigFrom(...)` into `register()`, so other packages see the override when they boot.
 
-These injections are idempotent: a call the provider already makes is not added again, whatever its layout (spacing, line breaks, comments, trailing commas, or the short name of an imported class), and `withViews()`, `withComponents()` or `withLivewire()` is not added when the provider calls it at all. A commented-out call does not count. When the provider imports the class, the added line uses its short name (`$this->loadSeeders([UsersSeeder::class]);`). The provider is the first class of the layer's `extra.laravel.providers` found on disk, else `src/Providers/{Package}ServiceProvider.php`, where `{Package}` is the package name in StudlyCase as in the layer namespace (`FooBarServiceProvider` for `functional/foo.bar`); the `__DIR__` path is computed from its folder. When the layer has no provider, or the provider has no `boot()`/`register()` method, the command prints a warning and the exact line to add by hand: add it.
+These injections are idempotent: a call the provider already makes is not added again, whatever its layout (spacing, line breaks, comments, trailing commas, or the short name of an imported class), and `withViews()` or `withComponents()` is not added when the provider calls it at all. A commented-out call does not count. When the provider imports the class, the added line uses its short name (`$this->loadSeeders([UsersSeeder::class]);`). The provider is the first class of the layer's `extra.laravel.providers` found on disk, else `src/Providers/{Package}ServiceProvider.php`, where `{Package}` is the package name in StudlyCase as in the layer namespace (`FooBarServiceProvider` for `functional/foo.bar`); the `__DIR__` path is computed from its folder. When the layer has no provider, or the provider has no `boot()`/`register()` method, the command prints a warning and the exact line to add by hand: add it.
 
 A provider written before these helpers existed (2.x) can call them by hand:
 
@@ -349,7 +341,6 @@ Notes on a few that diverge from vanilla Laravel:
 - **`osdd:command`** — creates `src/Console/Commands/{Name}.php` and injects `$this->commands([\…\Console\Commands\{Name}::class]);` into the layer provider's `boot()` (idempotent), so the command shows in `php artisan list`.
 - **`osdd:view`** — creates `{layer}/resources/views/{name}.blade.php` and injects `withViews()` when the provider does not call it yet. Render it as `view('orders::orders.index')`, never `view('orders.index')`.
 - **`osdd:component Name`** — creates `src/View/Components/{Name}.php`, whose `render()` returns `view('orders::components.{name}')`, and `resources/views/components/{name}.blade.php`; injects `withViews()` and `withComponents()`. Use it as `<x-orders::name />`. `--inline` writes no view (and no `withViews()`), `--view` writes only the anonymous view (and no `withComponents()`), `--path` changes the view folder as in Laravel. The namespace is the one the booted layer already uses for its views, else the package name, else `vendor-package` when another layer has the same package name (the command then warns).
-- **`osdd:livewire Name`** (only registered when Livewire 4 is installed) — the twin of `make:livewire` with its options (`--class`, `--sfc`, `--mfc`, `--test`, `--emoji`, `--js`, `--css`); the type defaults to `livewire.make_command.type` as in Livewire. A single-file component goes to `resources/views/livewire/⚡{name}.blade.php` (a multi-file one to a folder there), a class component to `src/Livewire/{Name}.php` with its view in `resources/views/livewire/{name}.blade.php`, rendered as `view('orders::livewire.{name}')`. It injects `withLivewire()` (and `withViews()` for a class component). Nested names work (`Admin/OrderList` → `<livewire:orders::admin.order-list />`). Pass the name without a namespace: `billing::invoice` is generated in the `--layer` layer as `invoice`. `--test` writes a class component's test to the layer's `tests/Feature/Livewire/`.
 - **`osdd:job-middleware`** — writes `src/Jobs/Middleware/{Name}.php`.
 - **`osdd:cache-table`, `osdd:session-table`, `osdd:queue-table`, `osdd:queue-failed-table`, `osdd:queue-batches-table`, `osdd:notifications-table`** — write the framework table migration into `{layer}/database/migrations/` (never the root `database/migrations/`) and inject `loadMigrationsFrom()`. They fail with "Migration already exists." when any layer, the root `database/migrations/` or a registered migration path already creates that table, including the skeleton files `osdd:start` copies (`0001_01_01_000000_create_users_table.php` creates `sessions`, `0001_01_01_000002_create_jobs_table.php` creates `jobs`, `job_batches` and `failed_jobs`). After `osdd:start`, the cache, jobs, batches, failed jobs and sessions tables already exist; only `osdd:notifications-table` is usually needed. They do not take the `make:*` aliases (`queue:table`, …).
 
@@ -540,43 +531,6 @@ On by default. Laravel's own discovery only covers `app/Listeners`: it guesses c
 
 To add a new category (e.g. `support/`), append it to `osdd.layers.paths` from inside the `technical/osdd` layer's `Technical\Osdd\Providers\OsddServiceProvider::register()` using `$this->overrideConfigFrom(...)`. Don't edit the package's own `config/osdd.php` directly.
 
-## Livewire and Filament (optional)
-
-OSDD requires neither package: the code that uses them only runs when they are installed.
-
-### Livewire 4
-
-- Call `$this->withLivewire();` in the layer provider's `boot()` (`osdd:livewire` adds it). Components are then `<livewire:orders::name />` and `Livewire::test('orders::name')`.
-- Generate with `osdd:livewire Name --layer=…`, never `make:livewire` (which writes into `app/Livewire` and `resources/views/`).
-- A class component's view is a layer view (`view('orders::livewire.cart')`), so the provider also needs `withViews()`; `osdd:livewire --class` adds both.
-
-### Filament 5
-
-Register the plugin on every panel that should see the layers, in the app's panel provider (after `->id()`):
-
-```php
-use Lomkit\Osdd\Filament\LayersPlugin;
-
-return $panel
-    ->id('admin')
-    ->plugin(LayersPlugin::make());
-```
-
-- For each discovered layer with an `autoload.psr-4` namespace, the plugin calls Filament's `discoverResources()`, `discoverPages()`, `discoverWidgets()` and `discoverClusters()` on `src/Filament/{Panel}/Resources` (and `Pages`, `Widgets`, `Clusters`), where `{Panel}` is the panel id in StudlyCase (`admin` → `Admin`, `back-office` → `BackOffice`), with the namespace `{root namespace}\Filament\{Panel}\Resources`. A panel only sees the folder named after its id.
-- It also registers each layer's `src/Filament` as a Filament component location, with the layer's package name as view namespace.
-- `php artisan filament:cache-components` (run by `optimize` through `filament:optimize`) caches the discovered classes as for `app/Filament`; run it again after adding a class.
-- There is no `osdd:filament-*` generator: use Filament's own commands, which offer every layer once the plugin is registered on the panel. In a script, pass the layer namespaces:
-
-```bash
-php artisan make:filament-resource Order --panel=admin \
-  --resource-namespace='Functional\Orders\Filament\Admin\Resources' \
-  --model-namespace='Functional\Orders\Models'
-php artisan make:filament-page Reports --panel=admin
-php artisan make:filament-widget SalesChart --panel=admin
-```
-
-  The resource lands in `functional/orders/src/Filament/Admin/Resources/Orders/`. `--resource-namespace` must be one the panel lists (`$panel->getResourceNamespaces()`): Filament falls back to the first folder otherwise. `make:filament-page` and `make:filament-widget` have no namespace option: when the panel discovers a single page (or widget) folder they write there, otherwise they ask for the namespace in a search prompt that lists every discovered folder (each layer, plus `app/Filament` when the panel discovers it), so run them in a terminal (or move the generated class and view afterwards). A page view goes to the layer's `resources/views/filament/…` (`orders::filament.admin.pages.reports`) when the layer provider calls `withViews()`. Do not pass `--model`, `--migration` or `--factory` to `make:filament-resource`: Filament calls `make:model`, `make:migration` and `make:factory`, which write into `app/` and `database/`; generate them first with `osdd:model Order --migration --factory --layer=…`.
-
 ## Idiomatic file content
 
 The package targets Laravel 13 and uses modern attribute-based metadata on models. When writing or editing layer files by hand, match this style — the generators do.
@@ -746,7 +700,6 @@ Before adding code, locate the right layer. The `app/` and root `database/` dire
 4. **Find a route.** Routes are layer-local. Check each layer's `routes/` directory (`web.php`, `api.php`, `console.php`, `channels.php`) — they're mounted by the `$this->withRouting(...)` call in the layer's `LayerServiceProvider::boot()`. Routes only exist if the layer ships the file and the provider's `withRouting()` references it.
 5. **Find a config key.** Layer-defined config lives in `{layer}/config/{name}.php` and is loaded into `config('{name}')` via `overrideConfigFrom`. Look at the layer's `LayerServiceProvider` (`osdd:config` injects the call into `register()`) to see what keys it overrides.
 6. **Find who handles an event.** Run `php artisan event:list --event=OrderPlaced`. Look in each layer's `src/Listeners` (discovered unless `osdd.events.discover` is `false`) and for `Event::listen()` in the layer providers' `boot()`.
-7. **Find a Livewire component or a Filament class.** `<livewire:orders::cart />` lives in the layer whose package name (or `withLivewire()` namespace) is `orders`: `src/Livewire/Cart.php` or `resources/views/livewire/⚡cart.blade.php`. A Filament resource, page, widget or cluster of the `admin` panel lives in a layer's `src/Filament/Admin/{Resources,Pages,Widgets,Clusters}/`.
 
 When a user asks "where should I add X?", the answer is always "in the layer responsible for X" — never `app/`. If no layer matches, the answer is "create a new layer with `osdd:layer`."
 
@@ -930,8 +883,6 @@ If you write a test by hand, match the layer's namespace — a test class in `Te
 | Register layer test suite in phpunit.xml | `osdd:phpunit` |
 | Remove a layer no other layer requires | `osdd:remove vendor/package [--keep-files] [--force] [--composer-update]` |
 | Listener for an event | `osdd:listener Name --event=OrderPlaced --layer=…` (registered automatically; `Event::listen()` in the layer provider only when `osdd.events.discover` is `false`) |
-| Livewire component | `osdd:livewire Name --layer=…` (`<livewire:orders::name />`, wires `withLivewire()`) |
-| Filament resource, page or widget in a layer | `make:filament-resource / make:filament-page / make:filament-widget --panel=…` with `LayersPlugin` on the panel (pass `--resource-namespace` and `--model-namespace` in a script) |
 | Arbitrary class | `osdd:class Path/To/Class --layer=…` |
 
 ## Pre-flight checklist before generating code
@@ -962,9 +913,6 @@ Before running any `osdd:*` make command, confirm:
 - **Skipping `composer update` after `osdd:remove`**: Composer still lists the removed layer, so Laravel tries to register its deleted provider and every `artisan` command fails with a class-not-found error until `composer update vendor/package` runs. With cached config, routes or events (`php artisan optimize`), run `optimize` again too: those caches still name the layer's classes.
 - **A listener registered by hand and discovered**: a listener already registered in a provider's `boot()` for the same event and method is skipped, but one registered later (a `booted()` callback, at runtime) runs twice. Do not write `Event::listen()` for a listener of `src/Listeners`: discovery registers it.
 - **A new listener that never runs in production**: `event:cache` (or `optimize`) froze the listener list; run it again after adding a listener, as with `app/Listeners`.
-- **`make:livewire` in an OSDD app**: the component lands in `app/Livewire` or the root `resources/views`. Use `osdd:livewire --layer=…`.
-- **A layer Filament resource that does not show in the panel**: the panel provider does not call `->plugin(LayersPlugin::make())`, the folder is not named after the panel id (`src/Filament/Admin/Resources` for the `admin` panel), or `filament:cache-components` cached the panel before the class was added.
-- **`make:filament-resource --model` (or `--migration`, `--factory`)**: Filament generates these with `make:*` into `app/` and `database/`. Generate them with `osdd:model … --layer=…` first.
 
 ## Quick reference: what NEVER goes where
 
@@ -982,8 +930,6 @@ Before running any `osdd:*` make command, confirm:
 | A Blade component | `app/View/Components/` | `osdd:component Name --layer=…` (wires `withViews()` and `withComponents()`) |
 | A translation file | `lang/` (root) | `{layer}/lang/` + `withTranslations()` (in generated providers) |
 | An Artisan command | `app/Console/Commands/` | `osdd:command Name --layer=…` (wires `$this->commands([...])`) |
-| A Livewire component | `app/Livewire/`, `resources/views/livewire/` (root) | `osdd:livewire Name --layer=…` (wires `withLivewire()`) |
-| A Filament resource, page or widget | `app/Filament/` | `{layer}/src/Filament/{Panel}/…` via `make:filament-*` with `LayersPlugin` on the panel |
 | An event listener | `app/Listeners/` | `osdd:listener Name --layer=…` (in `src/Listeners`, discovered) |
 | A cache / session / queue / notifications table | `make:*-table` (writes root `database/migrations/`) | `osdd:*-table --layer=…` |
 | A policy | `app/Policies/` | `osdd:policy … --layer=…` (found by convention; `Gate::policy()` only for a non-conventional name) |

@@ -4,12 +4,8 @@ namespace Lomkit\Osdd\Resources;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\Compilers\BladeCompiler;
-use Livewire\LivewireManager;
-use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\Layers;
 use Lomkit\Osdd\Layers\ProviderLayerNotFoundException;
-use Lomkit\Osdd\Livewire\InstalledLivewire;
-use Lomkit\Osdd\Livewire\LivewireLocation;
 
 /**
  * @phpstan-require-extends ServiceProvider
@@ -61,38 +57,13 @@ trait RegistersLayerResources
         );
     }
 
-    /**
-     * Registers nothing unless Livewire 4 is installed and its provider registered.
-     *
-     * @throws ResourceNamespaceCollisionException
-     * @throws ProviderLayerNotFoundException
-     */
-    protected function withLivewire(?string $namespace = null): void
-    {
-        if (! InstalledLivewire::runsIn($this->app)) {
-            return;
-        }
-
-        $location = LivewireLocation::of($this->owningLayer(), $this->claimResourceNamespace(ResourceKind::Livewire, $namespace));
-
-        $this->callAfterResolving(
-            LivewireManager::class,
-            fn (LivewireManager $livewire) => $location->registerIn($livewire),
-        );
-    }
-
     private function claimResourceNamespace(ResourceKind $kind, ?string $namespace): string
     {
-        $namespace ??= $this->owningLayer()->name->package;
+        $namespace ??= $this->app->make(Layers::class)->owning(static::class)?->name->package
+            ?? throw new ProviderLayerNotFoundException(static::class);
 
         $this->app->make(ResourceNamespaces::class)->claim($kind, $namespace, static::class);
 
         return $namespace;
-    }
-
-    private function owningLayer(): Layer
-    {
-        return $this->app->make(Layers::class)->owning(static::class)
-            ?? throw new ProviderLayerNotFoundException(static::class);
     }
 }
