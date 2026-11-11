@@ -125,6 +125,35 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame('untouched', $this->app['config']->get('package.other'));
     }
 
+    public function test_it_replaces_lists_as_a_whole(): void
+    {
+        $this->app['config']->set('queue-demo', [
+            'queues' => ['default', 'low'],
+            'connections' => ['redis' => ['queue' => 'default', 'retry_after' => 90]],
+        ]);
+
+        $path = $this->writeConfig('queue-demo.php', [
+            'queues' => ['high'],
+            'connections' => ['redis' => ['queue' => 'high']],
+        ]);
+
+        $this->makeProvider()->callOverrideConfigFrom($path, 'queue-demo');
+
+        $this->assertSame(['high'], $this->app['config']->get('queue-demo.queues'));
+        $this->assertSame(['queue' => 'high', 'retry_after' => 90], $this->app['config']->get('queue-demo.connections.redis'));
+    }
+
+    public function test_an_empty_array_clears_the_loaded_value(): void
+    {
+        $this->app['config']->set('middleware-demo', ['except' => ['a', 'b'], 'enabled' => true]);
+
+        $path = $this->writeConfig('middleware-demo.php', ['except' => []]);
+
+        $this->makeProvider()->callOverrideConfigFrom($path, 'middleware-demo');
+
+        $this->assertSame(['except' => [], 'enabled' => true], $this->app['config']->get('middleware-demo'));
+    }
+
     public function test_it_creates_the_key_when_it_did_not_exist_before(): void
     {
         $path = $this->writeConfig('brand-new.php', ['option' => 'value']);

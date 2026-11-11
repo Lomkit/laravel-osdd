@@ -24,10 +24,11 @@ abstract class LayerServiceProvider extends ServiceProvider
      * Override an already-loaded config key with values from a file.
      *
      * Unlike mergeConfigFrom(), the layer values take priority over whatever
-     * is already loaded — so a layer can override a third-party package's
-     * defaults (Horizon, Telescope, …) exactly like the app's own config
-     * folder does. Call this from register() so the override is in place
-     * before other packages boot and read their config.
+     * is already loaded, so a layer can override a third-party package's
+     * defaults (Horizon, Telescope, …). Maps are merged key by key at every
+     * depth; a list, or an empty array, replaces the loaded value as a whole.
+     * Call this from register() so the override is in place before other
+     * packages boot and read their config.
      */
     protected function overrideConfigFrom(string $path, string $key): void
     {
@@ -43,7 +44,33 @@ abstract class LayerServiceProvider extends ServiceProvider
         /** @var array<array-key, mixed> $overrides */
         $overrides = require $path;
 
-        $config->set($key, array_replace_recursive($loaded, $overrides));
+        $config->set($key, $this->overrideValues($loaded, $overrides));
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $loaded
+     * @param  array<array-key, mixed>  $overrides
+     * @return array<array-key, mixed>
+     */
+    private function overrideValues(array $loaded, array $overrides): array
+    {
+        foreach ($overrides as $key => $value) {
+            $current = $loaded[$key] ?? null;
+
+            $loaded[$key] = $this->isMap($value) && $this->isMap($current)
+                ? $this->overrideValues($current, $value)
+                : $value;
+        }
+
+        return $loaded;
+    }
+
+    /**
+     * @phpstan-assert-if-true array<array-key, mixed> $value
+     */
+    private function isMap(mixed $value): bool
+    {
+        return is_array($value) && ! array_is_list($value);
     }
 
     /**
