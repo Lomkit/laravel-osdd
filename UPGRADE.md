@@ -108,7 +108,7 @@ Check the config files your layers load with `overrideConfigFrom()`. Where a lay
 
 #### `osdd:layer` without a terminal
 
-`osdd:layer` no longer runs `composer update` when it cannot ask: under `--no-interaction` (`-n`), or without a terminal (CI, scripts, AI agents). In 2.x it ran the update by default. Pass `--composer-update` to run it, or run `composer update vendor/package` yourself. `--no-composer-update` skips the question in a terminal.
+`osdd:layer` no longer runs `composer update` when it cannot ask: under `--no-interaction` (`-n`), or without a terminal (CI, scripts, tools driven by Laravel Boost). In 2.x it ran the update by default. Pass `--composer-update` to run it, or run `composer update vendor/package` yourself. `--no-composer-update` skips the question in a terminal.
 
 Without a terminal, the command also stops asking for the rest:
 
