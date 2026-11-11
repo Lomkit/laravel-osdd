@@ -5,6 +5,7 @@ namespace Lomkit\Osdd\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\ComposerUpdateReason;
 use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Start\SkeletonCleaner;
@@ -58,7 +59,7 @@ class StartCommand extends Command
 
         $this->components->info('Congratulations! Your project is ready for OSDD. Create your first layer with <options=bold>php artisan osdd:layer</>.');
 
-        return $this->offerComposerUpdate(...array_map(
+        return $this->offerComposerUpdate(ComposerUpdateReason::LayersAdded, ...array_map(
             fn (LayerBlueprint $blueprint): string => $blueprint->draft->name->toString(),
             $blueprints,
         )) ? self::SUCCESS : self::FAILURE;
@@ -72,7 +73,7 @@ class StartCommand extends Command
     {
         return [
             new InputOption('force', null, InputOption::VALUE_NONE, 'Delete app/, config/ and database/ without asking'),
-            $this->composerUpdateOption(),
+            $this->composerUpdateOption(ComposerUpdateReason::LayersAdded),
         ];
     }
 

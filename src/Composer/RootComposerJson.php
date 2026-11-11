@@ -34,6 +34,23 @@ final readonly class RootComposerJson
     }
 
     /**
+     * Drop the layer from require and require-dev, and the given path repositories.
+     *
+     * @throws MalformedComposerJsonException
+     */
+    public function forgetLayer(LayerName $name, PathRepository ...$repositories): void
+    {
+        $composer = $this->open();
+        $composer->removePackage($name->toString());
+
+        foreach ($repositories as $repository) {
+            $composer->removePathRepository($repository);
+        }
+
+        $composer->save();
+    }
+
+    /**
      * @throws MalformedComposerJsonException
      */
     public function removeAutoloadNamespaces(string ...$namespaces): void

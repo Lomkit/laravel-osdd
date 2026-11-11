@@ -87,6 +87,20 @@ class RootComposerJsonTest extends TestCase
         $this->assertTrue($root->pathRepositories()[0]->covers($this->basePath.'/functional/orders'));
     }
 
+    public function test_it_forgets_the_layer_and_the_given_path_repositories_and_keeps_the_layout(): void
+    {
+        $json = "{\n  \"require\": {\n    \"php\": \"^8.3\",\n    \"functional/orders\": \"*\"\n  },\n  \"repositories\": [\n    {\n      \"type\": \"path\",\n      \"url\": \"./functional/*\"\n    },\n    {\n      \"type\": \"path\",\n      \"url\": \"./technical/*\"\n    }\n  ]\n}\n";
+        file_put_contents($this->basePath.'/composer.json', $json);
+        $root = new RootComposerJson(new Filesystem, $this->basePath);
+
+        $root->forgetLayer(LayerName::fromString('functional/orders'), $root->pathRepositories()[0]);
+
+        $this->assertSame(
+            "{\n  \"require\": {\n    \"php\": \"^8.3\"\n  },\n  \"repositories\": [\n    {\n      \"type\": \"path\",\n      \"url\": \"./technical/*\"\n    }\n  ]\n}\n",
+            file_get_contents($this->basePath.'/composer.json'),
+        );
+    }
+
     public function test_it_removes_autoload_namespaces_and_keeps_the_layout(): void
     {
         $json = "{\n  \"autoload\": {\n    \"psr-4\": {\n      \"App\\\\\": \"app/\",\n      \"Database\\\\Seeders\\\\\": \"database/seeders/\"\n    }\n  },\n  \"autoload-dev\": {\n    \"psr-4\": {\n      \"Database\\\\Seeders\\\\\": \"database/seeders/\"\n    }\n  }\n}\n";

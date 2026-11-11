@@ -44,6 +44,15 @@ class PathRepositoryTest extends TestCase
         $this->assertTrue(PathRepository::fromUrl($this->basePath, 'technical/billing')->covers($this->basePath.'/technical/billing'));
     }
 
+    public function test_it_lists_the_directories_it_covers_as_real_paths(): void
+    {
+        $this->assertSame(
+            [realpath($this->basePath.'/functional/orders'), realpath($this->basePath.'/technical/billing')],
+            PathRepository::fromUrl($this->basePath, './*/*')->coveredDirectories(),
+        );
+        $this->assertSame([], PathRepository::fromUrl($this->basePath, './support/*')->coveredDirectories());
+    }
+
     public function test_the_repository_of_a_layer_covers_its_bucket(): void
     {
         $repository = PathRepository::forLayerDirectory($this->basePath, new LayerDirectory($this->basePath.'/functional/orders'));

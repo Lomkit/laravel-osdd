@@ -7,6 +7,8 @@ use stdClass;
 
 final class ComposerJsonFile
 {
+    private const array REQUIRE_SECTIONS = ['require', 'require-dev'];
+
     private function __construct(
         private readonly Filesystem $files,
         private readonly ComposerJson $json,
@@ -49,21 +51,12 @@ final class ComposerJsonFile
 
     public function addPathRepository(PathRepository $wanted): void
     {
-        $repositories = $this->json->find('repositories') ?? [];
+        (new ComposerRepositories($this->json))->addPath($wanted);
+    }
 
-        foreach ($this->repositoryEntries() as $repository) {
-            if (is_string($repository->url ?? null) && PathRepository::fromUrl($this->directory(), $repository->url)->isSameAs($wanted)) {
-                return;
-            }
-        }
-
-        if ($repositories instanceof stdClass) {
-            $repositories->{$wanted->url} = $wanted->toObject();
-
-            return;
-        }
-
-        $this->json->set('repositories', [...(is_array($repositories) ? $repositories : []), $wanted->toObject()]);
+    public function removePathRepository(PathRepository $unwanted): void
+    {
+        (new ComposerRepositories($this->json))->removePath($unwanted);
     }
 
     /**
@@ -71,15 +64,18 @@ final class ComposerJsonFile
      */
     public function pathRepositories(): array
     {
-        $pathRepositories = [];
+        return (new ComposerRepositories($this->json))->paths();
+    }
 
-        foreach ($this->repositoryEntries() as $repository) {
-            if (($repository->type ?? null) === PathRepository::TYPE && is_string($repository->url ?? null)) {
-                $pathRepositories[] = PathRepository::fromUrl($this->directory(), $repository->url);
+    public function removePackage(string $name): void
+    {
+        foreach (self::REQUIRE_SECTIONS as $section) {
+            $links = $this->json->find($section);
+
+            if ($links instanceof stdClass) {
+                unset($links->{$name});
             }
         }
-
-        return $pathRepositories;
     }
 
     /**
@@ -89,7 +85,7 @@ final class ComposerJsonFile
     {
         $packages = [];
 
-        foreach (['require', 'require-dev'] as $section) {
+        foreach (self::REQUIRE_SECTIONS as $section) {
             $links = $this->json->find($section);
             $packages = [...$packages, ...array_map(strval(...), array_keys(is_array($links) || $links instanceof stdClass ? (array) $links : []))];
         }
@@ -156,23 +152,5 @@ final class ComposerJsonFile
     private function sortsPackages(): bool
     {
         return $this->json->find('config', 'sort-packages') === true;
-    }
-
-    private function directory(): string
-    {
-        return dirname($this->json->path);
-    }
-
-    /**
-     * @return list<stdClass>
-     */
-    private function repositoryEntries(): array
-    {
-        $repositories = $this->json->find('repositories');
-
-        return array_values(array_filter(
-            is_array($repositories) || $repositories instanceof stdClass ? (array) $repositories : [],
-            fn (mixed $repository): bool => $repository instanceof stdClass,
-        ));
     }
 }

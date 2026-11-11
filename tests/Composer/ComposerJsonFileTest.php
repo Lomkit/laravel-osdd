@@ -168,6 +168,51 @@ class ComposerJsonFileTest extends TestCase
         $this->assertTrue($repositories[0]->isSameAs($this->repository($this->directory.'/functional/*')));
     }
 
+    public function test_it_removes_a_path_repository_from_a_list_and_keeps_the_others(): void
+    {
+        file_put_contents($this->path, json_encode(['repositories' => [
+            ['type' => 'path', 'url' => './functional/*'],
+            ['type' => 'vcs', 'url' => 'https://example.com/repo.git'],
+            ['type' => 'path', 'url' => 'functional/*'],
+            ['type' => 'path', 'url' => './technical/*'],
+        ]]));
+
+        $composer = $this->open();
+        $composer->removePathRepository($this->repository($this->directory.'/functional/*'));
+        $composer->save();
+
+        $this->assertSame(
+            [['type' => 'vcs', 'url' => 'https://example.com/repo.git'], ['type' => 'path', 'url' => './technical/*']],
+            $this->decoded()['repositories'],
+        );
+    }
+
+    public function test_it_removes_a_path_repository_from_keyed_repositories(): void
+    {
+        file_put_contents($this->path, json_encode(['repositories' => [
+            'layers' => ['type' => 'path', 'url' => './functional/*'],
+            'private' => ['type' => 'composer', 'url' => 'https://repo.example.com'],
+        ]]));
+
+        $composer = $this->open();
+        $composer->removePathRepository($this->repository('./functional/*'));
+        $composer->save();
+
+        $this->assertSame(['private' => ['type' => 'composer', 'url' => 'https://repo.example.com']], $this->decoded()['repositories']);
+    }
+
+    public function test_it_removes_a_package_from_both_sections_and_keeps_empty_objects(): void
+    {
+        file_put_contents($this->path, json_encode(['require' => ['php' => '^8.3', 'functional/orders' => '*'], 'require-dev' => ['functional/orders' => '*']]));
+
+        $composer = $this->open();
+        $composer->removePackage('functional/orders');
+        $composer->save();
+
+        $this->assertSame(['php'], $this->open()->requiredPackages());
+        $this->assertStringContainsString('"require-dev": {}', (string) file_get_contents($this->path));
+    }
+
     public function test_it_lists_the_required_packages_of_both_sections(): void
     {
         file_put_contents($this->path, json_encode(['require' => ['php' => '^8.3', 'functional/orders' => '*'], 'require-dev' => ['phpunit/phpunit' => '^12.0']]));

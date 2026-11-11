@@ -55,6 +55,19 @@ final class LayerGraph
     }
 
     /**
+     * The layers that list the layer in their require or require-dev, sorted by name.
+     *
+     * @return list<string>
+     */
+    public function dependentsOf(string $layer): array
+    {
+        return array_values(array_filter(
+            $this->names(),
+            fn (string $name): bool => in_array($layer, [...$this->requires($name), ...$this->devRequires($name)], true),
+        ));
+    }
+
+    /**
      * @param  list<string>  $layers
      * @return list<string>
      */

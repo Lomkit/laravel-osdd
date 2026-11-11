@@ -4,6 +4,7 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
+use Lomkit\Osdd\Console\Phpunit\LayerPhpunitEntries;
 use Lomkit\Osdd\Console\Phpunit\PhpunitXml;
 use Lomkit\Osdd\Filesystem\Path;
 use Lomkit\Osdd\Layers\Layer;
@@ -104,7 +105,8 @@ class PhpunitCommand extends Command
 
     private function addTestSuite(PhpunitXml $xml, Layer $layer): void
     {
-        $layerName = $layer->name->toString();
+        $entries = LayerPhpunitEntries::of($layer, $this->laravel->basePath());
+        $layerName = $entries->testSuite;
 
         if ($xml->hasTestSuite($layerName)) {
             $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> already present", self::SKIPPED);
@@ -118,16 +120,15 @@ class PhpunitCommand extends Command
             return;
         }
 
-        $directory = $this->relative($layer->directory->path(LayerFolder::Tests));
-        $xml->addTestSuite($layerName, $directory);
-        $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> → {$directory}", self::ADDED);
+        $xml->addTestSuite($layerName, $entries->testsDirectory);
+        $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> → {$entries->testsDirectory}", self::ADDED);
     }
 
     private function includeSource(PhpunitXml $xml, Layer $layer): void
     {
-        $source = $layer->sourceDirectory;
+        $directory = LayerPhpunitEntries::of($layer, $this->laravel->basePath())->sourceDirectory;
 
-        if (is_dir($source) && $xml->includeInSource($directory = $this->relative($source))) {
+        if (is_dir($layer->sourceDirectory) && $xml->includeInSource($directory)) {
             $this->components->twoColumnDetail("Coverage source <fg=gray>{$directory}</>", self::ADDED);
         }
     }

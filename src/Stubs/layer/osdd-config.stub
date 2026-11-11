@@ -11,4 +11,8 @@ return [
     'boundaries' => [
         'ignore' => [],
     ],
+
+    'events' => [
+        'discover' => true,
+    ],
 ];
