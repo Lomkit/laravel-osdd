@@ -18,7 +18,7 @@ Laravel OSDD (Open Source Driven Development) splits your application into layer
 - **Independent layers**: every domain lives in its own package, installed through a local path repository.
 - **Artisan ready**: most `make:*` class generators (`make:model`, `make:controller`, …) have an `osdd:*` twin that writes the file inside the layer you pick.
 - **One test suite per layer**: `osdd:phpunit` syncs `phpunit.xml` with the test suite of each layer.
-- **Seeders and config per layer**: `osdd:seed` runs the seeders every layer registers, and a layer can override the config of another package.
+- **Seeders and config per layer**: `LayersSeeder` runs the seeders every layer registers (through `osdd:seed`, `migrate --seed` or `RefreshDatabase`), and a layer can override the config of another package.
 - **Laravel Boost**: the package ships a Boost skill, so your agent writes files inside layers, not in `app/`.
 
 ## Documentation
@@ -38,7 +38,7 @@ composer require lomkit/laravel-osdd
 php artisan osdd:start
 ```
 
-`osdd:start` creates the `functional/users` layer (the `User` model, its migration, factory and seeder) and the `technical/osdd` configuration layer, which also holds the cache and queue tables. After you confirm, it removes `app/` and the root `config/`, and empties `database/` except the SQLite database. Pass `--force` to run it from a script.
+`osdd:start` creates the `functional/users` layer (the `User` model, its migration, factory and seeder) and the `technical/osdd` configuration layer, which also holds the cache and queue tables and makes the layer seeders the default seeder of `db:seed` and `migrate --seed`. After you confirm, it removes `app/` and the root `config/`, and empties `database/` except the SQLite database. Pass `--force` to run it from a script.
 
 **2. Create a layer for each domain.**
 
@@ -72,7 +72,7 @@ technical/
 php artisan osdd:controller OrderController --layer=functional/orders
 ```
 
-The controller lands in `functional/orders/src/Http/Controllers`, not in `app/`.
+The controller lands in `functional/orders/src/Http/Controllers`, not in `app/`. `--layer=orders` works too while no other layer is named `orders`. Without a terminal, `--layer` is required.
 
 ## Commands
 
@@ -80,9 +80,11 @@ The controller lands in `functional/orders/src/Http/Controllers`, not in `app/`.
 |---------|-------------|
 | `osdd:start` | Prepare a fresh Laravel project for layers |
 | `osdd:layer` | Create a new layer |
-| `osdd:seed` | Run the seeders registered by every layer |
+| `osdd:seed` | Run the seeders registered by every layer (`Lomkit\Osdd\Seeders\LayersSeeder`) |
 | `osdd:phpunit` | Sync `phpunit.xml` with the test suite and the source directory of each layer |
 | `osdd:*` | Twins of most `make:*` class generators, writing inside a layer |
+
+`php artisan about --only=osdd` lists the discovered layers, the migration paths and the number of registered seeders.
 
 See the [command reference](https://laravel-osdd.lomkit.com/commands) for every option.
 

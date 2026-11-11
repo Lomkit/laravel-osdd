@@ -142,11 +142,29 @@ What it does to a fresh project also changed:
 
 Projects already converted with 2.x keep working. If yours lost the sessions, cache or jobs tables, add their migrations to a layer: `php artisan make:session-table`, `make:cache-table` and `make:queue-table` write them under `database/migrations`; move them to `technical/osdd/database/migrations` and call `$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');` in the `boot()` method of `Technical\Osdd\Providers\OsddServiceProvider`.
 
-#### `osdd:seed` exit codes and options
+#### `osdd:seed` runs `LayersSeeder`, exit codes and options
 
-`osdd:seed` now stops at the first `db:seed` that fails or is cancelled and returns its exit code; in 2.x it ignored the result and exited 0. In production without a terminal, `db:seed` cancels itself: pass the new `--force` option to `osdd:seed` (it is forwarded to `db:seed`, `migrate:fresh` and `migrate:refresh`), as you would to `db:seed`. The new `--database` option is forwarded the same way.
+`osdd:seed` now runs `db:seed` once with the new `Lomkit\Osdd\Seeders\LayersSeeder`, which calls the seeders registered by the layers in priority order, and returns the exit code of `db:seed`; in 2.x it ran `db:seed` once per seeder, ignored the result and exited 0. In production, the confirmation is asked once instead of once per seeder, and a cancelled run seeds nothing. A seeder that throws stops the run. In production without a terminal, `db:seed` cancels itself: pass the new `--force` option to `osdd:seed` (it is forwarded to `db:seed`, `migrate:fresh` and `migrate:refresh`), as you would to `db:seed`. The new `--database` option is forwarded the same way.
 
 `--fresh` and `--refresh` together now fail; in 2.x `--refresh` was ignored.
+
+`LayersSeeder` also works with Laravel's commands and test traits: `php artisan migrate:fresh --seed --seeder="Lomkit\Osdd\Seeders\LayersSeeder"`, or `protected string $seeder = LayersSeeder::class;` next to `protected bool $seed = true;` in a test using `RefreshDatabase`. A project converted by `osdd:start` 3.0 binds it as the default seeder. To get the same on a project converted with 2.x, which has no `Database\Seeders\DatabaseSeeder`, add this line to the `register()` method of `Technical\Osdd\Providers\OsddServiceProvider`:
+
+```php
+$this->app->bind('DatabaseSeeder', \Lomkit\Osdd\Seeders\LayersSeeder::class);
+```
+
+`db:seed`, `migrate --seed`, `migrate:fresh --seed` and `RefreshDatabase` with `$seed = true` then run the layer seeders.
+
+#### `config/osdd.php` is no longer published
+
+`php artisan vendor:publish --provider="Lomkit\Osdd\OsddServiceProvider"` no longer copies `config/osdd.php` into the root `config/` directory, which `osdd:start` deletes. Override the package config from the `technical/osdd` layer: `technical/osdd/config/osdd.php`, loaded by `$this->overrideConfigFrom(...)` in `Technical\Osdd\Providers\OsddServiceProvider::register()`. If your project still has a root `config/osdd.php`, move its values to `technical/osdd/config/osdd.php` and delete it.
+
+#### Generators report an unresolved `--layer` and exit with 1
+
+The `osdd:*` generators no longer throw `Lomkit\Osdd\Layers\LayerNotFoundException` for an unknown `--layer`: they print one error, which lists the available layers and the closest name, and exit with code 1. Code that calls them with `Artisan::call()` and catches the exception must check the exit code instead. Without a terminal and without `--layer`, they now fail with "The --layer option is required when the command is not interactive." instead of a bare "Required.".
+
+`--layer` also accepts the package name alone when one layer has it: `--layer=orders` for `functional/orders`. When two layers share it (`functional/orders` and `technical/orders`), pass the full name.
 
 #### `osdd:phpunit` coverage source
 
