@@ -308,6 +308,47 @@ class LayerCommandTest extends TestCase
         $this->assertCount(1, $matching);
     }
 
+    public function test_it_keeps_empty_objects_in_the_root_composer_json(): void
+    {
+        $this->app['files']->put($this->composerPath, <<<'JSON'
+            {
+                "require": {},
+                "require-dev": {},
+                "config": {"allow-plugins": {}, "sort-packages": true}
+            }
+            JSON);
+
+        $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--generators' => ['service-provider']])
+            ->expectsConfirmation('Run composer update now?', 'no')
+            ->assertExitCode(0);
+
+        $composer = json_decode($this->app['files']->get($this->composerPath), false);
+
+        $this->assertEquals(new \stdClass, $composer->{'require-dev'});
+        $this->assertEquals(new \stdClass, $composer->config->{'allow-plugins'});
+        $this->assertSame('*', $composer->require->{'functional/my-layer'});
+    }
+
+    public function test_it_registers_a_layer_bucket_outside_the_project_with_a_relative_url(): void
+    {
+        $outside = sys_get_temp_dir().'/osdd-outside-'.uniqid();
+        $this->app['config']->set('osdd.layers.paths.functional', $outside);
+
+        try {
+            $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--target-path' => $outside, '--generators' => ['service-provider']])
+                ->expectsConfirmation('Run composer update now?', 'no')
+                ->assertExitCode(0);
+
+            $composer = json_decode($this->app['files']->get($this->composerPath), true);
+            $url = end($composer['repositories'])['url'];
+
+            $this->assertStringStartsWith('../', $url);
+            $this->assertSame(realpath($outside), realpath($this->app->basePath(substr($url, 0, -2))));
+        } finally {
+            $this->app['files']->deleteDirectory($outside);
+        }
+    }
+
     public function test_it_skips_composer_registration_when_no_composer_json_exists(): void
     {
         $this->app['files']->delete($this->composerPath);

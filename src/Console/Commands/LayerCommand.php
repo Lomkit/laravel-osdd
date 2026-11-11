@@ -5,11 +5,11 @@ namespace Lomkit\Osdd\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
+use Lomkit\Osdd\Console\StubWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Process\Process;
 
-use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
 use function Laravel\Prompts\select;
 use function Laravel\Prompts\text;
@@ -17,6 +17,7 @@ use function Laravel\Prompts\text;
 #[AsCommand(name: 'osdd:layer')]
 class LayerCommand extends Command
 {
+    use OffersComposerUpdate;
     use RegistersLayerInComposer;
 
     protected $signature = 'osdd:layer
@@ -40,13 +41,9 @@ class LayerCommand extends Command
 
     private const array DEFAULT_GENERATORS = ['migration', 'model', 'factory', 'service-provider', 'test'];
 
-    protected Filesystem $files;
-
-    public function __construct(Filesystem $files)
+    public function __construct(protected Filesystem $files, private readonly StubWriter $stubs)
     {
         parent::__construct();
-
-        $this->files = $files;
     }
 
     public function handle(): int
@@ -65,9 +62,7 @@ class LayerCommand extends Command
 
         $this->components->info("Layer <options=bold>{$name}</> created at <options=bold>{$targetPath}</>.");
 
-        if (confirm('Run composer update now?', default: true)) {
-            $this->runComposerUpdate($name);
-        }
+        $this->offerComposerUpdate($name);
 
         return self::SUCCESS;
     }
@@ -135,9 +130,9 @@ class LayerCommand extends Command
         $pluralSnake = Str::snake(Str::pluralStudly($pascal));
 
         // Create composer.json first — layer must be discoverable before make commands run
-        $this->createFile(
+        $this->stubs->write(
+            'layer/composer',
             $layerPath.'/composer.json',
-            $this->resolveStub('composer'),
             [
                 '{{ name }}' => $name,
                 '{{ namespace }}' => str_replace('\\', '\\\\', $namespace),
@@ -174,10 +169,7 @@ class LayerCommand extends Command
     private function generateRoutes(string $layerPath): void
     {
         foreach (['web', 'api', 'console', 'channels'] as $file) {
-            $this->createFile(
-                $layerPath.'/routes/'.$file.'.php',
-                $this->files->get(__DIR__.'/../stubs/layer/routes/'.$file.'.stub'),
-            );
+            $this->stubs->write('layer/routes/'.$file, $layerPath.'/routes/'.$file.'.php');
         }
     }
 
@@ -185,10 +177,9 @@ class LayerCommand extends Command
     {
         $serviceProviderClass = $this->toServiceProviderClass($package);
 
-        $this->files->makeDirectory($path, 0755, true, true);
-        $this->createFile(
+        $this->stubs->write(
+            'layer/service-provider',
             $path.'/'.$serviceProviderClass.'.php',
-            $this->resolveStub('service-provider'),
             [
                 '{{ namespace }}' => $namespace,
                 '{{ class }}' => $serviceProviderClass,
@@ -200,25 +191,6 @@ class LayerCommand extends Command
             $layerPath.'/composer.json',
             $namespace.'\\Providers\\'.$serviceProviderClass,
         );
-    }
-
-    /**
-     * @param  array<string, string>  $replacements
-     */
-    private function createFile(string $path, string $contents, array $replacements = []): void
-    {
-        $directory = dirname($path);
-
-        if (! $this->files->isDirectory($directory)) {
-            $this->files->makeDirectory($directory, 0755, true, true);
-        }
-
-        $this->files->put($path, str_replace(array_keys($replacements), array_values($replacements), $contents));
-    }
-
-    private function resolveStub(string $stub): string
-    {
-        return $this->files->get(__DIR__.'/../stubs/layer/'.$stub.'.stub');
     }
 
     private function toNamespace(string $vendor, string $package): string
@@ -234,21 +206,5 @@ class LayerCommand extends Command
     private function toSeederClass(string $package): string
     {
         return Str::pascal($package).'Seeder';
-    }
-
-    private function runComposerUpdate(string $name): void
-    {
-        $this->components->info('Running composer update...');
-
-        $process = new Process(
-            ['composer', 'update', $name],
-            $this->laravel->basePath(),
-        );
-        $process->setTimeout(null);
-        $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
-
-        if (! $process->isSuccessful()) {
-            $this->components->error('composer update failed. You may need to run it manually.');
-        }
     }
 }

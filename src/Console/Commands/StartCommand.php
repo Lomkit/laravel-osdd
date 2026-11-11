@@ -4,15 +4,16 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
+use Lomkit\Osdd\Console\StubWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Symfony\Component\Process\Process;
-
-use function Laravel\Prompts\confirm;
 
 #[AsCommand(name: 'osdd:start')]
 class StartCommand extends Command
 {
+    use OffersComposerUpdate;
     use RegistersLayerInComposer;
 
     protected $name = 'osdd:start';
@@ -25,13 +26,9 @@ class StartCommand extends Command
 
     private const string OSDD_LAYER_NAME = 'technical/osdd';
 
-    protected Filesystem $files;
-
-    public function __construct(Filesystem $files)
+    public function __construct(protected Filesystem $files, private readonly StubWriter $stubs)
     {
         parent::__construct();
-
-        $this->files = $files;
     }
 
     public function handle(): int
@@ -48,9 +45,7 @@ class StartCommand extends Command
 
         $this->components->info('Congratulations! Your project is ready for OSDD. Create your first layer with <options=bold>php artisan osdd:layer</>.');
 
-        if (confirm('Run composer update now?', default: true)) {
-            $this->runComposerUpdate();
-        }
+        $this->offerComposerUpdate(self::USERS_LAYER_NAME, self::OSDD_LAYER_NAME);
 
         return self::SUCCESS;
     }
@@ -73,17 +68,12 @@ class StartCommand extends Command
 
     private function createUsersLayer(string $layerPath): void
     {
-        // Create layer composer.json
-        $this->createFile($layerPath.'/composer.json', $this->resolveStub('composer'), [
+        $this->stubs->write('layer/composer', $layerPath.'/composer.json', [
             '{{ name }}' => self::USERS_LAYER_NAME,
             '{{ namespace }}' => str_replace('\\', '\\\\', self::USERS_LAYER_NAMESPACE),
         ]);
 
-        // Create service provider from start stub (rebinds the auth user model to the layer)
-        $this->createFile(
-            $layerPath.'/src/Providers/UsersServiceProvider.php',
-            $this->resolveStartStub('user-service-provider'),
-        );
+        $this->stubs->write('start/user-service-provider', $layerPath.'/src/Providers/UsersServiceProvider.php');
 
         $this->injectProviderInComposerJson(
             $layerPath.'/composer.json',
@@ -92,13 +82,12 @@ class StartCommand extends Command
 
         $this->registerLayerInComposer(self::USERS_LAYER_NAME, $layerPath);
 
-        // Create start-specific files from stubs
-        $this->createFile($layerPath.'/src/Models/User.php', $this->resolveStartStub('user-model'));
-        $this->createFile($layerPath.'/database/factories/UserFactory.php', $this->resolveStartStub('user-factory'));
-        $this->createFile($layerPath.'/database/seeders/UsersSeeder.php', $this->resolveStartStub('users-seeder'));
-        $this->createFile(
+        $this->stubs->write('start/user-model', $layerPath.'/src/Models/User.php');
+        $this->stubs->write('start/user-factory', $layerPath.'/database/factories/UserFactory.php');
+        $this->stubs->write('start/users-seeder', $layerPath.'/database/seeders/UsersSeeder.php');
+        $this->stubs->write(
+            'start/create-users-table',
             $layerPath.'/database/migrations/'.date('Y_m_d_His').'_create_users_table.php',
-            $this->resolveStartStub('create-users-table'),
         );
 
         $this->components->info('Layer <options=bold>'.self::USERS_LAYER_NAME.'</> created at <options=bold>'.$layerPath.'</>.');
@@ -106,9 +95,9 @@ class StartCommand extends Command
 
     private function createOsddLayer(string $layerPath): void
     {
-        $this->createFile($layerPath.'/composer.json', $this->resolveStub('osdd-composer'));
-        $this->createFile($layerPath.'/config/osdd.php', $this->resolveStub('osdd-config'));
-        $this->createFile($layerPath.'/src/Providers/OsddServiceProvider.php', $this->resolveStub('osdd-service-provider'));
+        $this->stubs->write('layer/osdd-composer', $layerPath.'/composer.json');
+        $this->stubs->write('layer/osdd-config', $layerPath.'/config/osdd.php');
+        $this->stubs->write('layer/osdd-service-provider', $layerPath.'/src/Providers/OsddServiceProvider.php');
 
         $this->registerLayerInComposer(self::OSDD_LAYER_NAME, $layerPath);
         $this->injectOsddProvider();
@@ -139,31 +128,10 @@ class StartCommand extends Command
             return;
         }
 
-        $composer = $this->decodeComposerJson($composerPath);
-
-        // Keep the `App\` mapping so Laravel can still detect an application
-        // namespace (getNamespace() otherwise throws once app/ is gone). Only
-        // the database factory/seeder namespaces are dropped — those live in
-        // layers under OSDD.
-        foreach (['autoload', 'autoload-dev'] as $section) {
-            $autoload = $composer[$section] ?? null;
-
-            if (! is_array($autoload) || ! is_array($autoload['psr-4'] ?? null)) {
-                continue;
-            }
-
-            $psr4 = $autoload['psr-4'];
-            unset($psr4['Database\\Factories\\'], $psr4['Database\\Seeders\\']);
-            $autoload['psr-4'] = $psr4;
-            $composer[$section] = $autoload;
-        }
-
-        $this->normalizeComposerPsr4($composer);
-
-        $this->files->put(
-            $composerPath,
-            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE).PHP_EOL,
-        );
+        $composer = ComposerJsonFile::open($this->files, $composerPath);
+        $composer->removeAutoloadNamespace('Database\\Factories\\');
+        $composer->removeAutoloadNamespace('Database\\Seeders\\');
+        $composer->save();
 
         $this->components->info('Cleaned up legacy autoload entries from composer.json.');
     }
@@ -185,45 +153,5 @@ class StartCommand extends Command
         }
 
         $this->components->info("Deleted {$dir}/ directory.");
-    }
-
-    private function runComposerUpdate(): void
-    {
-        $this->components->info('Running composer update...');
-
-        $process = new Process(
-            ['composer', 'update', self::USERS_LAYER_NAME, self::OSDD_LAYER_NAME],
-            $this->laravel->basePath(),
-        );
-        $process->setTimeout(null);
-        $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
-
-        if (! $process->isSuccessful()) {
-            $this->components->error('composer update failed. You may need to run it manually.');
-        }
-    }
-
-    /**
-     * @param  array<string, string>  $replacements
-     */
-    private function createFile(string $path, string $contents, array $replacements = []): void
-    {
-        $directory = dirname($path);
-
-        if (! $this->files->isDirectory($directory)) {
-            $this->files->makeDirectory($directory, 0755, true, true);
-        }
-
-        $this->files->put($path, str_replace(array_keys($replacements), array_values($replacements), $contents));
-    }
-
-    private function resolveStub(string $stub): string
-    {
-        return $this->files->get(__DIR__.'/../stubs/layer/'.$stub.'.stub');
-    }
-
-    private function resolveStartStub(string $stub): string
-    {
-        return $this->files->get(__DIR__.'/../stubs/start/'.$stub.'.stub');
     }
 }

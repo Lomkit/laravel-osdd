@@ -4,6 +4,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Foundation\Console\ProviderMakeCommand;
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Composer\ComposerJsonFile;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:provider')]
@@ -59,30 +60,11 @@ class ServiceProviderMakeCommand extends ProviderMakeCommand
     {
         $layer = $this->resolveLayer();
         $composerPath = $layer->path.'/composer.json';
-
-        /** @var array<string, mixed> $composer */
-        $composer = json_decode($this->files->get($composerPath), true);
-
         $providerClass = $this->qualifyClass($this->getNameInput());
 
-        /** @var array<string, mixed> $extra */
-        $extra = $composer['extra'] ?? [];
-
-        /** @var array<string, mixed> $laravel */
-        $laravel = $extra['laravel'] ?? [];
-
-        /** @var list<string> $existing */
-        $existing = $laravel['providers'] ?? [];
-        $existing[] = $providerClass;
-
-        $laravel['providers'] = array_values(array_unique($existing));
-        $extra['laravel'] = $laravel;
-        $composer['extra'] = $extra;
-
-        $this->files->put(
-            $composerPath,
-            json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)."\n"
-        );
+        $composer = ComposerJsonFile::open($this->files, $composerPath);
+        $composer->addLaravelProvider($providerClass);
+        $composer->save();
 
         $this->components->info("Provider [{$providerClass}] registered in [{$composerPath}].");
     }
