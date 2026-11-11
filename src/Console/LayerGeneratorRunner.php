@@ -6,7 +6,9 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Console\Providers\LayerResourceNamespace;
 use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Layers\LayersCollection;
 
 final class LayerGeneratorRunner
 {
@@ -110,6 +112,7 @@ final class LayerGeneratorRunner
         $this->stubs->write('layer/service-provider', $this->layerPath.'/src/Providers/'.$class.'.php', [
             '{{ namespace }}' => $this->name->namespace(),
             '{{ class }}' => $class,
+            '{{ resourceNamespace }}' => LayerResourceNamespace::of($this->name->toString(), LayersCollection::fromConfig())->argument(),
         ]);
 
         $composer = ComposerJsonFile::open($this->files, $this->layerPath.'/composer.json');

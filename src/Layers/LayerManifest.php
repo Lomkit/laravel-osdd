@@ -9,13 +9,13 @@ class LayerManifest
     private const string DEFAULT_SOURCE_DIRECTORY = 'src/';
 
     /**
-     * @param  array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}}  $data
+     * @param  array{name: string, type?: string, require?: array<string, string>, autoload?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}}  $data
      */
     private function __construct(private readonly array $data) {}
 
     public static function fromPath(string $path): self
     {
-        /** @var array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}} $data */
+        /** @var array{name: string, type?: string, require?: array<string, string>, autoload?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}} $data */
         $data = json_decode(app(Filesystem::class)->get($path), true, 512, JSON_THROW_ON_ERROR);
 
         return new self($data);
@@ -49,6 +49,14 @@ class LayerManifest
     /**
      * @return list<string>
      */
+    public function requires(): array
+    {
+        return array_keys($this->data['require'] ?? []);
+    }
+
+    /**
+     * @return list<string>
+     */
     public function providers(): array
     {
         return $this->data['extra']['laravel']['providers'] ?? [];
@@ -72,6 +80,14 @@ class LayerManifest
         $directory = trim($this->data['autoload']['psr-4'][$prefix] ?? '', '/');
 
         return rtrim($layerPath, '/').'/'.$directory.'/'.str_replace('\\', '/', substr($class, strlen($prefix))).'.php';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function namespaces(): array
+    {
+        return array_keys($this->data['autoload']['psr-4'] ?? []);
     }
 
     public function rootNamespace(): string
