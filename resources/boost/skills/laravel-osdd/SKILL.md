@@ -30,7 +30,7 @@ php artisan osdd:start
 php artisan osdd:layer functional/orders --generators=migration,model,factory,service-provider,test
 ```
 
-- **`osdd:*` make mirrors**: every Laravel `make:*` command has an `osdd:*` equivalent that targets a layer via `--layer=vendor/package` (covers `model`, `controller`, `migration`, `factory`, `seeder`, `policy`, `request`, `resource`, `test`, `config`, `view`, `class`, and more). Example usage:
+- **`osdd:*` make mirrors**: most Laravel `make:*` class generators have an `osdd:*` equivalent that targets a layer via `--layer=vendor/package` (covers `model`, `controller`, `migration`, `factory`, `seeder`, `policy`, `request`, `resource`, `test`, `config`, `view`, `class`, and more). Example usage:
 
 ```bash
 php artisan osdd:model Order --layer=functional/orders --factory --migration
@@ -142,7 +142,7 @@ Don't put HTTP plumbing (controllers, requests, routes) in a `technical/` layer 
 
 ## The two service providers
 
-- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `SeederRegistry` singleton, publishes `config/osdd.php`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers.
+- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `SeederRegistry` singleton, publishes `config/osdd.php`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers. The `technical/osdd` layer has its own `Technical\Osdd\Providers\OsddServiceProvider`, unrelated to the package's: it is a layer provider like any other.
 
 - **`Lomkit\Osdd\LayerServiceProvider`** — the abstract base class **every layer's own provider must extend** (not Laravel's `ServiceProvider`). It exposes:
   - `loadSeeders(array $seeders, int $priority = 0)` — registers seeder classes with the global registry. Lower priority runs first. This is the **only** way to make a seeder runnable by `osdd:seed`.
@@ -269,7 +269,7 @@ The wildcard is intentional — every layer added to that directory will be pick
 
 ### Generate code inside an existing layer
 
-Every Laravel `make:*` command has an `osdd:*` mirror that accepts `--layer=vendor/package`. If `--layer` is omitted, Boost will be asked interactively via `Laravel\Prompts\search`.
+Most Laravel `make:*` class generators have an `osdd:*` mirror that accepts `--layer=vendor/package`. If `--layer` is omitted, Boost will be asked interactively via `Laravel\Prompts\search`.
 
 ```bash
 php artisan osdd:model Order --layer=functional/orders --factory --migration
@@ -332,7 +332,7 @@ return [
 
 `LayersCollection::fromConfig()` reads `config('osdd.layers.paths')`, scans each path **recursively**, and treats any directory containing a `composer.json` with `"type": "layer"` as a layer. Nested layers (e.g. `functional/billing/invoices/`) are supported as long as each level satisfies that contract; once a layer is matched at a given depth, scanning stops descending into it.
 
-To add a new category (e.g. `support/`), append it to `osdd.layers.paths` from inside the `technical/osdd` layer's `OsddServiceProvider::register()` using `$this->overrideConfigFrom(...)`. Don't edit the package's own `config/osdd.php` directly.
+To add a new category (e.g. `support/`), append it to `osdd.layers.paths` from inside the `technical/osdd` layer's `Technical\Osdd\Providers\OsddServiceProvider::register()` using `$this->overrideConfigFrom(...)`. Don't edit the package's own `config/osdd.php` directly.
 
 ## Idiomatic file content
 
