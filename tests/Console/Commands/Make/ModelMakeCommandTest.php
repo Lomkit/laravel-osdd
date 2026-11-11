@@ -85,6 +85,20 @@ class ModelMakeCommandTest extends TestCase
         $this->assertSame('Functional\TestLayer\Models\Parcel', $api->getMethod('show')->getParameters()[0]->getType()?->__toString());
     }
 
+    public function test_a_nested_name_places_the_companions_like_make_model(): void
+    {
+        $this->artisan('osdd:model', ['name' => 'Billing/Ledger', '--factory' => true, '--seed' => true, '--requests' => true, '--policy' => true, '--layer' => 'functional/test-layer'])->assertExitCode(0);
+
+        GeneratedClass::load($this->layerPath('database/factories/Billing/LedgerFactory.php'), 'Functional\TestLayer\Database\Factories\Billing\LedgerFactory');
+        $model = GeneratedClass::load($this->layerPath('src/Models/Billing/Ledger.php'), 'Functional\TestLayer\Models\Billing\Ledger');
+        GeneratedClass::load($this->layerPath('database/seeders/LedgerSeeder.php'), 'Functional\TestLayer\Database\Seeders\LedgerSeeder');
+        GeneratedClass::load($this->layerPath('src/Http/Requests/StoreLedgerRequest.php'), 'Functional\TestLayer\Http\Requests\StoreLedgerRequest');
+        GeneratedClass::load($this->layerPath('src/Http/Requests/UpdateLedgerRequest.php'), 'Functional\TestLayer\Http\Requests\UpdateLedgerRequest');
+        GeneratedClass::load($this->layerPath('src/Policies/LedgerPolicy.php'), 'Functional\TestLayer\Policies\LedgerPolicy');
+
+        $this->assertInstanceOf($model->getName(), $model->getMethod('factory')->invoke(null)->make());
+    }
+
     private function layerPath(string $file): string
     {
         return $this->project()->path('functional/test-layer/'.$file);
