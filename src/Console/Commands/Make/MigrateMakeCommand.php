@@ -2,6 +2,8 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Console\Providers\LayerProvider;
+use Lomkit\Osdd\Console\Providers\ProviderMethod;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:migration')]
@@ -27,7 +29,8 @@ class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\Migrate
         parent::handle();
 
         $this->registerInLayerProvider(
-            "\$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');",
+            ProviderMethod::Boot,
+            fn (LayerProvider $provider): string => "\$this->loadMigrationsFrom({$provider->pathExpression('database/migrations')});",
             'database/migrations',
         );
     }

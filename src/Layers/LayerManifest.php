@@ -9,13 +9,13 @@ class LayerManifest
     private const string DEFAULT_SOURCE_DIRECTORY = 'src/';
 
     /**
-     * @param  array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}}  $data
+     * @param  array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}}  $data
      */
     private function __construct(private readonly array $data) {}
 
     public static function fromPath(string $path): self
     {
-        /** @var array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}} $data */
+        /** @var array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}, extra?: array{laravel?: array{providers?: list<string>}}} $data */
         $data = json_decode(app(Filesystem::class)->get($path), true, 512, JSON_THROW_ON_ERROR);
 
         return new self($data);
@@ -44,6 +44,34 @@ class LayerManifest
     public function isLayer(): bool
     {
         return $this->type() === 'layer';
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function providers(): array
+    {
+        return $this->data['extra']['laravel']['providers'] ?? [];
+    }
+
+    public function classPath(string $layerPath, string $class): ?string
+    {
+        $class = ltrim($class, '\\');
+        $prefix = null;
+
+        foreach (array_keys($this->data['autoload']['psr-4'] ?? []) as $namespace) {
+            if (str_starts_with($class, $namespace) && strlen($namespace) > strlen($prefix ?? '')) {
+                $prefix = $namespace;
+            }
+        }
+
+        if ($prefix === null) {
+            return null;
+        }
+
+        $directory = trim($this->data['autoload']['psr-4'][$prefix] ?? '', '/');
+
+        return rtrim($layerPath, '/').'/'.$directory.'/'.str_replace('\\', '/', substr($class, strlen($prefix))).'.php';
     }
 
     public function rootNamespace(): string
