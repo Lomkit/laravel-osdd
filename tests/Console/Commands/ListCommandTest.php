@@ -75,6 +75,30 @@ class ListCommandTest extends TestCase
             ->assertExitCode(0);
     }
 
+    public function test_the_provider_of_a_layer_that_is_not_installed_is_not_checked(): void
+    {
+        require_once $this->projectPath.'/functional/orders/src/Providers/'.Str::afterLast($this->providerClass, '\\').'.php';
+
+        $this->writeFile('technical/billing/composer.json', json_encode([
+            'name' => 'technical/billing',
+            'type' => 'layer',
+            'autoload' => ['psr-4' => ['Technical\\Billing\\' => 'src/']],
+            'extra' => ['laravel' => ['providers' => ['Technical\\Billing\\Providers\\BillingServiceProvider']]],
+        ]));
+
+        Artisan::call('osdd:list', ['--json' => true]);
+        $billing = json_decode(Artisan::output(), true)['layers'][1];
+
+        $this->assertSame('technical/billing', $billing['name']);
+        $this->assertFalse($billing['health']['installed']);
+        $this->assertNull($billing['health']['provider_extends_layer_service_provider']);
+
+        $this->artisan('osdd:list')
+            ->expectsOutputToContain('not required in composer.json, no path repository, not installed, no test suite in phpunit.xml')
+            ->doesntExpectOutputToContain('provider does not extend LayerServiceProvider')
+            ->assertExitCode(0);
+    }
+
     public function test_no_layer_prints_a_warning_and_an_empty_json_list(): void
     {
         $this->app['config']->set('osdd.layers.paths', ['functional' => $this->projectPath.'/missing']);
