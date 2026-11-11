@@ -92,19 +92,18 @@ class SeedCommandTest extends TestCase
         $this->assertSame([], RecordingSeeder::$connections);
     }
 
-    public function test_it_stops_at_the_first_failing_seeder(): void
+    public function test_a_failing_seeder_stops_the_next_ones(): void
     {
-        $this->app['env'] = 'production';
         $registry = $this->app->make(SeederRegistry::class);
-        $registry->push(0, RecordingSeeder::class);
+        $registry->push(0, FailingSeeder::class);
         $registry->push(1, SecondRecordingSeeder::class);
 
-        $this->artisan('osdd:seed', ['--no-interaction' => true])
-            ->expectsOutputToContain('the next seeders were not run')
-            ->assertExitCode(1);
-
-        $this->assertSame([], RecordingSeeder::$connections);
-        $this->assertSame([], SecondRecordingSeeder::$connections);
+        try {
+            $this->artisan('osdd:seed')->run();
+            $this->fail('The failing seeder did not stop osdd:seed.');
+        } catch (SeederFailedException) {
+            $this->assertSame([], SecondRecordingSeeder::$connections);
+        }
     }
 
     public function test_force_seeds_in_production_without_asking(): void
@@ -147,4 +146,20 @@ class SecondRecordingSeeder extends RecordingSeeder
      * @var list<string>
      */
     public static array $connections = [];
+}
+
+class FailingSeeder extends Seeder
+{
+    public function run(): void
+    {
+        throw new SeederFailedException;
+    }
+}
+
+class SeederFailedException extends \RuntimeException
+{
+    public function __construct()
+    {
+        parent::__construct('The seeder failed.');
+    }
 }

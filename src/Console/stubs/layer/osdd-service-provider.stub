@@ -3,6 +3,7 @@
 namespace Technical\Osdd\Providers;
 
 use Lomkit\Osdd\LayerServiceProvider;
+use Lomkit\Osdd\Seeders\LayersSeeder;
 
 class OsddServiceProvider extends LayerServiceProvider
 {
@@ -16,5 +17,7 @@ class OsddServiceProvider extends LayerServiceProvider
     public function register(): void
     {
         $this->overrideConfigFrom(__DIR__ . '/../../config/osdd.php', 'osdd');
+
+        $this->app->bind('DatabaseSeeder', LayersSeeder::class);
     }
 }

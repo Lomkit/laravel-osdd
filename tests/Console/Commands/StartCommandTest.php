@@ -370,6 +370,26 @@ class StartCommandTest extends TestCase
         }
     }
 
+    #[RunInSeparateProcess]
+    public function test_the_default_seeder_runs_the_layer_seeders(): void
+    {
+        $this->runStart();
+
+        foreach (['src/Models/User.php', 'database/factories/UserFactory.php', 'database/seeders/UsersSeeder.php', 'src/Providers/UsersServiceProvider.php'] as $file) {
+            require_once $this->projectPath.'/functional/users/'.$file;
+        }
+
+        require_once $this->projectPath.'/technical/osdd/src/Providers/OsddServiceProvider.php';
+        $this->app->register('Functional\\Users\\Providers\\UsersServiceProvider');
+        $this->app->register('Technical\\Osdd\\Providers\\OsddServiceProvider');
+
+        $this->assertFalse(class_exists('Database\\Seeders\\DatabaseSeeder'));
+
+        $this->artisan('migrate', ['--seed' => true])->assertExitCode(0);
+
+        $this->assertSame(10, User::query()->count());
+    }
+
     public function test_it_keeps_the_skeleton_migration_names(): void
     {
         $this->runStart();
