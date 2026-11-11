@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd;
 
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\ServiceProvider;
 use Lomkit\Osdd\Console\Commands\LayerCommand;
 use Lomkit\Osdd\Console\Commands\Make\CastMakeCommand;
@@ -37,6 +38,7 @@ use Lomkit\Osdd\Console\Commands\Make\ViewMakeCommand;
 use Lomkit\Osdd\Console\Commands\PhpunitCommand;
 use Lomkit\Osdd\Console\Commands\SeedCommand;
 use Lomkit\Osdd\Console\Commands\StartCommand;
+use Lomkit\Osdd\Console\OsddAboutSection;
 use Lomkit\Osdd\Layers\LayersCollection;
 use Symfony\Component\Finder\Finder;
 
@@ -46,9 +48,8 @@ class OsddServiceProvider extends ServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->registerCommands();
+            AboutCommand::add('OSDD', OsddAboutSection::class);
         }
-
-        $this->publishConfig();
 
         $this->app->booted(function () {
             /** @var list<string> $argv */
@@ -113,13 +114,6 @@ class OsddServiceProvider extends ServiceProvider
             TestMakeCommand::class,
             TraitMakeCommand::class,
             ViewMakeCommand::class,
-        ]);
-    }
-
-    private function publishConfig(): void
-    {
-        $this->publishes([
-            __DIR__.'/../config/osdd.php' => config_path('osdd.php'),
         ]);
     }
 

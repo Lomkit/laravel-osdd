@@ -3,6 +3,9 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Console\Concerns\DetectsInteractiveInput;
+use Lomkit\Osdd\Console\MissingLayerOptionException;
+use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayerNotFoundException;
 use Lomkit\Osdd\Layers\LayersCollection;
@@ -14,6 +17,8 @@ use function Laravel\Prompts\search;
 
 trait ChoosesOsddLayer
 {
+    use DetectsInteractiveInput;
+
     protected ?Layer $resolvedLayer = null;
 
     protected function resolveLayer(): Layer
@@ -23,16 +28,14 @@ trait ChoosesOsddLayer
         }
 
         $layers = LayersCollection::fromConfig();
+        $layerOption = $this->option('layer');
 
-        if ($layerOption = $this->option('layer')) {
-            $layer = $layers->first(fn (Layer $l) => $l->manifest->name() === $layerOption);
+        if (is_string($layerOption) && $layerOption !== '') {
+            return $this->resolvedLayer = $layers->findByName($layerOption);
+        }
 
-            if ($layer === null) {
-                $this->components->error("Layer '{$layerOption}' not found.");
-                throw new LayerNotFoundException($layerOption);
-            }
-
-            return $this->resolvedLayer = $layer;
+        if (! $this->canPrompt()) {
+            throw new MissingLayerOptionException($layers->names());
         }
 
         $chosen = (string) search(
@@ -45,8 +48,19 @@ trait ChoosesOsddLayer
                 ->all(),
         );
 
-        return $this->resolvedLayer = $layers->first(fn (Layer $l) => $l->manifest->name() === $chosen)
-            ?? throw new LayerNotFoundException($chosen);
+        return $this->resolvedLayer = $layers->findByName($chosen);
+    }
+
+    #[\Override]
+    public function run(InputInterface $input, OutputInterface $output): int
+    {
+        try {
+            return parent::run($input, $output);
+        } catch (LayerNotFoundException|AmbiguousLayerNameException|MissingLayerOptionException $exception) {
+            $this->components->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
     }
 
     protected function layerSourcePath(string $class): string

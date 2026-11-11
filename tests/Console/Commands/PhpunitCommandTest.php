@@ -44,7 +44,11 @@ class PhpunitCommandTest extends TestCase
 
     public function test_it_adds_testsuite_for_discovered_layers(): void
     {
-        $this->artisan('osdd:phpunit')->assertExitCode(0);
+        $this->artisan('osdd:phpunit')
+            ->expectsOutputToContain('functional/test-layer')
+            ->expectsOutputToContain('ADDED')
+            ->expectsOutputToContain('phpunit.xml updated.')
+            ->assertExitCode(0);
 
         $xml = $this->app['files']->get($this->xmlPath);
         $dom = new \DOMDocument;
@@ -66,7 +70,10 @@ class PhpunitCommandTest extends TestCase
 
         $xmlAfterFirst = $this->app['files']->get($this->xmlPath);
 
-        $this->artisan('osdd:phpunit')->assertExitCode(0);
+        $this->artisan('osdd:phpunit')
+            ->expectsOutputToContain('already present')
+            ->expectsOutputToContain('phpunit.xml is already up to date.')
+            ->assertExitCode(0);
 
         $this->assertSame($xmlAfterFirst, $this->app['files']->get($this->xmlPath));
     }
@@ -220,6 +227,8 @@ class PhpunitCommandTest extends TestCase
     {
         $this->app['files']->delete($this->xmlPath);
 
-        $this->artisan('osdd:phpunit')->assertExitCode(1);
+        $this->artisan('osdd:phpunit')
+            ->expectsOutputToContain('phpunit.xml not found')
+            ->assertExitCode(1);
     }
 }
