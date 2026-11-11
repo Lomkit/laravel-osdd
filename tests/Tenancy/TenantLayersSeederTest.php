@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Tests\Tenancy;
 
 use Lomkit\Osdd\OsddServiceProvider;
+use Lomkit\Osdd\Seeders\SeederNotFoundException;
 use Lomkit\Osdd\Seeders\TenantLayersSeeder;
 use Lomkit\Osdd\Tenancy\TenantSeederRegistry;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\LoggingSeeder;
@@ -40,15 +41,18 @@ class TenantLayersSeederTest extends TestCase
         $this->assertSame([CentralAccountsSeeder::class], LoggingSeeder::$runs);
     }
 
-    public function test_it_skips_a_tenant_seeder_class_that_does_not_exist(): void
+    public function test_it_fails_before_seeding_when_a_tenant_seeder_class_does_not_exist(): void
     {
         $this->app->make(TenantSeederRegistry::class)->push(5, 'Functional\\Billing\\Database\\Seeders\\MissingSeeder');
 
-        $this->artisan('db:seed', ['--class' => TenantLayersSeeder::class])
-            ->expectsOutputToContain('Seeder [Functional\\Billing\\Database\\Seeders\\MissingSeeder] not found, skipping.')
-            ->assertExitCode(0);
+        try {
+            $this->artisan('db:seed', ['--class' => TenantLayersSeeder::class])->run();
+            $this->fail('TenantLayersSeeder ran with a seeder class that does not exist.');
+        } catch (SeederNotFoundException $exception) {
+            $this->assertSame('Functional\\Billing\\Database\\Seeders\\MissingSeeder', $exception->seeder);
+        }
 
-        $this->assertSame([TenantPlansSeeder::class, TenantInvoicesSeeder::class], LoggingSeeder::$runs);
+        $this->assertSame([], LoggingSeeder::$runs);
     }
 
     public function test_it_warns_when_no_layer_registers_a_tenant_seeder(): void

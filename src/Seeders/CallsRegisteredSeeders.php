@@ -11,6 +11,8 @@ trait CallsRegisteredSeeders
 {
     /**
      * @param  list<class-string<Seeder>>  $seeders
+     *
+     * @throws SeederNotFoundException
      */
     private function callRegistered(array $seeders, string $nothingRegisteredWarning): void
     {
@@ -22,12 +24,10 @@ trait CallsRegisteredSeeders
 
         foreach ($seeders as $seeder) {
             if (! class_exists($seeder)) {
-                $this->command?->outputComponents()->warn("Seeder [{$seeder}] not found, skipping.");
-
-                continue;
+                throw new SeederNotFoundException($seeder);
             }
-
-            $this->call($seeder);
         }
+
+        $this->call($seeders);
     }
 }
