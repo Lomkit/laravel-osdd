@@ -147,6 +147,25 @@ The `Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer` trait is removed. `o
 
 `osdd:cache` fails and writes nothing while a layer `composer.json` is invalid, so `optimize` reports the `osdd` task as failed: run `php artisan osdd:list` to see the error.
 
+#### Layer listeners are discovered
+
+The listeners in each layer's `src/Listeners` are now registered automatically, as Laravel does for `app/Listeners`: each public `handle*()` or `__invoke()` method listens to the event class of its first parameter. `php artisan event:cache` (and `optimize`) caches them, and `php artisan event:list` shows them. In 2.x a layer listener ran only when registered by hand.
+
+A listener you already register with `Event::listen()` (or `$listen`) in a provider's `boot()`, for the same event and method, still runs once. Check the other cases before you deploy:
+
+- a listener registered later, in a `booted()` callback or at runtime, now runs twice: remove that registration;
+- a listener of `src/Listeners` that you did not register, or registered only under a condition, now runs on every matching event;
+- a listener whose `handle()` takes an interface now runs for every event that implements it, not only for the event you registered it on;
+- an event dispatched while the providers boot does not reach the discovered listeners, which are registered once the application has booted.
+
+Move the classes that must not be discovered out of `src/Listeners`. To keep the 2.x behaviour, turn discovery off in `technical/osdd/config/osdd.php`:
+
+```php
+'events' => [
+    'discover' => false,
+],
+```
+
 #### Invalid layer `composer.json` files
 
 A `composer.json` under `osdd.layers.paths` that is not valid JSON, or a `"type": "layer"` file without a `name`, made the generators and `osdd:phpunit` crash with a bare `JsonException` or a PHP error. They now exit with 1 and name the file: `Invalid layer manifest [functional/orders/composer.json]: it has no "name".`

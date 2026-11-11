@@ -13,6 +13,6 @@ return [
     ],
 
     'events' => [
-        'discover' => false,
+        'discover' => true,
     ],
 ];

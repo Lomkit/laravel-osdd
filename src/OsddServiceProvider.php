@@ -64,7 +64,7 @@ class OsddServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/osdd.php', 'osdd');
 
         $this->app->booting(function (Application $app): void {
-            if ($app->make('config')->boolean(self::EVENT_DISCOVERY, false)) {
+            if ($app->make('config')->boolean(self::EVENT_DISCOVERY, true)) {
                 $app->register(LayerEventServiceProvider::class);
             }
         });
