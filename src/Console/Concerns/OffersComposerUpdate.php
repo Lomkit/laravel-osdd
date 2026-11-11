@@ -21,12 +21,15 @@ trait OffersComposerUpdate
         );
     }
 
-    protected function offerComposerUpdate(string ...$packages): void
+    /**
+     * Whether the layers are left in a consistent state: false only when the composer update that ran failed.
+     */
+    protected function offerComposerUpdate(string ...$packages): bool
     {
         if (! $this->wantsComposerUpdate()) {
             $this->components->info('Run <options=bold>composer update '.implode(' ', $packages).'</> to install the new layers.');
 
-            return;
+            return true;
         }
 
         $this->components->info('Running composer update...');
@@ -36,8 +39,12 @@ trait OffersComposerUpdate
         $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
 
         if (! $process->isSuccessful()) {
-            $this->components->error('composer update failed. You may need to run it manually.');
+            $this->components->error('composer update failed: run composer update '.implode(' ', $packages).' after fixing the error above.');
+
+            return false;
         }
+
+        return true;
     }
 
     private function wantsComposerUpdate(): bool

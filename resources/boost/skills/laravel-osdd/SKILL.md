@@ -268,7 +268,7 @@ Options:
 
 - `--target-path=/abs/path` — create the layer in that directory instead of the path named after the vendor. Required without a terminal when the vendor matches no key of `osdd.layers.paths` (the command fails and lists the keys).
 - `--composer-update` / `--no-composer-update` — run or skip `composer update vendor/package` without asking. Without either, the command asks in a terminal and skips the update otherwise (it then prints the command to run).
-- `--force` — overwrite an existing layer. Without it, `osdd:layer` fails when the layer directory exists and is not empty. With it, the layer's `composer.json`, provider and route files are rewritten (the `composer.json` loses its `extra.laravel.providers` unless the `service-provider` generator runs again), the model and controller are overwritten, the other generated files are kept, and no second `create_*_table` migration is added. To add files to an existing layer, prefer the `osdd:*` generators.
+- `--force` — overwrite an existing layer. Without it, `osdd:layer` fails when the layer directory exists and is not empty. With it, the provider and route files are rewritten, the existing `composer.json` is kept and only gains the keys of a new layer it lacks (its `require` and `extra.laravel.providers` stay), the model and controller are overwritten, the other generated files are kept, and no second `create_*_table` migration is added. To add files to an existing layer, prefer the `osdd:*` generators.
 
 Behind the scenes `osdd:layer`:
 
