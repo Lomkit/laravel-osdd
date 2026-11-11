@@ -15,28 +15,24 @@ use Symfony\Component\Console\Input\InputOption;
 #[AsCommand(name: 'osdd:phpunit')]
 class PhpunitCommand extends Command
 {
-    /**
-     * The console command name.
-     *
-     * @var string
-     */
     protected $name = 'osdd:phpunit';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
     protected $description = 'Synchronize phpunit.xml testsuites and coverage source with discovered OSDD layers';
 
     private const string LAYER_MIGRATIONS = '*/database/migrations';
+
+    private const string ADDED = '<fg=green;options=bold>ADDED</>';
+
+    private const string SKIPPED = '<fg=gray>SKIPPED</>';
+
+    private const string REMOVED = '<fg=yellow;options=bold>REMOVED</>';
 
     public function handle(): int
     {
         $xmlPath = $this->laravel->basePath('phpunit.xml');
 
         if (! $this->laravel->make('files')->exists($xmlPath)) {
-            $this->error('phpunit.xml not found at '.$xmlPath);
+            $this->components->error("phpunit.xml not found at [{$xmlPath}].");
 
             return self::FAILURE;
         }
@@ -44,7 +40,7 @@ class PhpunitCommand extends Command
         $xml = PhpunitXml::load($xmlPath);
 
         if (! $xml->hasTestSuites()) {
-            $this->error('<testsuites> element not found in phpunit.xml.');
+            $this->components->error('phpunit.xml has no <testsuites> element.');
 
             return self::FAILURE;
         }
@@ -54,7 +50,7 @@ class PhpunitCommand extends Command
         $this->excludeLayerMigrations($xml);
 
         if ($layers->isEmpty()) {
-            $this->warn('No OSDD layers discovered.');
+            $this->components->warn('No OSDD layers discovered.');
         }
 
         foreach ($layers as $layer) {
@@ -66,10 +62,14 @@ class PhpunitCommand extends Command
             $this->prune($xml, $layers);
         }
 
-        if ($xml->isChanged()) {
-            $this->laravel->make('files')->put($xmlPath, $xml->toXml());
-            $this->info('phpunit.xml updated successfully.');
+        if (! $xml->isChanged()) {
+            $this->components->info('phpunit.xml is already up to date.');
+
+            return self::SUCCESS;
         }
+
+        $this->laravel->make('files')->put($xmlPath, $xml->toXml());
+        $this->components->info('phpunit.xml updated.');
 
         return self::SUCCESS;
     }
@@ -93,7 +93,7 @@ class PhpunitCommand extends Command
             $directory = $this->relative($buckets->path($bucket)).'/'.self::LAYER_MIGRATIONS;
 
             if ($xml->excludeFromSource($directory)) {
-                $this->info("Excluded <comment>{$directory}</comment> from code coverage.");
+                $this->components->twoColumnDetail("Coverage exclusion <fg=gray>{$directory}</>", self::ADDED);
             }
         }
     }
@@ -103,20 +103,20 @@ class PhpunitCommand extends Command
         $layerName = $layer->manifest->name();
 
         if ($xml->hasTestSuite($layerName)) {
-            $this->line("Testsuite <comment>{$layerName}</comment> already present, skipping.");
+            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> already present", self::SKIPPED);
 
             return;
         }
 
         if (! is_dir($layer->path.'/tests')) {
-            $this->line("Testsuite <comment>{$layerName}</comment> has no tests/ directory, skipping.");
+            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> has no tests/ directory", self::SKIPPED);
 
             return;
         }
 
         $directory = $this->relative($layer->path.'/tests');
         $xml->addTestSuite($layerName, $directory);
-        $this->info("Added testsuite <comment>{$layerName}</comment> → {$directory}");
+        $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> → {$directory}", self::ADDED);
     }
 
     private function includeSource(PhpunitXml $xml, Layer $layer): void
@@ -124,7 +124,7 @@ class PhpunitCommand extends Command
         $source = $layer->manifest->srcPath($layer->path);
 
         if (is_dir($source) && $xml->includeInSource($directory = $this->relative($source))) {
-            $this->info("Included <comment>{$directory}</comment> in code coverage.");
+            $this->components->twoColumnDetail("Coverage source <fg=gray>{$directory}</>", self::ADDED);
         }
     }
 
@@ -135,14 +135,14 @@ class PhpunitCommand extends Command
         foreach ($xml->testSuiteNames() as $suite) {
             if (LayerName::validationError($suite) === null && ! in_array($suite, $layerNames, true)) {
                 $xml->removeTestSuite($suite);
-                $this->info("Removed testsuite <comment>{$suite}</comment>: the layer no longer exists.");
+                $this->components->twoColumnDetail("Testsuite <fg=gray>{$suite}</>: the layer no longer exists", self::REMOVED);
             }
         }
 
         foreach ($xml->sourceIncludes() as $directory) {
             if (! is_dir(Path::isAbsolute($directory) ? $directory : $this->laravel->basePath($directory))) {
                 $xml->removeSourceInclude($directory);
-                $this->info("Removed <comment>{$directory}</comment> from code coverage: the directory no longer exists.");
+                $this->components->twoColumnDetail("Coverage source <fg=gray>{$directory}</>: the directory no longer exists", self::REMOVED);
             }
         }
     }
