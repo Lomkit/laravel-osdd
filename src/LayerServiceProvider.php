@@ -8,6 +8,8 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Lomkit\Osdd\Tenancy\TenantMigrationPaths;
+use Lomkit\Osdd\Tenancy\TenantSeederRegistry;
 
 abstract class LayerServiceProvider extends ServiceProvider
 {
@@ -18,6 +20,20 @@ abstract class LayerServiceProvider extends ServiceProvider
     protected function loadSeeders(array $seeders, int $priority = 0): void
     {
         $this->app->make(SeederRegistry::class)->push($priority, ...$seeders);
+    }
+
+    protected function loadTenantMigrationsFrom(string ...$paths): void
+    {
+        $this->app->make(TenantMigrationPaths::class)->add(...$paths);
+    }
+
+    /**
+     * @param  class-string<Seeder>[]  $seeders
+     * @param  int  $priority  Lower values run first; ties preserve registration order
+     */
+    protected function loadTenantSeeders(array $seeders, int $priority = 0): void
+    {
+        $this->app->make(TenantSeederRegistry::class)->push($priority, ...$seeders);
     }
 
     /**

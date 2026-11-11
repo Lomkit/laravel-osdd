@@ -40,6 +40,8 @@ use Lomkit\Osdd\Console\Commands\SeedCommand;
 use Lomkit\Osdd\Console\Commands\StartCommand;
 use Lomkit\Osdd\Console\OsddAboutSection;
 use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Tenancy\TenantMigrationPaths;
+use Lomkit\Osdd\Tenancy\TenantSeederRegistry;
 use Symfony\Component\Finder\Finder;
 
 class OsddServiceProvider extends ServiceProvider
@@ -71,6 +73,8 @@ class OsddServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/osdd.php', 'osdd');
 
         $this->app->singleton(SeederRegistry::class, fn () => new SeederRegistry);
+        $this->app->singleton(TenantSeederRegistry::class);
+        $this->app->singleton(TenantMigrationPaths::class);
 
         $this->app->singleton(MigrateMakeCommand::class, fn (Application $app): MigrateMakeCommand => new MigrateMakeCommand(
             $app->make('migration.creator'),

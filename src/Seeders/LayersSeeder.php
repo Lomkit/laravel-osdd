@@ -7,24 +7,13 @@ use Lomkit\Osdd\SeederRegistry;
 
 class LayersSeeder extends Seeder
 {
+    use CallsRegisteredSeeders;
+
     public function run(SeederRegistry $registry): void
     {
-        $seeders = $registry->seeders();
-
-        if ($seeders === []) {
-            $this->command?->outputComponents()->warn('No OSDD seeders registered. Make sure your layer service providers call loadSeeders().');
-
-            return;
-        }
-
-        foreach ($seeders as $seeder) {
-            if (! class_exists($seeder)) {
-                $this->command?->outputComponents()->warn("Seeder [{$seeder}] not found, skipping.");
-
-                continue;
-            }
-
-            $this->call($seeder);
-        }
+        $this->callRegistered(
+            $registry->seeders(),
+            'No OSDD seeders registered. Make sure your layer service providers call loadSeeders().',
+        );
     }
 }

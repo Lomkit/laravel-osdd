@@ -3,13 +3,16 @@
 namespace Lomkit\Osdd;
 
 use Illuminate\Database\Seeder;
+use Lomkit\Osdd\Seeders\PrioritizedSeeders;
 
 class SeederRegistry
 {
-    /**
-     * @var list<array{priority: int, class: class-string<Seeder>}>
-     */
-    private array $seeders = [];
+    private readonly PrioritizedSeeders $seeders;
+
+    public function __construct()
+    {
+        $this->seeders = new PrioritizedSeeders;
+    }
 
     /**
      * A seeder pushed twice keeps its first registration and priority.
@@ -19,26 +22,7 @@ class SeederRegistry
      */
     public function push(int $priority, string ...$seeders): void
     {
-        foreach ($seeders as $seeder) {
-            if ($this->has($seeder)) {
-                continue;
-            }
-
-            $this->seeders[] = ['priority' => $priority, 'class' => $seeder];
-        }
-    }
-
-    private function has(string $seeder): bool
-    {
-        $seeder = ltrim($seeder, '\\');
-
-        foreach ($this->seeders as $registered) {
-            if (strcasecmp(ltrim($registered['class'], '\\'), $seeder) === 0) {
-                return true;
-            }
-        }
-
-        return false;
+        $this->seeders->push($priority, ...$seeders);
     }
 
     /**
@@ -46,9 +30,6 @@ class SeederRegistry
      */
     public function seeders(): array
     {
-        $sorted = $this->seeders;
-        usort($sorted, fn (array $a, array $b): int => $a['priority'] <=> $b['priority']);
-
-        return array_column($sorted, 'class');
+        return $this->seeders->inPriorityOrder();
     }
 }
