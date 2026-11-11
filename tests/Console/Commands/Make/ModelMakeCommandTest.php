@@ -43,7 +43,7 @@ class ModelMakeCommandTest extends TestCase
 
     public function test_all_companions_are_generated_in_the_layer(): void
     {
-        $this->artisan('osdd:model', ['name' => 'Product', '--all' => true, '--requests' => true, '--layer' => 'functional/test-layer'])->assertExitCode(0);
+        $this->artisan('osdd:model', ['name' => 'Product', '--all' => true, '--layer' => 'functional/test-layer'])->assertExitCode(0);
 
         foreach ([
             'src/Models/Product.php' => 'Functional\TestLayer\Models\Product',
@@ -69,6 +69,20 @@ class ModelMakeCommandTest extends TestCase
         GeneratedClass::load($this->layerPath('src/Http/Requests/StoreCouponRequest.php'), 'Functional\TestLayer\Http\Requests\StoreCouponRequest');
         GeneratedClass::load($this->layerPath('src/Http/Requests/UpdateCouponRequest.php'), 'Functional\TestLayer\Http\Requests\UpdateCouponRequest');
         $this->assertFileDoesNotExist($this->layerPath('src/Http/Controllers/CouponController.php'));
+    }
+
+    public function test_the_controller_follows_the_options_like_make_model(): void
+    {
+        $this->artisan('osdd:model', ['name' => 'Courier', '--controller' => true, '--layer' => 'functional/test-layer'])->assertExitCode(0);
+        $this->artisan('osdd:model', ['name' => 'Parcel', '--api' => true, '--layer' => 'functional/test-layer'])->assertExitCode(0);
+
+        $plain = GeneratedClass::load($this->layerPath('src/Http/Controllers/CourierController.php'), 'Functional\TestLayer\Http\Controllers\CourierController');
+        $api = GeneratedClass::load($this->layerPath('src/Http/Controllers/ParcelController.php'), 'Functional\TestLayer\Http\Controllers\ParcelController');
+
+        $this->assertFalse($plain->hasMethod('index'));
+        $this->assertTrue($api->hasMethod('index'));
+        $this->assertFalse($api->hasMethod('create'));
+        $this->assertSame('Functional\TestLayer\Models\Parcel', $api->getMethod('show')->getParameters()[0]->getType()?->__toString());
     }
 
     private function layerPath(string $file): string

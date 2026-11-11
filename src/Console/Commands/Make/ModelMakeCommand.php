@@ -81,10 +81,12 @@ final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCom
     protected function createController(): void
     {
         $this->generateInTargetLayer(ControllerMakeCommand::class, array_filter([
-            'name' => Str::studly($this->argument('name')).'Controller',
-            '--model' => $this->qualifyClass($this->getNameInput()),
-            '--resource' => true,
-            '--requests' => $this->option('requests'),
+            'name' => Str::studly(class_basename($this->argument('name'))).'Controller',
+            '--model' => $this->option('resource') || $this->option('api') ? $this->qualifyClass($this->getNameInput()) : null,
+            '--api' => $this->option('api'),
+            '--requests' => $this->option('requests') || $this->option('all'),
+            '--test' => $this->option('test'),
+            '--pest' => $this->option('pest'),
         ]));
     }
 
