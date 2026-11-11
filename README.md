@@ -1,7 +1,7 @@
 <p align="center"><img src="https://raw.githubusercontent.com/Lomkit/art/main/laravel-osdd/cover.png" alt="Laravel OSDD: split your Laravel application into independent layers"></p>
 
 <p align="center">
-<a href="https://github.com/Lomkit/laravel-osdd/actions/workflows/tests.yml"><img src="https://github.com/Lomkit/laravel-osdd/actions/workflows/tests.yml/badge.svg?branch=main" alt="Tests"></a>
+<a href="https://github.com/Lomkit/laravel-osdd/actions/workflows/tests.yml"><img src="https://github.com/Lomkit/laravel-osdd/actions/workflows/tests.yml/badge.svg?branch=3.x" alt="Tests"></a>
 <a href="https://packagist.org/packages/lomkit/laravel-osdd"><img src="https://img.shields.io/packagist/v/lomkit/laravel-osdd" alt="Latest version"></a>
 <a href="https://packagist.org/packages/lomkit/laravel-osdd"><img src="https://img.shields.io/packagist/dt/lomkit/laravel-osdd" alt="Total downloads"></a>
 <a href="LICENSE"><img src="https://img.shields.io/packagist/l/lomkit/laravel-osdd" alt="License"></a>
@@ -13,11 +13,11 @@
 
 **One domain, one layer.**
 
-Laravel OSDD splits your application into layers. Each layer is a Composer package of its own, with its models, migrations, seeders, tests, routes and service provider. A layer only sees the layers it requires, so the boundaries between domains stay in place as the application grows.
+Laravel OSDD (Open Source Driven Development) splits your application into layers. Each layer is a Composer package of its own, with its models, migrations, seeders, tests, routes and service provider. Each layer declares the layers it depends on in its `composer.json`, which keeps the boundaries between domains visible as the application grows.
 
 - **Independent layers**: every domain lives in its own package, installed through a local path repository.
-- **Artisan ready**: every `make:*` command has an `osdd:*` twin that writes the file inside the layer you pick.
-- **One test suite per layer**: `osdd:phpunit` keeps `phpunit.xml` in sync with your layers.
+- **Artisan ready**: most `make:*` class generators (`make:model`, `make:controller`, …) have an `osdd:*` twin that writes the file inside the layer you pick.
+- **One test suite per layer**: `osdd:phpunit` syncs `phpunit.xml` with the test suite of each layer.
 - **Seeders and config per layer**: `osdd:seed` runs the seeders every layer registers, and a layer can override the config of another package.
 - **Laravel Boost**: the package ships a Boost skill, so your agent writes files inside layers, not in `app/`.
 
@@ -46,7 +46,7 @@ php artisan osdd:start
 php artisan osdd:layer
 ```
 
-The command asks for the bucket, the package name and the files to generate, then registers the layer in your root `composer.json`.
+The command asks where to create the layer (functional or technical), its name and the files to generate, then registers the layer in your root `composer.json`.
 
 ```
 functional/
@@ -78,7 +78,7 @@ The controller lands in `functional/orders/src/Http/Controllers`, not in `app/`.
 | `osdd:layer` | Create a new layer |
 | `osdd:seed` | Run the seeders registered by every layer |
 | `osdd:phpunit` | Sync `phpunit.xml` with the test suite of each layer |
-| `osdd:*` | The `make:*` commands, writing inside a layer |
+| `osdd:*` | Twins of most `make:*` class generators, writing inside a layer |
 
 See the [command reference](https://laravel-osdd.lomkit.com/commands) for every option.
 
