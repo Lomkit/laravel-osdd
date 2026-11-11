@@ -14,7 +14,7 @@ class ChannelMakeCommand extends \Illuminate\Foundation\Console\ChannelMakeComma
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

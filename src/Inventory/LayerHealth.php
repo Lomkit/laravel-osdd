@@ -17,13 +17,13 @@ final readonly class LayerHealth
 
     public static function of(Layer $layer, RootProject $project): self
     {
-        $name = $layer->manifest->name();
+        $name = $layer->name->toString();
 
         return new self(
             required: $project->requires($name),
-            pathRepository: $project->hasPathRepositoryFor($layer->path),
+            pathRepository: $project->hasPathRepositoryFor($layer->directory->root),
             installed: $project->hasInstalled($name),
-            providerExtendsLayerServiceProvider: self::providersExtendLayerServiceProvider($layer->manifest->providers()),
+            providerExtendsLayerServiceProvider: self::providersExtendLayerServiceProvider($layer->providers),
             testSuite: $project->hasTestSuite($name),
         );
     }

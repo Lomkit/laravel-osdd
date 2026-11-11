@@ -2,6 +2,7 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:view')]
@@ -25,7 +26,7 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -35,6 +36,6 @@ class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
 
         $nameInput = str_replace(['\\', '.'], '/', trim($this->argument('name')));
 
-        return $layer->path.'/resources/views/'.$nameInput.'.'.$this->option('extension');
+        return $layer->directory->path(LayerFolder::Views).'/'.$nameInput.'.'.$this->option('extension');
     }
 }

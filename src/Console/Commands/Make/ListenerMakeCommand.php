@@ -19,7 +19,7 @@ class ListenerMakeCommand extends \Illuminate\Foundation\Console\ListenerMakeCom
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -40,7 +40,7 @@ class ListenerMakeCommand extends \Illuminate\Foundation\Console\ListenerMakeCom
         $event = $this->option('event') ?? '';
 
         if ($event !== '' && ! str_starts_with($event, 'Illuminate') && ! str_starts_with($event, '\\')) {
-            $layerNamespace = rtrim($this->resolveLayer()->manifest->rootNamespace(), '\\');
+            $layerNamespace = rtrim($this->resolveLayer()->rootNamespace, '\\');
             $event = $layerNamespace.'\\Events\\'.str_replace('/', '\\', $event);
         }
 

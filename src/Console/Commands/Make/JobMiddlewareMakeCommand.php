@@ -14,7 +14,7 @@ class JobMiddlewareMakeCommand extends \Illuminate\Foundation\Console\JobMiddlew
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

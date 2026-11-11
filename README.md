@@ -18,8 +18,9 @@ Laravel OSDD (Open Source Driven Development) splits your application into layer
 - **Independent layers**: every domain lives in its own package, installed through a local path repository.
 - **Artisan ready**: every `make:*` generator of Laravel (`make:model`, `make:component`, `make:queue-table`, …) has an `osdd:*` twin that writes the file inside the layer you pick.
 - **Views, translations, components and commands per layer**: `withViews()`, `withTranslations()` and `withComponents()` register them under the layer name (`view('orders::index')`, `<x-orders::alert />`), and `osdd:view`, `osdd:component` and `osdd:command` wire what they generate into the layer provider.
-- **Layer inventory**: `osdd:list` shows every layer with its contents and health (`--json` for scripts and agents).
+- **Layer inventory**: `osdd:list` shows every layer with its contents and health (`--json` for scripts and agents). A broken layer `composer.json` is listed with its error instead of stopping the command.
 - **Layer boundaries**: `osdd:check` fails when a layer uses a layer it does not require in its `composer.json`, or when layers require each other; `osdd:graph` draws the layer graph.
+- **Cached in production**: `php artisan optimize` caches the discovered layers in `bootstrap/cache/osdd.php` (`osdd:cache`), so a request never scans the layer folders.
 - **One test suite per layer**: `osdd:phpunit` syncs `phpunit.xml` with the test suite of each layer.
 - **Seeders and config per layer**: `LayersSeeder` runs the seeders every layer registers (through `osdd:seed`, `migrate --seed` or `RefreshDatabase`; `osdd:seed --layer` runs the seeders of some layers only), and a layer can override the config of another package.
 - **Laravel Boost**: the package ships a Boost skill, so your agent writes files inside layers, not in `app/`.
@@ -105,6 +106,7 @@ Run it in CI with `php artisan osdd:check --format=github` to get the violations
 | `osdd:graph` | Print the layer graph from the `require` entries (`--format=mermaid`, `dot` or `json`) |
 | `osdd:seed` | Run the seeders registered by every layer (`Lomkit\Osdd\Seeders\LayersSeeder`), or by the layers given with `--layer` |
 | `osdd:phpunit` | Sync `phpunit.xml` with the test suite and the source directory of each layer |
+| `osdd:cache` / `osdd:clear` | Cache the discovered layers in `bootstrap/cache/osdd.php`, or remove that cache. `php artisan optimize` and `optimize:clear` run them |
 | `osdd:*` | Twins of the `make:*` generators (`osdd:model`, `osdd:component`, `osdd:queue-table`, …), writing inside a layer and wiring the layer provider |
 
 `php artisan about --only=osdd` lists the discovered layers, the migration paths and the number of registered seeders.

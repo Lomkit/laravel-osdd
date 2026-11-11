@@ -2,10 +2,14 @@
 
 namespace Lomkit\Osdd;
 
+use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\ServiceProvider;
+use Lomkit\Osdd\Console\Commands\CacheCommand;
 use Lomkit\Osdd\Console\Commands\CheckCommand;
+use Lomkit\Osdd\Console\Commands\ClearCommand;
 use Lomkit\Osdd\Console\Commands\GraphCommand;
 use Lomkit\Osdd\Console\Commands\LayerCommand;
 use Lomkit\Osdd\Console\Commands\ListCommand;
@@ -51,17 +55,27 @@ use Lomkit\Osdd\Console\Commands\SeedCommand;
 use Lomkit\Osdd\Console\Commands\StartCommand;
 use Lomkit\Osdd\Console\OsddAboutSection;
 use Lomkit\Osdd\IdeHelper\IdeHelperModelLocations;
+use Lomkit\Osdd\Layers\LayerBuckets;
+use Lomkit\Osdd\Layers\LayerCache;
+use Lomkit\Osdd\Layers\LayerDiscovery;
+use Lomkit\Osdd\Layers\Layers;
+use Lomkit\Osdd\Layers\RefreshCacheAfterPackageDiscovery;
 use Lomkit\Osdd\Resources\ResourceNamespaces;
 use Lomkit\Osdd\Seeders\AllRegisteredSeeders;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 use Lomkit\Osdd\Seeders\SeederSelection;
 use Lomkit\Osdd\Tinker\TinkerLayerAliases;
 
 class OsddServiceProvider extends ServiceProvider
 {
+    private const string LAYER_CACHE_FILE = 'cache/osdd.php';
+
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
             $this->registerCommands();
+            $this->optimizes(optimize: 'osdd:cache', clear: 'osdd:clear');
+            $this->app->make('events')->listen(CommandFinished::class, RefreshCacheAfterPackageDiscovery::class);
             AboutCommand::add('OSDD', OsddAboutSection::class);
         }
 
@@ -84,6 +98,14 @@ class OsddServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/osdd.php', 'osdd');
 
+        $this->app->singleton(LayerBuckets::class, fn (Application $app): LayerBuckets => LayerBuckets::fromConfig($app->make('config')));
+        $this->app->singleton(LayerCache::class, fn (Application $app): LayerCache => new LayerCache(
+            $app->make(Filesystem::class),
+            $app->make(LayerBuckets::class),
+            $app->bootstrapPath(self::LAYER_CACHE_FILE),
+        ));
+        $this->app->singleton(Layers::class, fn (Application $app): Layers => $app->make(LayerCache::class)->layers()
+            ?? $app->make(LayerDiscovery::class)->discover());
         $this->app->singleton(SeederRegistry::class, fn () => new SeederRegistry);
         $this->app->singleton(ResourceNamespaces::class);
         $this->app->bind(SeederSelection::class, AllRegisteredSeeders::class);
@@ -98,6 +120,8 @@ class OsddServiceProvider extends ServiceProvider
     {
         $this->commands([
             LayerCommand::class,
+            CacheCommand::class,
+            ClearCommand::class,
             ListCommand::class,
             CheckCommand::class,
             GraphCommand::class,

@@ -3,11 +3,14 @@
 namespace Lomkit\Osdd\IdeHelper;
 
 use Illuminate\Contracts\Config\Repository;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 
 final class IdeHelperModelLocations
 {
-    public function __construct(private readonly Repository $config) {}
+    public function __construct(
+        private readonly Repository $config,
+        private readonly Layers $layers,
+    ) {}
 
     public function __invoke(): void
     {
@@ -18,8 +21,8 @@ final class IdeHelperModelLocations
         /** @var list<string> $locations */
         $locations = $this->config->get('ide-helper.model_locations', []);
 
-        foreach (LayersCollection::fromConfig() as $layer) {
-            $srcPath = rtrim($layer->manifest->srcPath($layer->path), '/\\');
+        foreach ($this->layers as $layer) {
+            $srcPath = $layer->sourceDirectory;
 
             if (is_dir($srcPath)) {
                 $locations[] = $srcPath;

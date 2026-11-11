@@ -4,11 +4,13 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Lomkit\Osdd\Console\Phpunit\PhpunitXml;
+use Lomkit\Osdd\Filesystem\Path;
+use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayerBuckets;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Lomkit\Osdd\Layers\LayerName;
-use Lomkit\Osdd\Layers\LayersCollection;
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -45,7 +47,13 @@ class PhpunitCommand extends Command
             return self::FAILURE;
         }
 
-        $layers = LayersCollection::fromConfig();
+        try {
+            $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
+        } catch (InvalidLayerManifestException $exception) {
+            $this->components->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
 
         $this->excludeLayerMigrations($xml);
 
@@ -87,7 +95,7 @@ class PhpunitCommand extends Command
 
     private function excludeLayerMigrations(PhpunitXml $xml): void
     {
-        $buckets = LayerBuckets::fromConfig();
+        $buckets = $this->laravel->make(LayerBuckets::class);
 
         foreach ($buckets->names() as $bucket) {
             $directory = $this->relative($buckets->path($bucket)).'/'.self::LAYER_MIGRATIONS;
@@ -100,7 +108,7 @@ class PhpunitCommand extends Command
 
     private function addTestSuite(PhpunitXml $xml, Layer $layer): void
     {
-        $layerName = $layer->manifest->name();
+        $layerName = $layer->name->toString();
 
         if ($xml->hasTestSuite($layerName)) {
             $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> already present", self::SKIPPED);
@@ -108,29 +116,29 @@ class PhpunitCommand extends Command
             return;
         }
 
-        if (! is_dir($layer->path.'/tests')) {
+        if (! is_dir($layer->directory->path(LayerFolder::Tests))) {
             $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> has no tests/ directory", self::SKIPPED);
 
             return;
         }
 
-        $directory = $this->relative($layer->path.'/tests');
+        $directory = $this->relative($layer->directory->path(LayerFolder::Tests));
         $xml->addTestSuite($layerName, $directory);
         $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> → {$directory}", self::ADDED);
     }
 
     private function includeSource(PhpunitXml $xml, Layer $layer): void
     {
-        $source = $layer->manifest->srcPath($layer->path);
+        $source = $layer->sourceDirectory;
 
         if (is_dir($source) && $xml->includeInSource($directory = $this->relative($source))) {
             $this->components->twoColumnDetail("Coverage source <fg=gray>{$directory}</>", self::ADDED);
         }
     }
 
-    private function prune(PhpunitXml $xml, LayersCollection $layers): void
+    private function prune(PhpunitXml $xml, Layers $layers): void
     {
-        $layerNames = $layers->toBase()->map(fn (Layer $layer): string => $layer->manifest->name())->all();
+        $layerNames = $layers->names();
 
         foreach ($xml->testSuiteNames() as $suite) {
             if (LayerName::validationError($suite) === null && ! in_array($suite, $layerNames, true)) {

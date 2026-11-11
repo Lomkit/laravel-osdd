@@ -6,7 +6,9 @@ use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Graph\LayerCycles;
 use Lomkit\Osdd\Graph\LayerGraph;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\LayerBuckets;
+use Lomkit\Osdd\Layers\LayerDiscovery;
+use Lomkit\Osdd\Layers\Layers;
 use Lomkit\Osdd\Tests\TestCase;
 
 class LayerCyclesTest extends TestCase
@@ -38,7 +40,7 @@ class LayerCyclesTest extends TestCase
         $this->assertSame([
             ['a/four', 'a/four'],
             ['a/one', 'a/two', 'a/one'],
-        ], LayerCycles::in(LayerGraph::of(LayersCollection::discover($this->root))));
+        ], LayerCycles::in(LayerGraph::of($this->discover())));
     }
 
     public function test_an_acyclic_graph_has_no_cycle(): void
@@ -47,10 +49,15 @@ class LayerCyclesTest extends TestCase
         $this->layer('a/two', ['a/three']);
         $this->layer('a/three', []);
 
-        $graph = LayerGraph::of(LayersCollection::discover($this->root));
+        $graph = LayerGraph::of($this->discover());
 
         $this->assertSame([], LayerCycles::in($graph));
         $this->assertSame(['a/three', 'a/two'], $graph->reachableFrom(['a/two']));
+    }
+
+    private function discover(): Layers
+    {
+        return (new LayerDiscovery(new LayerBuckets(['a' => $this->root]), new Filesystem))->discover();
     }
 
     /**

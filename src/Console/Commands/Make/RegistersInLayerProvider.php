@@ -26,7 +26,7 @@ trait RegistersInLayerProvider
         $line = $statement($provider);
 
         if (! $provider->exists()) {
-            $this->components->warn("Layer [{$layer->manifest->name()}] has no service provider. Add this line to the {$method->value}() method of its provider:");
+            $this->components->warn("Layer [{$layer->name->toString()}] has no service provider. Add this line to the {$method->value}() method of its provider:");
             $this->line($line);
 
             return;

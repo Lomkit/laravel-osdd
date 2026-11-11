@@ -4,10 +4,10 @@ namespace Lomkit\Osdd\Console;
 
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Migrations\Migrator;
+use Lomkit\Osdd\Filesystem\Path;
 use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
-use Lomkit\Osdd\SeederRegistry;
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Layers\Layers;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 
 class OsddAboutSection
 {
@@ -15,6 +15,7 @@ class OsddAboutSection
 
     public function __construct(
         private readonly Application $app,
+        private readonly Layers $layers,
         private readonly SeederRegistry $seeders,
     ) {}
 
@@ -23,10 +24,7 @@ class OsddAboutSection
      */
     public function __invoke(): array
     {
-        $layers = LayersCollection::fromConfig()
-            ->toBase()
-            ->mapWithKeys(fn (Layer $layer): array => [$layer->manifest->name() => $this->relative($layer->path)])
-            ->all();
+        $layers = array_combine($this->layers->names(), $this->layers->map(fn (Layer $layer): string => $this->relative($layer->directory->root)));
 
         return [
             'Layers' => (string) count($layers),

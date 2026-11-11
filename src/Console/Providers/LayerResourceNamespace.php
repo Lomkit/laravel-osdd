@@ -2,9 +2,8 @@
 
 namespace Lomkit\Osdd\Console\Providers;
 
-use Illuminate\Support\Str;
-use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\LayerName;
+use Lomkit\Osdd\Layers\Layers;
 
 final class LayerResourceNamespace
 {
@@ -16,14 +15,9 @@ final class LayerResourceNamespace
     /**
      * The package name, or vendor-package when another layer has the same package name.
      */
-    public static function of(string $layerName, LayersCollection $layers): self
+    public static function of(LayerName $name, Layers $layers): self
     {
-        $package = Str::after($layerName, '/');
-        $sharesPackageName = $layers->contains(
-            fn (Layer $other): bool => $other->manifest->package() === $package && $other->manifest->name() !== $layerName,
-        );
-
-        return new self($package, $sharesPackageName ? str_replace('/', '-', $layerName) : null);
+        return new self($name->package, $layers->sharingPackage($name)->isEmpty() ? null : $name->vendor.'-'.$name->package);
     }
 
     public function name(): string

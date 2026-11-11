@@ -21,7 +21,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
     protected function getStub(): string
     {
         if ($this->option('factory')) {
-            return __DIR__.'/../../stubs/make/model.factory.stub';
+            return __DIR__.'/../../../Stubs/make/model.factory.stub';
         }
 
         return parent::getStub();
@@ -33,7 +33,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         $stub = parent::buildClass($name);
 
         if ($this->option('factory')) {
-            $rootNamespace = rtrim($this->resolveLayer()->manifest->rootNamespace(), '\\');
+            $rootNamespace = rtrim($this->resolveLayer()->rootNamespace, '\\');
             $modelClass = class_basename($name);
 
             $stub = str_replace(
@@ -100,7 +100,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -123,7 +123,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         $this->call('osdd:factory', [
             'name' => "{$factory}Factory",
             '--model' => $this->qualifyClass($this->getNameInput()),
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
     }
 
@@ -137,7 +137,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
             '--model' => $this->qualifyClass($this->getNameInput()),
             '--resource' => true,
             '--requests' => $this->option('requests'),
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]));
     }
 
@@ -148,12 +148,12 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
 
         $this->call('osdd:request', [
             'name' => "Store{$request}Request",
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
 
         $this->call('osdd:request', [
             'name' => "Update{$request}Request",
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
     }
 
@@ -165,7 +165,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         $this->call('osdd:policy', [
             'name' => "{$policy}Policy",
             '--model' => $this->qualifyClass($this->getNameInput()),
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
     }
 
@@ -176,7 +176,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
 
         $this->call('osdd:seeder', [
             'name' => "{$seeder}Seeder",
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
     }
 
@@ -192,7 +192,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
         $this->call('osdd:migration', [
             'name' => "create_{$table}_table",
             '--create' => $table,
-            '--layer' => $this->resolveLayer()->manifest->name(),
+            '--layer' => $this->resolveLayer()->name->toString(),
         ]);
     }
 }

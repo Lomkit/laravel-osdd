@@ -19,7 +19,7 @@ class RequestMakeCommand extends \Illuminate\Foundation\Console\RequestMakeComma
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

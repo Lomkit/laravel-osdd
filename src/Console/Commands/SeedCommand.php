@@ -4,9 +4,10 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
+use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\LayerNameList;
 use Lomkit\Osdd\Layers\LayerNotFoundException;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 use Lomkit\Osdd\Seeders\LayersSeeder;
 use Lomkit\Osdd\Seeders\SeederSelection;
 use Lomkit\Osdd\Seeders\SeedersOfLayers;
@@ -34,7 +35,7 @@ class SeedCommand extends Command
 
         try {
             $selection = $this->layerSelection();
-        } catch (LayerNotFoundException|AmbiguousLayerNameException $exception) {
+        } catch (LayerNotFoundException|AmbiguousLayerNameException|InvalidLayerManifestException $exception) {
             $this->components->error($exception->getMessage());
 
             return self::FAILURE;
@@ -71,6 +72,7 @@ class SeedCommand extends Command
     /**
      * @throws LayerNotFoundException
      * @throws AmbiguousLayerNameException
+     * @throws InvalidLayerManifestException
      */
     private function layerSelection(): ?SeedersOfLayers
     {
@@ -80,9 +82,9 @@ class SeedCommand extends Command
             return null;
         }
 
-        $layers = LayersCollection::fromConfig();
+        $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
 
-        return SeedersOfLayers::of($layers->findAllByName($requested), $layers);
+        return SeedersOfLayers::of($layers->findAll($requested), $layers);
     }
 
     /**

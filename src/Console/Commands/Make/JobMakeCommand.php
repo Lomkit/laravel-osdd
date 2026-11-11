@@ -14,7 +14,7 @@ class JobMakeCommand extends \Illuminate\Foundation\Console\JobMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

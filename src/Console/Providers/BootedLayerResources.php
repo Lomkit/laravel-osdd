@@ -6,6 +6,7 @@ use Illuminate\Contracts\View\Factory;
 use Illuminate\View\Compilers\BladeCompiler;
 use Illuminate\View\FileViewFinder;
 use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerFolder;
 
 final class BootedLayerResources
 {
@@ -17,7 +18,7 @@ final class BootedLayerResources
     public function viewNamespace(Layer $layer): ?string
     {
         $finder = $this->views->getFinder();
-        $directory = realpath($layer->path.'/resources/views');
+        $directory = realpath($layer->directory->path(LayerFolder::Views));
 
         if (! $finder instanceof FileViewFinder || $directory === false) {
             return null;

@@ -7,20 +7,22 @@ use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Console\Concerns\ChoosesLayerGenerators;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
 use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
-use Lomkit\Osdd\Console\LayerComposerJson;
-use Lomkit\Osdd\Console\LayerGenerator;
-use Lomkit\Osdd\Console\LayerGeneratorRunner;
-use Lomkit\Osdd\Console\MissingLayerNameException;
-use Lomkit\Osdd\Console\StubWriter;
-use Lomkit\Osdd\Console\UnknownLayerBucketException;
-use Lomkit\Osdd\Console\UnknownLayerGeneratorException;
+use Lomkit\Osdd\Console\Exceptions\MissingLayerNameException;
+use Lomkit\Osdd\Console\Exceptions\UnknownLayerBucketException;
+use Lomkit\Osdd\Console\Exceptions\UnknownLayerGeneratorException;
 use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
 use Lomkit\Osdd\Layers\InvalidLayerNameException;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\LayerNotFoundException;
 use Lomkit\Osdd\Layers\LayerRequiresItselfException;
+use Lomkit\Osdd\Layers\Layers;
+use Lomkit\Osdd\Layers\RefreshLayers;
 use Lomkit\Osdd\Layers\RequiredLayers;
+use Lomkit\Osdd\Scaffolding\LayerComposerJson;
+use Lomkit\Osdd\Scaffolding\LayerGenerator;
+use Lomkit\Osdd\Scaffolding\LayerGeneratorRunner;
+use Lomkit\Osdd\Stubs\StubWriter;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
@@ -49,7 +51,7 @@ class LayerCommand extends Command
         try {
             [$name, $targetPath] = $this->layerNameAndTargetPath();
             $generators = $this->generators();
-            $requiredLayers = RequiredLayers::resolve((array) $this->option('requires'), $name);
+            $requiredLayers = RequiredLayers::resolve((array) $this->option('requires'), $name, $this->laravel->make(Layers::class));
         } catch (InvalidLayerNameException|MissingLayerNameException|UnknownLayerBucketException|UnknownLayerGeneratorException|LayerNotFoundException|AmbiguousLayerNameException|LayerRequiresItselfException $exception) {
             $this->components->error($exception->getMessage());
 
@@ -121,7 +123,7 @@ class LayerCommand extends Command
         );
         $name = LayerName::fromString($vendor.'/'.$package);
 
-        return [$name, LayerBuckets::fromConfig()->path($vendor)];
+        return [$name, $this->laravel->make(LayerBuckets::class)->path($vendor)];
     }
 
     private function targetPathFor(LayerName $name): string
@@ -132,7 +134,7 @@ class LayerCommand extends Command
             return $targetPath;
         }
 
-        $buckets = LayerBuckets::fromConfig();
+        $buckets = $this->laravel->make(LayerBuckets::class);
 
         if (($path = $buckets->pathForVendor($name->vendor)) !== null) {
             return $path;
@@ -147,7 +149,7 @@ class LayerCommand extends Command
 
     private function askForBucket(): string
     {
-        $buckets = LayerBuckets::fromConfig();
+        $buckets = $this->laravel->make(LayerBuckets::class);
 
         return $buckets->onlyBucket() ?? (string) select(label: 'Where should the layer be created?', options: $buckets->names());
     }
@@ -168,6 +170,7 @@ class LayerCommand extends Command
             layerPath: $layerPath,
             generators: $generators,
             force: (bool) $this->option('force'),
+            refreshLayers: $this->laravel->make(RefreshLayers::class),
         ))->run();
 
         $this->registerLayerInComposer($name->toString(), $layerPath);

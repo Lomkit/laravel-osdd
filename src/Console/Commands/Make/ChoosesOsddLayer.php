@@ -4,11 +4,12 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Console\Concerns\DetectsInteractiveInput;
-use Lomkit\Osdd\Console\MissingLayerOptionException;
+use Lomkit\Osdd\Console\Exceptions\MissingLayerOptionException;
 use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
+use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayerNotFoundException;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -27,11 +28,11 @@ trait ChoosesOsddLayer
             return $this->resolvedLayer;
         }
 
-        $layers = LayersCollection::fromConfig();
+        $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
         $layerOption = $this->option('layer');
 
         if (is_string($layerOption) && $layerOption !== '') {
-            return $this->resolvedLayer = $layers->findByName($layerOption);
+            return $this->resolvedLayer = $layers->find($layerOption);
         }
 
         if (! $this->canPrompt()) {
@@ -40,15 +41,10 @@ trait ChoosesOsddLayer
 
         $chosen = (string) search(
             label: 'Which layer should this be generated in?',
-            options: fn (string $value): array => $layers
-                ->toBase()
-                ->filter(fn (Layer $l) => str_contains($l->manifest->name(), $value))
-                ->mapWithKeys(fn (Layer $l) => [$l->manifest->name() => $l->manifest->name()])
-                ->sort()
-                ->all(),
+            options: fn (string $value): array => $this->layerOptions($layers, $value),
         );
 
-        return $this->resolvedLayer = $layers->findByName($chosen);
+        return $this->resolvedLayer = $layers->find($chosen);
     }
 
     #[\Override]
@@ -58,19 +54,29 @@ trait ChoosesOsddLayer
 
         try {
             return parent::run($input, $output);
-        } catch (LayerNotFoundException|AmbiguousLayerNameException|MissingLayerOptionException $exception) {
+        } catch (LayerNotFoundException|AmbiguousLayerNameException|MissingLayerOptionException|InvalidLayerManifestException $exception) {
             $this->components->error($exception->getMessage());
 
             return self::FAILURE;
         }
     }
 
+    /**
+     * @return array<string, string>
+     */
+    private function layerOptions(Layers $layers, string $search): array
+    {
+        $names = array_filter($layers->names(), fn (string $name): bool => str_contains($name, $search));
+
+        return array_combine($names, $names);
+    }
+
     protected function layerSourcePath(string $class): string
     {
         $layer = $this->resolveLayer();
-        $relative = Str::replaceFirst($layer->manifest->rootNamespace(), '', $class);
+        $relative = Str::replaceFirst($layer->rootNamespace, '', $class);
 
-        return $layer->manifest->srcPath($layer->path).'/'.str_replace('\\', '/', $relative).'.php';
+        return $layer->sourceDirectory.'/'.str_replace('\\', '/', $relative).'.php';
     }
 
     protected function interact(InputInterface $input, OutputInterface $output): void

@@ -129,7 +129,7 @@ functional/orders/
 
 Two non-negotiable rules in the layer's `composer.json`:
 
-1. `"type": "layer"` — this is what makes `LayersCollection` discover the directory. Without it the layer is invisible.
+1. `"type": "layer"` — this is what makes the layer discovery (`Lomkit\Osdd\Layers\Layers`) find the directory. Without it the layer is invisible. The `name` must be a valid layer name and `autoload.psr-4` must map namespaces to directories: otherwise the `composer.json` is invalid, `osdd:list` shows it with its error, and the other `osdd:*` commands stop with `Invalid layer manifest [path/composer.json]: …`.
 2. PSR-4 maps the **vendor + package** name in PascalCase to `src/`. For `functional/orders` that is `Functional\Orders\\` → `src/`. Sub-namespaces follow:
    - Models → `Functional\Orders\Models` (`src/Models/`)
    - Controllers → `Functional\Orders\Http\Controllers` (`src/Http/Controllers/`)
@@ -162,13 +162,13 @@ Don't put HTTP plumbing (controllers, requests, routes) in a `technical/` layer 
 
 ## The two service providers
 
-- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `SeederRegistry` and `Lomkit\Osdd\Resources\ResourceNamespaces` (which view, translation and component namespace each layer provider claimed) singletons, an `OSDD` section in `php artisan about`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers. The `technical/osdd` layer has its own `Technical\Osdd\Providers\OsddServiceProvider`, unrelated to the package's: it is a layer provider like any other.
+- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `Lomkit\Osdd\Layers\Layers` (the discovered layers, from `bootstrap/cache/osdd.php` when `php artisan optimize` cached them), `Lomkit\Osdd\Seeders\SeederRegistry` and `Lomkit\Osdd\Resources\ResourceNamespaces` (which view, translation and component namespace each layer provider claimed) singletons, an `OSDD` section in `php artisan about`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers. The `technical/osdd` layer has its own `Technical\Osdd\Providers\OsddServiceProvider`, unrelated to the package's: it is a layer provider like any other.
 
 - **`Lomkit\Osdd\LayerServiceProvider`** — the abstract base class **every layer's own provider must extend** (not Laravel's `ServiceProvider`). It exposes:
   - `loadSeeders(array $seeders, int $priority = 0)` — registers seeder classes with the global registry. Lower priority runs first. This is the **only** way to make a seeder runnable by `LayersSeeder` and `osdd:seed`.
   - `overrideConfigFrom(string $path, string $key)` — like `mergeConfigFrom`, but the layer's values win over previously-loaded defaults. Maps are merged key by key at every depth; a list (or an empty array) replaces the loaded value as a whole, so `['queues' => ['high']]` gives `['high']`, not `['high', 'low']`. Used by the technical OSDD layer to override `config('osdd')` from inside the application. Skips the merge when configuration is cached.
   - `withRouting(web:, api:, commands:, channels:, health:, apiPrefix: 'api')` — mounts a layer's route files following Laravel's standard conventions: `web` files in the `web` middleware group, `api` files in the `api` group behind the `apiPrefix`, `commands`/`channels` files `require`d, and `health` registered as a GET endpoint returning `{"status":"ok"}`. Each argument is optional and missing files are skipped. Once routes are cached, `web`, `api` and `health` are skipped (they are in the cache); `commands` and `channels` are always loaded, as in Laravel's own `withRouting()`. For anything beyond these conventions (custom prefixes, domains, named groups), use the `Route` facade directly in `boot()`.
-  - `withViews(string $path, ?string $namespace = null)` — `loadViewsFrom()` under `$namespace`, by default the package name of the layer (`orders` for `functional/orders`, read from the `composer.json` closest to the provider class): `view('orders::index')`. A missing directory is skipped.
+  - `withViews(string $path, ?string $namespace = null)` — `loadViewsFrom()` under `$namespace`, by default the package name of the layer that owns the provider (`orders` for `functional/orders`: the discovered layer whose `autoload.psr-4` prefix covers the provider class): `view('orders::index')`. A missing directory is skipped. A provider outside every discovered layer throws `Lomkit\Osdd\Layers\ProviderLayerNotFoundException`: pass the namespace.
   - `withTranslations(string $path, ?string $namespace = null)` — `loadTranslationsFrom()` under the same default namespace (`__('orders::messages.welcome')`) plus `loadJsonTranslationsFrom()` for the `lang/*.json` files. A missing directory is skipped.
   - `withComponents(string $namespace, ?string $prefix = null)` — `Blade::componentNamespace()`: `withComponents('Functional\\Orders\\View\\Components')` makes `<x-orders::alert />` render `Functional\Orders\View\Components\Alert`.
   - Two layers with the same package name (`functional/orders`, `technical/orders`) would share the default namespace: the second provider to register it throws `Lomkit\Osdd\Resources\ResourceNamespaceCollisionException` at boot, naming both providers. Pass the second argument in one of them (`'technical-orders'`). The generators do it for you when they see another layer with the same package name (they write `vendor-package`).
@@ -397,6 +397,15 @@ Walks every discovered layer and:
 
 It also excludes `<path>/*/database/migrations` under `<source><exclude>` for each configured layer path (`functional/*/database/migrations`, `technical/*/database/migrations`), so layer migrations don't count against code coverage. Everything is idempotent — existing entries are skipped. `--prune` also removes the test suites named after a layer that no longer exists and the `<source><include>` directories that are gone (such as `app` after `osdd:start`). Run after creating or deleting a layer.
 
+### Cache the layers
+
+```bash
+php artisan osdd:cache   # also run by php artisan optimize
+php artisan osdd:clear   # also run by php artisan optimize:clear
+```
+
+`osdd:cache` writes the discovered layers to `bootstrap/cache/osdd.php`, which every process then reads instead of scanning the layer folders. It fails and writes nothing while a layer `composer.json` is invalid. Development rarely needs it: `osdd:layer`, `osdd:start`, `osdd:provider` and Composer refresh an existing cache, and a layer copied by hand needs `php artisan osdd:clear` to show up.
+
 ### Check layer boundaries
 
 ```bash
@@ -473,7 +482,9 @@ return [
 
 Any other entry makes `osdd:check` fail with `Invalid osdd.boundaries.ignore entry […]`. Set it in `technical/osdd/config/osdd.php` (written by `osdd:start`, loaded with `overrideConfigFrom()`), like the other keys.
 
-`LayersCollection::fromConfig()` reads `config('osdd.layers.paths')`, scans each path **recursively**, and treats any directory containing a `composer.json` with `"type": "layer"` as a layer. Nested layers (e.g. `functional/billing/invoices/`) are supported as long as each level satisfies that contract; once a layer is matched at a given depth, scanning stops descending into it.
+The layers are discovered once per process and resolved from the container: `app(\Lomkit\Osdd\Layers\Layers::class)` (`names()`, `find('orders')`, `owning($class)`; each `Layer` has `name`, `directory`, `rootNamespace`, `sourceDirectory`, `providers` and `requires`). Discovery reads `config('osdd.layers.paths')`, scans each path **recursively**, and treats any directory containing a `composer.json` with `"type": "layer"` as a layer. Nested layers (e.g. `functional/billing/invoices/`) are supported when the directories above them have no `composer.json`; scanning never descends into a directory that has one (a layer or any other package).
+
+`php artisan optimize` runs `osdd:cache`, which writes the discovered layers to `bootstrap/cache/osdd.php`; `optimize:clear` runs `osdd:clear`, which deletes it. With the cache, a request reads that file instead of scanning the layer folders. `osdd:layer`, `osdd:start`, `osdd:provider` and Composer (through `package:discover`) rewrite an existing cache, and a cache built for other `osdd.layers.paths` is ignored. A layer added by hand without running Composer stays invisible until `php artisan osdd:cache` (or `osdd:clear`), as with `event:cache`.
 
 To add a new category (e.g. `support/`), append it to `osdd.layers.paths` from inside the `technical/osdd` layer's `Technical\Osdd\Providers\OsddServiceProvider::register()` using `$this->overrideConfigFrom(...)`. Don't edit the package's own `config/osdd.php` directly.
 
@@ -653,7 +664,7 @@ When a user asks "where should I add X?", the answer is always "in the layer res
 When debugging an OSDD project:
 
 - **Overview** — `php artisan about --only=osdd` lists the discovered layers with their paths, the migration paths registered by the providers, and the number of registered seeders (`php artisan about --only=osdd --json` for a machine-readable copy, under the `o_s_d_d` key).
-- **List discovered layers** — `php artisan osdd:list --json`. If a directory you expect isn't listed, its `composer.json` is missing `"type": "layer"` or the directory isn't under a path in `config('osdd.layers.paths')`. The output is stable:
+- **List discovered layers** — `php artisan osdd:list --json`. If a directory you expect isn't listed, its `composer.json` is missing `"type": "layer"`, is invalid (see `invalid_manifests`), the directory isn't under a path in `config('osdd.layers.paths')`, or a stale layer cache hides it (`php artisan osdd:clear`). The output is stable:
 
   ```json
   {
@@ -667,12 +678,15 @@ When debugging an OSDD project:
               "counts": {"models": 3, "migrations": 4, "seeders": 1, "tests": 12, "route_files": 2},
               "health": {"required": true, "path_repository": true, "installed": true, "provider_extends_layer_service_provider": true, "test_suite": false}
           }
+      ],
+      "invalid_manifests": [
+          {"file": "functional/billing/composer.json", "error": "it has no \"name\"."}
       ]
   }
   ```
 
-  Layers are sorted by name; `path` is relative to the project; `requires` keeps only discovered layers; `migrations` counts `database/migrations/*.php`, `tests` the `*Test.php` files under `tests/`, `route_files` `routes/*.php`. A `false` health flag tells what to fix: `required` → add `"vendor/package": "*"` to the root `require`; `path_repository` → add a `path` repository covering the layer; `installed` → `composer update vendor/package`; `provider_extends_layer_service_provider` → the layer declares no provider in `extra.laravel.providers`, a provider is not autoloadable, or it does not extend `Lomkit\Osdd\LayerServiceProvider`; `test_suite` → `php artisan osdd:phpunit`. With no layer, the output is `{"layers": []}`. The command never changes anything and always exits with 0.
-- **List registered seeders** — `app(\Lomkit\Osdd\SeederRegistry::class)->seeders();`. Empty? No layer provider called `loadSeeders()`.
+  Layers are sorted by name; `path` is relative to the project; `requires` keeps only discovered layers; `migrations` counts `database/migrations/*.php`, `tests` the `*Test.php` files under `tests/`, `route_files` `routes/*.php`. A `false` health flag tells what to fix: `required` → add `"vendor/package": "*"` to the root `require`; `path_repository` → add a `path` repository covering the layer; `installed` → `composer update vendor/package`; `provider_extends_layer_service_provider` → the layer declares no provider in `extra.laravel.providers`, a provider is not autoloadable, or it does not extend `Lomkit\Osdd\LayerServiceProvider`; `test_suite` → `php artisan osdd:phpunit`. `invalid_manifests` lists the layer `composer.json` files that could not be read, relative to the project, with the reason; fix them to discover those layers. With no layer, the output is `{"layers": [], "invalid_manifests": []}`. The command never changes anything and always exits with 0.
+- **List registered seeders** — `app(\Lomkit\Osdd\Seeders\SeederRegistry::class)->seeders();`. Empty? No layer provider called `loadSeeders()`.
 - **List layer providers actually loaded** — `app()->getLoadedProviders()` and filter by namespace.
 - **Check Composer wiring** — the root `composer.json` should have a `repositories[]` entry of type `path` with URL `./functional/*` (and/or `./technical/*`) and a `require` entry like `"functional/orders": "*"` for each layer. If a layer's classes don't autoload, run `composer dump-autoload` first; if that fails, the layer's `composer.json` is malformed.
 - **Re-sync `phpunit.xml`** — run `osdd:phpunit` after creating a layer. If `vendor/bin/phpunit --testsuite=functional/orders` reports "unknown testsuite", the sync hasn't run.
@@ -829,7 +843,7 @@ Before running any `osdd:*` make command, confirm:
 
 - **`make:*` instead of `osdd:*`**: the file lands in `app/` (which doesn't exist) or in a stray directory and won't be autoloaded. Always prefix with `osdd:` and pass `--layer`.
 - **Omitting `--layer` in non-interactive contexts**: the command writes nothing and exits with 1 ("The --layer option is required when the command is not interactive.", followed by the available layers). Always pass `--layer=vendor/package` explicitly when scripting.
-- **Forgetting `"type": "layer"` in a hand-written `composer.json`**: the layer is invisible to `LayersCollection`: `--layer` does not find it and `osdd:phpunit` skips it. Its provider still loads through `extra.laravel.providers` once Composer installs it. Check with `php artisan about --only=osdd`.
+- **Forgetting `"type": "layer"` in a hand-written `composer.json`**: the layer is invisible to the layer discovery: `--layer` does not find it and `osdd:phpunit` skips it. Its provider still loads through `extra.laravel.providers` once Composer installs it. Check with `php artisan about --only=osdd`.
 - **Extending `Illuminate\Support\ServiceProvider` in a layer**: works, but loses `loadSeeders()` and `overrideConfigFrom()`. Always extend `Lomkit\Osdd\LayerServiceProvider`.
 - **Writing a seeder by hand without calling `loadSeeders()`**: the seeder won't run from `osdd:seed`. `osdd:seeder` injects the call automatically; a hand-written seeder needs it added to the layer provider's `boot()`.
 - **A route file the provider's `withRouting()` doesn't reference**: the route silently doesn't exist at runtime — `php artisan route:list` won't show it. The generated provider's `withRouting()` only mounts the standard `routes/{web,api,console,channels}.php` paths; a route file at a non-standard path (or a regenerated provider that lost the call) needs `withRouting()` updated, or a manual `Route::...->group(...)` in `boot()`.

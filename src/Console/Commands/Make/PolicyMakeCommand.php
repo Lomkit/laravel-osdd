@@ -20,7 +20,7 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -52,7 +52,7 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
             return parent::getStub();
         }
 
-        return __DIR__.'/../../stubs/make/policy.stub';
+        return __DIR__.'/../../../Stubs/make/policy.stub';
     }
 
     #[\Override]

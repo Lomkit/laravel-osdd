@@ -14,7 +14,7 @@ class EnumMakeCommand extends \Illuminate\Foundation\Console\EnumMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

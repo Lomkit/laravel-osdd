@@ -1,6 +1,6 @@
 <?php
 
-namespace Lomkit\Osdd\Support;
+namespace Lomkit\Osdd\Filesystem;
 
 final class Path
 {

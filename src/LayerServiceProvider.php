@@ -9,6 +9,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Lomkit\Osdd\Resources\RegistersLayerResources;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 
 abstract class LayerServiceProvider extends ServiceProvider
 {

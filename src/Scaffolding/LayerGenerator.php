@@ -1,6 +1,8 @@
 <?php
 
-namespace Lomkit\Osdd\Console;
+namespace Lomkit\Osdd\Scaffolding;
+
+use Lomkit\Osdd\Console\Exceptions\UnknownLayerGeneratorException;
 
 enum LayerGenerator: string
 {

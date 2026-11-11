@@ -74,7 +74,7 @@ class StubReferencesTest extends TestCase
      */
     private function stubContents(): array
     {
-        $finder = (new Finder)->files()->name('*.stub')->in(dirname(__DIR__, 2).'/src/Console/stubs')->sortByName();
+        $finder = (new Finder)->files()->name('*.stub')->in(dirname(__DIR__, 2).'/src/Stubs')->sortByName();
 
         $contents = [];
 

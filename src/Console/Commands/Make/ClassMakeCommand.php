@@ -14,7 +14,7 @@ class ClassMakeCommand extends \Illuminate\Foundation\Console\ClassMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

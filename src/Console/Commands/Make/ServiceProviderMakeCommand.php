@@ -4,6 +4,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Foundation\Console\ProviderMakeCommand;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Layers\RefreshLayers;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:provider')]
@@ -21,7 +22,7 @@ class ServiceProviderMakeCommand extends ProviderMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -53,12 +54,14 @@ class ServiceProviderMakeCommand extends ProviderMakeCommand
     protected function registerProviderInComposer(): void
     {
         $layer = $this->resolveLayer();
-        $composerPath = $layer->path.'/composer.json';
+        $composerPath = $layer->directory->manifestFile();
         $providerClass = $this->qualifyClass($this->getNameInput());
 
         $composer = ComposerJsonFile::open($this->files, $composerPath);
         $composer->addLaravelProvider($providerClass);
         $composer->save();
+
+        $this->laravel->make(RefreshLayers::class)();
 
         $this->components->info("Provider [{$providerClass}] registered in [{$composerPath}].");
     }

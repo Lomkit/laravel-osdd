@@ -3,9 +3,9 @@
 namespace Lomkit\Osdd\Tests\Seeders;
 
 use Lomkit\Osdd\OsddServiceProvider;
-use Lomkit\Osdd\SeederRegistry;
 use Lomkit\Osdd\Seeders\LayersSeeder;
 use Lomkit\Osdd\Seeders\SeederNotFoundException;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\LoggingSeeder;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\OrdersLayerSeeder;
 use Lomkit\Osdd\Tests\Seeders\Fixtures\SeedingLayerServiceProvider;

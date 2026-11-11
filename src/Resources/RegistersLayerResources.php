@@ -4,7 +4,8 @@ namespace Lomkit\Osdd\Resources;
 
 use Illuminate\Support\ServiceProvider;
 use Illuminate\View\Compilers\BladeCompiler;
-use Lomkit\Osdd\Layers\ProviderLayerManifest;
+use Lomkit\Osdd\Layers\Layers;
+use Lomkit\Osdd\Layers\ProviderLayerNotFoundException;
 
 /**
  * @phpstan-require-extends ServiceProvider
@@ -13,6 +14,7 @@ trait RegistersLayerResources
 {
     /**
      * @throws ResourceNamespaceCollisionException
+     * @throws ProviderLayerNotFoundException
      */
     protected function withViews(string $path, ?string $namespace = null): void
     {
@@ -27,6 +29,7 @@ trait RegistersLayerResources
 
     /**
      * @throws ResourceNamespaceCollisionException
+     * @throws ProviderLayerNotFoundException
      */
     protected function withTranslations(string $path, ?string $namespace = null): void
     {
@@ -42,6 +45,7 @@ trait RegistersLayerResources
 
     /**
      * @throws ResourceNamespaceCollisionException
+     * @throws ProviderLayerNotFoundException
      */
     protected function withComponents(string $namespace, ?string $prefix = null): void
     {
@@ -55,7 +59,8 @@ trait RegistersLayerResources
 
     private function claimResourceNamespace(ResourceKind $kind, ?string $namespace): string
     {
-        $namespace ??= ProviderLayerManifest::of(static::class)->package();
+        $namespace ??= $this->app->make(Layers::class)->owning(static::class)?->name->package
+            ?? throw new ProviderLayerNotFoundException(static::class);
 
         $this->app->make(ResourceNamespaces::class)->claim($kind, $namespace, static::class);
 

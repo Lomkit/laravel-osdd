@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Illuminate\Support\Facades\Artisan;
 use Lomkit\Osdd\Layers\LayerName;
-use Lomkit\Osdd\SeederRegistry;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 use Lomkit\Osdd\Tests\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\Process\Process;

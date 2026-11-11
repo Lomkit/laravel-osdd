@@ -3,7 +3,7 @@
 namespace Lomkit\Osdd\Inventory;
 
 use Lomkit\Osdd\Console\Phpunit\PhpunitXml;
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Filesystem\Path;
 
 final class RootProject
 {

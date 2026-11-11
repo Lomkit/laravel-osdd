@@ -3,7 +3,7 @@
 namespace Lomkit\Osdd\Composer;
 
 use Illuminate\Filesystem\Filesystem;
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Filesystem\Path;
 use stdClass;
 
 final class ComposerJsonFile

@@ -14,7 +14,7 @@ class TraitMakeCommand extends \Illuminate\Foundation\Console\TraitMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

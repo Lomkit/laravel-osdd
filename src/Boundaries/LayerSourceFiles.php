@@ -3,13 +3,12 @@
 namespace Lomkit\Osdd\Boundaries;
 
 use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Finder\Finder;
 
 final class LayerSourceFiles
 {
-    private const array SCANNED_DIRECTORIES = ['database', 'routes', 'tests'];
-
-    private const string TESTS_DIRECTORY = 'tests';
+    private const array SCANNED_FOLDERS = [LayerFolder::Database, LayerFolder::Routes, LayerFolder::Tests];
 
     private const array SKIPPED_DIRECTORIES = ['vendor', 'node_modules'];
 
@@ -19,7 +18,7 @@ final class LayerSourceFiles
     public static function of(Layer $layer): array
     {
         $directories = array_values(array_filter(
-            [$layer->manifest->srcPath($layer->path), ...array_map(fn (string $directory): string => $layer->path.'/'.$directory, self::SCANNED_DIRECTORIES)],
+            [$layer->sourceDirectory, ...array_map($layer->directory->path(...), self::SCANNED_FOLDERS)],
             is_dir(...),
         ));
 
@@ -27,7 +26,7 @@ final class LayerSourceFiles
             return [];
         }
 
-        $testsPrefix = rtrim($layer->path, '/').'/'.self::TESTS_DIRECTORY.'/';
+        $testsPrefix = $layer->directory->path(LayerFolder::Tests).'/';
         $files = [];
 
         foreach ((new Finder)->files()->name('*.php')->in(array_unique($directories))->exclude(self::SKIPPED_DIRECTORIES)->sortByName() as $file) {

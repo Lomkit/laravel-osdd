@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:test')]
@@ -20,7 +21,7 @@ class TestMakeCommand extends \Illuminate\Foundation\Console\TestMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -35,13 +36,13 @@ class TestMakeCommand extends \Illuminate\Foundation\Console\TestMakeCommand
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
+        $layerNamespace = rtrim($layer->rootNamespace, '\\');
 
         $suffix = $this->option('unit') ? 'Tests\\Unit\\' : 'Tests\\Feature\\';
         $relative = Str::replaceFirst($layerNamespace.'\\'.$suffix, '', $name);
 
-        $dir = $this->option('unit') ? 'tests/Unit/' : 'tests/Feature/';
+        $directory = $this->option('unit') ? 'Unit/' : 'Feature/';
 
-        return $layer->path.'/'.$dir.str_replace('\\', '/', $relative).'.php';
+        return $layer->directory->path(LayerFolder::Tests).'/'.$directory.str_replace('\\', '/', $relative).'.php';
     }
 }

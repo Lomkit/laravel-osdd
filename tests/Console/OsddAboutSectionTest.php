@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Tests\Console;
 
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\Artisan;
-use Lomkit\Osdd\SeederRegistry;
+use Lomkit\Osdd\Seeders\SeederRegistry;
 use Lomkit\Osdd\Tests\TestCase;
 
 class OsddAboutSectionTest extends TestCase

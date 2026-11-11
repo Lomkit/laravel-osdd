@@ -5,7 +5,8 @@ namespace Lomkit\Osdd\Console\Commands;
 use Illuminate\Console\Command;
 use Lomkit\Osdd\Graph\Formats\GraphFormat;
 use Lomkit\Osdd\Graph\LayerGraph;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\InvalidLayerManifestException;
+use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -27,7 +28,15 @@ class GraphCommand extends Command
             return self::FAILURE;
         }
 
-        $this->output->writeln($format->renderer()->render(LayerGraph::of(LayersCollection::fromConfig())), OutputInterface::OUTPUT_RAW);
+        try {
+            $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
+        } catch (InvalidLayerManifestException $exception) {
+            $this->components->error($exception->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $this->output->writeln($format->renderer()->render(LayerGraph::of($layers)), OutputInterface::OUTPUT_RAW);
 
         return self::SUCCESS;
     }

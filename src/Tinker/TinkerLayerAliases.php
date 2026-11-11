@@ -3,12 +3,15 @@
 namespace Lomkit\Osdd\Tinker;
 
 use Illuminate\Contracts\Config\Repository;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Finder\Finder;
 
 final class TinkerLayerAliases
 {
-    public function __construct(private readonly Repository $config) {}
+    public function __construct(
+        private readonly Repository $config,
+        private readonly Layers $layers,
+    ) {}
 
     public function __invoke(): void
     {
@@ -37,9 +40,9 @@ final class TinkerLayerAliases
         $namespaces = [];
         $map = [];
 
-        foreach (LayersCollection::fromConfig() as $layer) {
-            $namespace = $layer->manifest->rootNamespace();
-            $srcPath = rtrim($layer->manifest->srcPath($layer->path), '/\\');
+        foreach ($this->layers as $layer) {
+            $namespace = $layer->rootNamespace;
+            $srcPath = $layer->sourceDirectory;
 
             $namespaces[] = $namespace;
 

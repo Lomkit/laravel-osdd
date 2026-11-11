@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:factory')]
@@ -21,7 +22,7 @@ class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryM
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -44,10 +45,10 @@ class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryM
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
+        $layerNamespace = rtrim($layer->rootNamespace, '\\');
 
         $relative = Str::replaceFirst($layerNamespace.'\\Database\\Factories\\', '', $name);
 
-        return $layer->path.'/database/factories/'.str_replace('\\', '/', $relative).'.php';
+        return $layer->directory->path(LayerFolder::Factories).'/'.str_replace('\\', '/', $relative).'.php';
     }
 }

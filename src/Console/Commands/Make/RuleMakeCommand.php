@@ -14,7 +14,7 @@ class RuleMakeCommand extends \Illuminate\Foundation\Console\RuleMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]

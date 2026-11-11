@@ -3,7 +3,7 @@
 namespace Lomkit\Osdd\Console\Concerns;
 
 use Lomkit\Osdd\Composer\ComposerJsonFile;
-use Lomkit\Osdd\Support\Path;
+use Lomkit\Osdd\Filesystem\Path;
 
 trait RegistersLayerInComposer
 {

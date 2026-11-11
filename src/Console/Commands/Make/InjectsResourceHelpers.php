@@ -5,13 +5,12 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 use Lomkit\Osdd\Console\Providers\LayerProvider;
 use Lomkit\Osdd\Console\Providers\LayerResourceNamespace;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
-use Lomkit\Osdd\Layers\LayersCollection;
+use Lomkit\Osdd\Layers\LayerFolder;
+use Lomkit\Osdd\Layers\Layers;
 
 trait InjectsResourceHelpers
 {
     use RegistersInLayerProvider;
-
-    private const string VIEWS_FOLDER = 'resources/views';
 
     private ?LayerResourceNamespace $layerResourceNamespace = null;
 
@@ -21,8 +20,8 @@ trait InjectsResourceHelpers
 
         $this->registerInLayerProvider(
             ProviderMethod::Boot,
-            fn (LayerProvider $provider): string => "\$this->withViews({$provider->pathExpression(self::VIEWS_FOLDER)}{$namespace->argument()});",
-            self::VIEWS_FOLDER,
+            fn (LayerProvider $provider): string => "\$this->withViews({$provider->pathExpression(LayerFolder::Views->value)}{$namespace->argument()});",
+            LayerFolder::Views->value,
             '$this->withViews(',
         );
     }
@@ -46,10 +45,10 @@ trait InjectsResourceHelpers
             return $this->layerResourceNamespace;
         }
 
-        $namespace = LayerResourceNamespace::of($this->resolveLayer()->manifest->name(), LayersCollection::fromConfig());
+        $namespace = LayerResourceNamespace::of($this->resolveLayer()->name, $this->laravel->make(Layers::class));
 
         if ($namespace->isExplicit()) {
-            $this->components->warn("Another layer is also named [{$this->resolveLayer()->manifest->package()}]: this layer's views and components use the [{$namespace->name()}] namespace.");
+            $this->components->warn("Another layer is also named [{$this->resolveLayer()->name->package}]: this layer's views and components use the [{$namespace->name()}] namespace.");
         }
 
         return $this->layerResourceNamespace = $namespace;

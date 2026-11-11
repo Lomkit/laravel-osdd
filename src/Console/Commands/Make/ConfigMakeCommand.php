@@ -5,6 +5,7 @@ namespace Lomkit\Osdd\Console\Commands\Make;
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Console\Providers\LayerProvider;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:config')]
@@ -20,7 +21,7 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
     #[\Override]
     protected function rootNamespace(): string
     {
-        return $this->resolveLayer()->manifest->rootNamespace();
+        return $this->resolveLayer()->rootNamespace;
     }
 
     #[\Override]
@@ -28,7 +29,7 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
     {
         $layer = $this->resolveLayer();
 
-        return $layer->path.'/config/'.Str::finish($this->argument('name'), '.php');
+        return $layer->directory->path(LayerFolder::Config).'/'.Str::finish($this->argument('name'), '.php');
     }
 
     #[\Override]
@@ -41,7 +42,7 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
 
         $this->registerInLayerProvider(
             ProviderMethod::Register,
-            fn (LayerProvider $provider): string => "\$this->overrideConfigFrom({$provider->pathExpression('config/'.$configFile)}, '{$configKey}');",
+            fn (LayerProvider $provider): string => "\$this->overrideConfigFrom({$provider->pathExpression(LayerFolder::Config->value.'/'.$configFile)}, '{$configKey}');",
             "config:{$configKey}",
         );
 
