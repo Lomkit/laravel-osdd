@@ -141,3 +141,9 @@ What it does to a fresh project also changed:
 - `bootstrap/providers.php` loses only the providers of the deleted `app/` directory (`App\Providers\...`); the providers of installed packages listed there stay. In 2.x the file was emptied.
 
 Projects already converted with 2.x keep working. If yours lost the sessions, cache or jobs tables, add their migrations to a layer: `php artisan make:session-table`, `make:cache-table` and `make:queue-table` write them under `database/migrations`; move them to `technical/osdd/database/migrations` and call `$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');` in the `boot()` method of `Technical\Osdd\Providers\OsddServiceProvider`.
+
+#### `osdd:seed` exit codes and options
+
+`osdd:seed` now stops at the first `db:seed` that fails or is cancelled and returns its exit code; in 2.x it ignored the result and exited 0. In production without a terminal, `db:seed` cancels itself: pass the new `--force` option to `osdd:seed` (it is forwarded to `db:seed`, `migrate:fresh` and `migrate:refresh`), as you would to `db:seed`. The new `--database` option is forwarded the same way.
+
+`--fresh` and `--refresh` together now fail; in 2.x `--refresh` was ignored.
