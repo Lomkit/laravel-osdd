@@ -4,6 +4,8 @@ namespace Lomkit\Osdd\Generation;
 
 use Lomkit\Osdd\Console\Concerns\DetectsInteractiveInput;
 use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
+use Lomkit\Osdd\Console\Providers\Statements\ProviderStatement;
+use Lomkit\Osdd\Console\Providers\Wiring\ProviderWiring;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -64,6 +66,11 @@ trait GeneratesInLayer
     protected function generateInTargetLayer(string $generator, array $arguments): int
     {
         return $this->call($generator, [...$arguments, '--'.self::LAYER_OPTION => $this->target()->layer->name->toString()]);
+    }
+
+    protected function wireInTargetLayer(ProviderStatement $statement): void
+    {
+        $this->laravel->make(ProviderWiring::class)->add($this->target()->layer, $statement)->report($this->output);
     }
 
     private function requestedLayer(InputInterface $input): ?string

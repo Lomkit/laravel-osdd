@@ -7,6 +7,7 @@ enum LayerFolder: string
     case Config = 'config';
     case Database = 'database';
     case Factories = 'database/factories';
+    case Lang = 'lang';
     case Migrations = 'database/migrations';
     case Routes = 'routes';
     case Seeders = 'database/seeders';

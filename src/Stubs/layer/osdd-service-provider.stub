@@ -10,13 +10,13 @@ class OsddServiceProvider extends LayerServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
+            {{ loadMigrationsFrom }}
         }
     }
 
     public function register(): void
     {
-        $this->overrideConfigFrom(__DIR__ . '/../../config/osdd.php', 'osdd');
+        {{ overrideConfigFrom }}
 
         $this->app->bind('DatabaseSeeder', LayersSeeder::class);
     }

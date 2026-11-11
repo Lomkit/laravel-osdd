@@ -143,6 +143,47 @@ class StartCommandTest extends TestCase
         $this->assertStringContainsString('loadSeeders([UsersSeeder::class])', $contents);
     }
 
+    public function test_the_users_service_provider_places_its_statements_in_the_stub(): void
+    {
+        $this->runStart();
+
+        $this->assertSame(<<<'PHP'
+            <?php
+
+            namespace Functional\Users\Providers;
+
+            use Functional\Users\Database\Seeders\UsersSeeder;
+            use Functional\Users\Models\User;
+            use Lomkit\Osdd\LayerServiceProvider;
+
+            class UsersServiceProvider extends LayerServiceProvider
+            {
+                public function boot(): void
+                {
+                    if ($this->app->runningInConsole()) {
+                        $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
+                        $this->loadSeeders([UsersSeeder::class]);
+                    }
+                }
+
+                public function register(): void
+                {
+                    config(['auth.providers.users.model' => User::class]);
+                }
+            }
+
+            PHP, file_get_contents($this->projectPath.'/functional/users/src/Providers/UsersServiceProvider.php'));
+    }
+
+    public function test_the_users_seeder_generated_again_stays_registered_once(): void
+    {
+        $this->runStart();
+
+        $this->artisan('osdd:seeder', ['name' => 'UsersSeeder', '--layer' => 'functional/users'])->assertExitCode(0);
+
+        $this->assertSame(1, substr_count((string) file_get_contents($this->projectPath.'/functional/users/src/Providers/UsersServiceProvider.php'), 'loadSeeders('));
+    }
+
     public function test_the_generated_providers_extend_the_package_layer_service_provider(): void
     {
         $this->runStart();

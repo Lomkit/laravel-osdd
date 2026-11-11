@@ -41,7 +41,7 @@ final class ProviderMethodEditor
         $depth = 0;
 
         foreach ($tokens as $index => $token) {
-            $depth += $this->braceDelta($token);
+            $depth += BraceDepth::delta($token);
 
             if ($depth === 1 && $token->is(T_FUNCTION) && $this->nameAfter($tokens, $index) === $method->value) {
                 return $index;
@@ -93,7 +93,7 @@ final class ProviderMethodEditor
         $depth = 0;
 
         for ($index = $open; $index < count($tokens); $index++) {
-            $depth += $this->braceDelta($tokens[$index]);
+            $depth += BraceDepth::delta($tokens[$index]);
 
             if ($depth === 0) {
                 return $index;
@@ -101,15 +101,6 @@ final class ProviderMethodEditor
         }
 
         throw new ProviderMethodNotFoundException($method);
-    }
-
-    private function braceDelta(PhpToken $token): int
-    {
-        if ($token->is(['{', T_DOLLAR_OPEN_CURLY_BRACES])) {
-            return 1;
-        }
-
-        return $token->is('}') ? -1 : 0;
     }
 
     private function lineIndentation(string $source, int $position): string

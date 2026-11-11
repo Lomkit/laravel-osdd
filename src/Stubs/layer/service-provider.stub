@@ -9,7 +9,7 @@ class {{ class }} extends LayerServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
+            {{ loadMigrationsFrom }}
         }
 
         $this->withRouting(
@@ -19,8 +19,8 @@ class {{ class }} extends LayerServiceProvider
             channels: __DIR__ . '/../../routes/channels.php',
         );
 
-        $this->withViews(__DIR__ . '/../../resources/views'{{ resourceNamespace }});
-        $this->withTranslations(__DIR__ . '/../../lang'{{ resourceNamespace }});
+        {{ withViews }}
+        {{ withTranslations }}
     }
 
     public function register(): void

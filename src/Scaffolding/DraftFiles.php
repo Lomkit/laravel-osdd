@@ -27,6 +27,22 @@ final readonly class DraftFiles
         $this->stubs->write($stub, $this->directory->pathTo($relativePath), $replacements);
     }
 
+    /**
+     * @param  array<string, string>  $replacements
+     */
+    public function render(Stub $stub, array $replacements = []): string
+    {
+        return $this->stubs->render($stub, $replacements);
+    }
+
+    public function put(string $relativePath, string $contents): void
+    {
+        $path = $this->directory->pathTo($relativePath);
+
+        $this->files->ensureDirectoryExists(dirname($path));
+        $this->files->put($path, $contents);
+    }
+
     public function hasMatching(LayerFolder $folder, string $pattern): bool
     {
         return $this->files->glob($this->directory->path($folder).'/'.$pattern) !== [];

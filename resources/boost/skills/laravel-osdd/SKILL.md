@@ -221,7 +221,7 @@ The generated provider wires **migrations**, **routing** (`withRouting()`), **vi
 - `osdd:seeder` injects `$this->loadSeeders([...])` into `boot()`.
 - `osdd:config` injects `$this->overrideConfigFrom(...)` into `register()`, so other packages see the override when they boot.
 
-These injections are idempotent. The provider is the first class of the layer's `extra.laravel.providers` found on disk, else `src/Providers/{Package}ServiceProvider.php`; the `__DIR__` path is computed from its folder. When the layer has no provider, or the provider has no `boot()`/`register()` method, the command prints a warning and the exact line to add by hand: add it.
+These injections are idempotent: a call the provider already makes is not added again, whatever its layout (spacing, line breaks, comments, trailing commas, or the short name of an imported class), and `withViews()` or `withComponents()` is not added when the provider calls it at all. A commented-out call does not count. When the provider imports the class, the added line uses its short name (`$this->loadSeeders([UsersSeeder::class]);`). The provider is the first class of the layer's `extra.laravel.providers` found on disk, else `src/Providers/{Package}ServiceProvider.php`, where `{Package}` is the package name in StudlyCase as in the layer namespace (`FooBarServiceProvider` for `functional/foo.bar`); the `__DIR__` path is computed from its folder. When the layer has no provider, or the provider has no `boot()`/`register()` method, the command prints a warning and the exact line to add by hand: add it.
 
 A provider written before these helpers existed (2.x) can call them by hand:
 

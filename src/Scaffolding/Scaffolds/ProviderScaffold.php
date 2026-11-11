@@ -2,7 +2,14 @@
 
 namespace Lomkit\Osdd\Scaffolding\Scaffolds;
 
+use Lomkit\Osdd\Console\Providers\ConventionalProvider;
+use Lomkit\Osdd\Console\Providers\LayerProvider;
 use Lomkit\Osdd\Console\Providers\LayerResourceNamespace;
+use Lomkit\Osdd\Console\Providers\ProviderTemplate;
+use Lomkit\Osdd\Console\Providers\Statements\LoadMigrations;
+use Lomkit\Osdd\Console\Providers\Statements\ProviderStatement;
+use Lomkit\Osdd\Console\Providers\Statements\WithTranslations;
+use Lomkit\Osdd\Console\Providers\Statements\WithViews;
 use Lomkit\Osdd\Scaffolding\LayerDraft;
 use Lomkit\Osdd\Scaffolding\LayerScaffold;
 use Lomkit\Osdd\Scaffolding\ScaffoldContext;
@@ -12,11 +19,13 @@ final readonly class ProviderScaffold implements LayerScaffold
 {
     public const string KEY = 'provider';
 
-    private const string NAMESPACE_SEGMENT = 'Providers';
-
-    private const string CLASS_SUFFIX = 'ServiceProvider';
-
-    public function __construct(private Stub $stub) {}
+    /**
+     * @param  list<ProviderStatement>  $statements  The statements the stub places besides the layer migrations, views and translations
+     */
+    public function __construct(
+        private Stub $stub,
+        private array $statements = [],
+    ) {}
 
     #[\Override]
     public function key(): string
@@ -33,15 +42,21 @@ final readonly class ProviderScaffold implements LayerScaffold
     #[\Override]
     public function scaffold(LayerDraft $draft, ScaffoldContext $context): void
     {
-        $class = $draft->studly().self::CLASS_SUFFIX;
-        $namespace = $draft->name->namespace();
+        $conventional = new ConventionalProvider($draft->name);
+        $file = $draft->sourceFile($conventional->sourceFile());
+        $resourceNamespace = LayerResourceNamespace::of($draft->name, $context->layers);
 
-        $context->files->write($this->stub, $draft->sourceFile(self::NAMESPACE_SEGMENT.'/'.$class.'.php'), [
-            '{{ namespace }}' => $namespace,
-            '{{ class }}' => $class,
-            '{{ resourceNamespace }}' => LayerResourceNamespace::of($draft->name, $context->layers)->argument(),
+        $skeleton = $context->files->render($this->stub, [
+            '{{ namespace }}' => $draft->name->namespace(),
+            '{{ class }}' => $conventional->className,
         ]);
 
-        $context->files->declareProvider($namespace.'\\'.self::NAMESPACE_SEGMENT.'\\'.$class);
+        $context->files->put($file, (new ProviderTemplate)->fill(
+            $skeleton,
+            LayerProvider::at($draft->directory, $draft->directory->pathTo($file)),
+            [new LoadMigrations, new WithViews($resourceNamespace), new WithTranslations($resourceNamespace), ...$this->statements],
+        ));
+
+        $context->files->declareProvider($conventional->classIn($draft->name->namespace()));
     }
 }

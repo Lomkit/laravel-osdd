@@ -100,6 +100,39 @@ class LayerWiringTest extends TestCase
         $this->assertSame(1, substr_count((string) file_get_contents($provider['path']), 'PurgeCarts::class'));
     }
 
+    public function test_a_line_reformatted_in_the_provider_is_not_added_again(): void
+    {
+        $provider = $this->createProviderLayer(<<<'PHP'
+                public function boot(): void
+                {
+                    $this->loadMigrationsFrom(__DIR__.'/../../database/migrations');
+                    $this->commands([
+                        \Functional\ProviderLayer\Console\Commands\SyncOrders::class,
+                    ]);
+                }
+            PHP);
+        $before = (string) file_get_contents($provider['path']);
+
+        $this->artisan('osdd:migration', ['name' => 'create_carts_table', '--layer' => self::PROVIDER_LAYER])->assertExitCode(0);
+        $this->artisan('osdd:command', ['name' => 'SyncOrders', '--layer' => self::PROVIDER_LAYER])->assertExitCode(0);
+
+        $this->assertSame($before, (string) file_get_contents($provider['path']));
+    }
+
+    public function test_a_commented_out_line_does_not_count_as_registered(): void
+    {
+        $provider = $this->createProviderLayer(<<<'PHP'
+                public function boot(): void
+                {
+                    // $this->commands([\Functional\ProviderLayer\Console\Commands\SyncOrders::class]);
+                }
+            PHP);
+
+        $this->artisan('osdd:command', ['name' => 'SyncOrders', '--layer' => self::PROVIDER_LAYER])->assertExitCode(0);
+
+        $this->assertSame(2, substr_count((string) file_get_contents($provider['path']), 'SyncOrders::class'));
+    }
+
     public function test_a_command_in_a_layer_without_provider_prints_the_line(): void
     {
         $this->app['files']->deleteDirectory($this->app->basePath('functional/test-layer/src/Providers'));

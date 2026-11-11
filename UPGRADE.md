@@ -140,7 +140,7 @@ The `osdd:*` generator classes in `Lomkit\Osdd\Console\Commands\Make` are now `f
 
 #### Other internal classes
 
-These classes are internal, but code that used them must follow the move: `Lomkit\Osdd\Support\Path` is now `Lomkit\Osdd\Filesystem\Path`; `Lomkit\Osdd\Console\StubWriter` is now `Lomkit\Osdd\Stubs\StubWriter`, and takes a `Lomkit\Osdd\Stubs\Stub` case instead of a stub path; `LayerComposerJson` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Scaffolding`; `LayerGenerator`, `LayerGeneratorRunner` and the `RegistersLayerInComposer` trait are removed, as `osdd:layer` and `osdd:start` now create layers through `Lomkit\Osdd\Scaffolding\LayerScaffolder`, with one `Lomkit\Osdd\Scaffolding\LayerScaffold` class per generator; `MissingLayerNameException`, `MissingLayerOptionException`, `UnknownLayerBucketException` and `UnknownLayerGeneratorException` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Console\Exceptions`.
+These classes are internal, but code that used them must follow the move: `Lomkit\Osdd\Support\Path` is now `Lomkit\Osdd\Filesystem\Path`; `Lomkit\Osdd\Console\StubWriter` is now `Lomkit\Osdd\Stubs\StubWriter`, and takes a `Lomkit\Osdd\Stubs\Stub` case instead of a stub path; `LayerComposerJson` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Scaffolding`; `LayerGenerator`, `LayerGeneratorRunner` and the `RegistersLayerInComposer` trait are removed, as `osdd:layer` and `osdd:start` now create layers through `Lomkit\Osdd\Scaffolding\LayerScaffolder`, with one `Lomkit\Osdd\Scaffolding\LayerScaffold` class per generator; `MissingLayerNameException`, `MissingLayerOptionException`, `UnknownLayerBucketException` and `UnknownLayerGeneratorException` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Console\Exceptions`; the `RegistersInLayerProvider` trait is removed, as each line the generators, `osdd:layer` and `osdd:start` write into a layer provider is now a `Lomkit\Osdd\Console\Providers\Statements\ProviderStatement`, added by `Lomkit\Osdd\Console\Providers\Wiring\ProviderWiring`.
 
 ### Changed behaviour
 
@@ -260,6 +260,7 @@ These fix 2.x bugs; existing layers keep working without changes.
 - `osdd:layer`, `osdd:start` and `osdd:provider` keep empty objects such as `"require-dev": {}` in `composer.json`, follow `config.sort-packages`, and write a `../` repository URL for a layer path outside the project.
 - A generator run twice in the same process (`Artisan::call()` from a command, a seeder or a test) writes each run into the layer given to that run. In 2.x the second run reused the layer of the first, and `osdd:view` and `osdd:component` reused its view namespace.
 - `osdd:factory Order` writes `OrderFactory.php`, the file of the `OrderFactory` class it holds, as `make:factory` does. In 2.x it wrote `Order.php`, which the autoloader could not find: rename such files.
+- The generators recognise a call the layer provider already makes whatever its layout: spacing (Pint writes `__DIR__.'/../../database/migrations'`), line breaks, comments, a trailing comma, or the short name of an imported class (`loadSeeders([UsersSeeder::class])`). In 2.x such a call was added again on every run; remove the duplicates it left. A commented-out call no longer counts as made. When the provider imports the class, the added line uses its short name.
 
 #### `osdd:provider` no longer edits `bootstrap/providers.php`
 
