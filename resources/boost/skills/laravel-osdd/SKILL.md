@@ -825,9 +825,8 @@ php artisan osdd:model Invoice --layer=functional/billing --all
 #    functional/billing/routes/web.php:
 #      Route::resource('invoices', \Functional\Billing\Http\Controllers\InvoiceController::class);
 
-# 3. Wire the policy. Auto-discovery doesn't cross layers — register it explicitly.
-#    In BillingServiceProvider::boot():
-#      Gate::policy(Invoice::class, InvoicePolicy::class);
+# 3. Nothing to wire for the policy: Laravel finds
+#    Functional\Billing\Policies\InvoicePolicy for Functional\Billing\Models\Invoice by convention.
 
 # 4. Write a feature test.
 php artisan osdd:test InvoiceCrudTest --layer=functional/billing
@@ -839,7 +838,7 @@ vendor/bin/phpunit --testsuite=functional/billing
 
 ### Register a layer's policies and observers
 
-Policies and observers are not auto-registered across layers. Wire them in the layer's `LayerServiceProvider::boot()`:
+Policies need no registration when they follow Laravel's naming convention: for `Functional\Orders\Models\Order`, the gate finds `Functional\Orders\Policies\OrderPolicy`, where `osdd:policy OrderPolicy --layer=functional/orders` writes it. Register a policy with `Gate::policy()` only when its name or namespace does not follow the convention, such as a policy in another layer than its model. Observers are never discovered: register them in the layer's `LayerServiceProvider::boot()`:
 
 ```php
 use Illuminate\Support\Facades\Gate;
@@ -848,7 +847,7 @@ public function boot(): void
 {
     // … existing migrations/seeders …
 
-    Gate::policy(Order::class, OrderPolicy::class);
+    Gate::policy(Order::class, \Functional\Billing\Policies\BillableOrderPolicy::class); // non-conventional name only
     Order::observe(OrderObserver::class);
 }
 ```
@@ -951,7 +950,7 @@ Before running any `osdd:*` make command, confirm:
 - **Extending `Illuminate\Support\ServiceProvider` in a layer**: works, but loses `loadSeeders()` and `overrideConfigFrom()`. Always extend `Lomkit\Osdd\LayerServiceProvider`.
 - **Writing a seeder by hand without calling `loadSeeders()`**: the seeder won't run from `osdd:seed`. `osdd:seeder` injects the call automatically; a hand-written seeder needs it added to the layer provider's `boot()`.
 - **A route file the provider's `withRouting()` doesn't reference**: the route silently doesn't exist at runtime — `php artisan route:list` won't show it. The generated provider's `withRouting()` only mounts the standard `routes/{web,api,console,channels}.php` paths; a route file at a non-standard path (or a regenerated provider that lost the call) needs `withRouting()` updated, or a manual `Route::...->group(...)` in `boot()`.
-- **Registering a policy via `AuthServiceProvider`** (which doesn't exist in an OSDD app): use `Gate::policy()` in the owning layer's `LayerServiceProvider::boot()` instead.
+- **Registering a policy by hand that Laravel already finds**: a policy at `{Layer}\Policies\{Model}Policy` for a model at `{Layer}\Models\{Model}` (what `osdd:policy` writes) is discovered by convention. Call `Gate::policy()` in the owning layer's `LayerServiceProvider::boot()` only for a policy with another name or namespace; there is no `AuthServiceProvider` in an OSDD app.
 - **Putting a test class under the default `Tests\` namespace**: the layer's PSR-4 won't autoload it. Always use `…\Tests\Feature` or `…\Tests\Unit` matching the layer namespace.
 - **Editing the package's `config/osdd.php` directly** instead of overriding it from `technical/osdd`: changes get lost on `composer update`. Override via the technical OSDD layer.
 - **Running `osdd:start` on a non-fresh project**: it deletes `app/`, `config/` and most of `database/`. Only ever run it once, on a brand-new Laravel app; it refuses to run again once `functional/users` or `technical/osdd` exists. Never pass `--force` unless the user asked for the conversion.
@@ -986,4 +985,4 @@ Before running any `osdd:*` make command, confirm:
 | A Filament resource, page or widget | `app/Filament/` | `{layer}/src/Filament/{Panel}/…` via `make:filament-*` with `LayersPlugin` on the panel |
 | An event listener | `app/Listeners/` | `osdd:listener Name --layer=…` (in `src/Listeners`, discovered when `osdd.events.discover` is on) |
 | A cache / session / queue / notifications table | `make:*-table` (writes root `database/migrations/`) | `osdd:*-table --layer=…` |
-| A policy | `app/Policies/` | `osdd:policy … --layer=…` + `Gate::policy()` in the provider |
+| A policy | `app/Policies/` | `osdd:policy … --layer=…` (found by convention; `Gate::policy()` only for a non-conventional name) |
