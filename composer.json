@@ -1,21 +1,26 @@
 {
     "name": "lomkit/laravel-osdd",
-    "description": "Package to handle OSDD in a Laravel application.",
+    "description": "A package to split a Laravel application into independent layers.",
+    "keywords": ["laravel", "osdd", "layers", "modules", "lomkit"],
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "Gautier DELEGLISE",
+            "name": "Gautier Deleglise",
             "email": "gautier@lomkit.com"
         }
     ],
     "require": {
-        "laravel/framework": "^12 || ^13",
         "php": "^8.3",
-        "ext-dom": "*"
+        "ext-dom": "*",
+        "laravel/framework": "^12.0 || ^13.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^10.0"
+        "orchestra/testbench": "^10.0 || ^11.0",
+        "phpunit/phpunit": "^11.5 || ^12.0 || ^13.0"
+    },
+    "conflict": {
+        "xefi/laravel-osdd": "*"
     },
     "autoload": {
         "psr-4": {
@@ -27,15 +32,6 @@
             "Lomkit\\Osdd\\Tests\\": "tests/"
         }
     },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Lomkit\\Osdd\\OsddServiceProvider"
-            ]
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true,
     "scripts": {
         "post-autoload-dump": [
             "@prepare"
@@ -48,5 +44,17 @@
             "@build",
             "@php vendor/bin/testbench serve --ansi"
         ]
-    }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Lomkit\\Osdd\\OsddServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }
