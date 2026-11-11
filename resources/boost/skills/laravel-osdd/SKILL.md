@@ -1,6 +1,6 @@
 ---
 name: laravel-osdd
-description: Use when working in a Laravel application that depends on lomkit/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, or asks to scaffold a new domain.
+description: Use when working in a Laravel application that depends on lomkit/laravel-osdd. This package replaces the standard app/, database/ and config/ folders with isolated "layers", each one a self-contained Composer package with its own models, migrations, seeders, tests and service provider. Trigger any time you would normally run a make:* command, write a migration, create a model, register a seeder, or add a provider — files must live inside a layer, not in app/. Also trigger when the user mentions OSDD, "layers", osdd:* artisan commands, asks to scaffold a new domain, asks where code belongs, which layer depends on which, or about layer boundaries, dependencies or cycles.
 ---
 
 # Laravel OSDD
@@ -640,13 +640,19 @@ Practical consequence: you can type `User::find(1)` in tinker without `use Funct
 
 Before adding code, locate the right layer. The `app/` and root `database/` directories don't exist — every file is under a layer.
 
-1. **Find the layer that owns a concept.** Look for `{path}/{name}/composer.json` and check the `name` field. The layer name (`functional/orders`) tells you the path (`functional/orders/`) and namespace root (`Functional\Orders`).
-2. **List all layers.** `php artisan osdd:list --json` (see "Inspecting layer state").
+1. **Start with the map, not the file tree.** Run `php artisan osdd:list --json` (every layer with its path, namespace, providers and requirements) and `php artisan osdd:graph --format=json` (which layer requires which) before opening files. Without a terminal, read each `{path}/{name}/composer.json` (`name`, `require`, `autoload.psr-4`) instead.
+2. **Find the layer that owns a concept.** The layer name (`functional/orders`) tells you the path (`functional/orders/`) and namespace root (`Functional\Orders`). Prefer a layer that already requires the layers the new code needs.
 3. **Find where a class lives.** Search for the class name in the relevant layer's `src/`. Layers don't share code by accident — if a class isn't there, it's in another layer, in the package itself, or in `vendor/`.
 4. **Find a route.** Routes are layer-local. Check each layer's `routes/` directory (`web.php`, `api.php`, `console.php`, `channels.php`) — they're mounted by the `$this->withRouting(...)` call in the layer's `LayerServiceProvider::boot()`. Routes only exist if the layer ships the file and the provider's `withRouting()` references it.
 5. **Find a config key.** Layer-defined config lives in `{layer}/config/{name}.php` and is loaded into `config('{name}')` via `overrideConfigFrom`. Look at the layer's `LayerServiceProvider` (`osdd:config` injects the call into `register()`) to see what keys it overrides.
 
 When a user asks "where should I add X?", the answer is always "in the layer responsible for X" — never `app/`. If no layer matches, the answer is "create a new layer with `osdd:layer`."
+
+### Before using a class of another layer
+
+1. Check the edge in `php artisan osdd:graph --format=json`: the current layer must list the other layer in its own `require`.
+2. If the edge is missing, add `"vendor/other": "*"` to the current layer's `require` (`require-dev` when only `tests/` uses it), then `composer update vendor/current`. For a new layer, pass `--requires=vendor/other` to `osdd:layer`.
+3. If the other layer already requires the current one, directly or through other layers, the new edge creates a cycle: stop and tell the user. The shared concept usually belongs in a third layer (often under `technical/`).
 
 ## Inspecting layer state
 
@@ -768,6 +774,10 @@ php artisan osdd:phpunit
 ```
 
 This adds `<testsuite name="vendor/package"><directory>vendor/package/tests</directory></testsuite>` to the root `phpunit.xml`. Without this step, `vendor/bin/phpunit` won't pick up the layer's tests.
+
+### Before you finish
+
+After a change that adds or moves code between layers, run `php artisan osdd:check --format=json`. Fix the `undeclared` entries your change introduced (add the requirement, or move the code). Report the violations that were already there instead of fixing them, unless the task asks for it.
 
 ### Running tests
 
