@@ -2,31 +2,11 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:observer')]
-class ObserverMakeCommand extends \Illuminate\Foundation\Console\ObserverMakeCommand
+final class ObserverMakeCommand extends \Illuminate\Foundation\Console\ObserverMakeCommand
 {
-    use ChoosesOsddLayer;
-    use QualifiesModelsAcrossLayers;
-
-    protected $name = 'osdd:observer';
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
-
-    #[\Override]
-    protected function getDefaultNamespace($rootNamespace): string
-    {
-        return rtrim($rootNamespace, '\\').'\\Observers';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
-    }
+    use GeneratesClassesInLayer;
 }

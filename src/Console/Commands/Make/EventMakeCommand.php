@@ -2,35 +2,11 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:event')]
-class EventMakeCommand extends \Illuminate\Foundation\Console\EventMakeCommand
+final class EventMakeCommand extends \Illuminate\Foundation\Console\EventMakeCommand
 {
-    use ChoosesOsddLayer;
-
-    /**
-     * The console command name.
-     *
-     * @var string
-     */
-    protected $name = 'osdd:event';
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
-
-    #[\Override]
-    protected function getDefaultNamespace($rootNamespace): string
-    {
-        return rtrim($rootNamespace, '\\').'\\Events';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
-    }
+    use GeneratesClassesInLayer;
 }

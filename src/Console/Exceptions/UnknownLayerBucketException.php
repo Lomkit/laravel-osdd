@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Console\Exceptions;
 
 use InvalidArgumentException;
 
-class UnknownLayerBucketException extends InvalidArgumentException
+class UnknownLayerBucketException extends InvalidArgumentException implements OsddConsoleException
 {
     /**
      * @param  list<string>  $buckets

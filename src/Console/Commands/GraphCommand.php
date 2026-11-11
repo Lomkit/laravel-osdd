@@ -3,9 +3,9 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
+use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Graph\Formats\GraphFormat;
 use Lomkit\Osdd\Graph\LayerGraph;
-use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -13,6 +13,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 #[AsCommand(name: 'osdd:graph')]
 class GraphCommand extends Command
 {
+    use ReportsOsddConsoleExceptions;
+
     protected $signature = 'osdd:graph
         {--format=mermaid : Output format: mermaid, dot or json}';
 
@@ -28,13 +30,7 @@ class GraphCommand extends Command
             return self::FAILURE;
         }
 
-        try {
-            $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
-        } catch (InvalidLayerManifestException $exception) {
-            $this->components->error($exception->getMessage());
-
-            return self::FAILURE;
-        }
+        $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
 
         $this->output->writeln($format->renderer()->render(LayerGraph::of($layers)), OutputInterface::OUTPUT_RAW);
 

@@ -6,11 +6,20 @@ use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Console\Commands\Make\ControllerMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\FactoryMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\MigrateMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\ModelMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\PolicyMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\SeederMakeCommand;
+use Lomkit\Osdd\Console\Commands\Make\TestMakeCommand;
 use Lomkit\Osdd\Console\Providers\LayerResourceNamespace;
+use Lomkit\Osdd\Generation\CommandName;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\Layers;
 use Lomkit\Osdd\Layers\RefreshLayers;
 use Lomkit\Osdd\Stubs\StubWriter;
+use Symfony\Component\Console\Command\Command as SymfonyCommand;
 
 final class LayerGeneratorRunner
 {
@@ -64,13 +73,13 @@ final class LayerGeneratorRunner
 
         match ($generator) {
             LayerGenerator::Migration => $this->generateMigration(Str::snake(Str::pluralStudly($studly))),
-            LayerGenerator::Model => $this->callGenerator('osdd:model', ['name' => $singular, '--factory' => $this->selected(LayerGenerator::Factory)]),
-            LayerGenerator::Factory => $this->callGenerator('osdd:factory', ['name' => "{$singular}Factory"]),
-            LayerGenerator::Seeder => $this->callGenerator('osdd:seeder', ['name' => "{$studly}Seeder"]),
+            LayerGenerator::Model => $this->callGenerator(ModelMakeCommand::class, ['name' => $singular, '--factory' => $this->selected(LayerGenerator::Factory)]),
+            LayerGenerator::Factory => $this->callGenerator(FactoryMakeCommand::class, ['name' => "{$singular}Factory"]),
+            LayerGenerator::Seeder => $this->callGenerator(SeederMakeCommand::class, ['name' => "{$studly}Seeder"]),
             LayerGenerator::ServiceProvider => $this->generateServiceProvider($studly.'ServiceProvider', $layers),
-            LayerGenerator::Test => $this->callGenerator('osdd:test', ['name' => "{$studly}Test"]),
-            LayerGenerator::Controller => $this->callGenerator('osdd:controller', ['name' => "{$studly}Controller"]),
-            LayerGenerator::Policy => $this->callGenerator('osdd:policy', ['name' => "{$studly}Policy", '--model' => $this->selected(LayerGenerator::Model) ? $singular : null]),
+            LayerGenerator::Test => $this->callGenerator(TestMakeCommand::class, ['name' => "{$studly}Test"]),
+            LayerGenerator::Controller => $this->callGenerator(ControllerMakeCommand::class, ['name' => "{$studly}Controller"]),
+            LayerGenerator::Policy => $this->callGenerator(PolicyMakeCommand::class, ['name' => "{$studly}Policy", '--model' => $this->selected(LayerGenerator::Model) ? $singular : null]),
             LayerGenerator::Routes => $this->generateRoutes(),
         };
     }
@@ -81,20 +90,24 @@ final class LayerGeneratorRunner
     }
 
     /**
+     * @param  class-string<SymfonyCommand>  $generator
      * @param  array<string, string|bool|null>  $arguments
      */
-    private function callGenerator(string $command, array $arguments): void
+    private function callGenerator(string $generator, array $arguments): void
     {
-        $this->command->call($command, array_filter([
+        $this->command->call($generator, array_filter([
             ...$arguments,
             '--layer' => $this->name->toString(),
-            '--force' => $this->force && $this->acceptsForce($command),
+            '--force' => $this->force && $this->acceptsForce($generator),
         ]));
     }
 
-    private function acceptsForce(string $command): bool
+    /**
+     * @param  class-string<SymfonyCommand>  $generator
+     */
+    private function acceptsForce(string $generator): bool
     {
-        return $this->command->getApplication()?->find($command)->getDefinition()->hasOption('force') ?? false;
+        return $this->command->getApplication()?->find(CommandName::of($generator))->getDefinition()->hasOption('force') ?? false;
     }
 
     private function generateMigration(string $table): void
@@ -105,7 +118,7 @@ final class LayerGeneratorRunner
             return;
         }
 
-        $this->command->call('osdd:migration', [
+        $this->command->call(MigrateMakeCommand::class, [
             'name' => "create_{$table}_table",
             '--create' => $table,
             '--layer' => $this->name->toString(),

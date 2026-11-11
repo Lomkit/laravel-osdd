@@ -44,6 +44,15 @@ class FactoryMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/database/factories/UserFactory.php');
     }
 
+    public function test_a_name_without_the_factory_suffix_gets_the_file_of_its_class(): void
+    {
+        $this->artisan('osdd:factory', ['name' => 'Order', '--layer' => 'functional/test-layer'])
+            ->assertExitCode(0);
+
+        $this->assertFileContains(['class OrderFactory extends Factory'], 'functional/test-layer/database/factories/OrderFactory.php');
+        $this->assertFileDoesNotExist($this->app->basePath('functional/test-layer/database/factories/Order.php'));
+    }
+
     public function test_it_generates_nested_factory_in_correct_path(): void
     {
         $this->artisan('osdd:factory', ['name' => 'Admin/UserFactory', '--layer' => 'functional/test-layer'])

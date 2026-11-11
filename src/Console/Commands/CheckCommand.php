@@ -6,17 +6,16 @@ use Illuminate\Console\Command;
 use Lomkit\Osdd\Boundaries\BoundaryCheck;
 use Lomkit\Osdd\Boundaries\BoundaryIgnoreList;
 use Lomkit\Osdd\Boundaries\Formats\CheckFormat;
-use Lomkit\Osdd\Boundaries\InvalidBoundaryIgnoreEntryException;
-use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
-use Lomkit\Osdd\Layers\InvalidLayerManifestException;
+use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Layers\LayerNameList;
-use Lomkit\Osdd\Layers\LayerNotFoundException;
 use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:check')]
 class CheckCommand extends Command
 {
+    use ReportsOsddConsoleExceptions;
+
     protected $signature = 'osdd:check
         {--layer=* : Only check these layers (full or package name, repeatable or comma separated)}
         {--format=text : Output format: text, json or github}
@@ -34,16 +33,10 @@ class CheckCommand extends Command
             return self::FAILURE;
         }
 
-        try {
-            $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
-            $requested = LayerNameList::parse((array) $this->option('layer'));
-            $selected = $requested === [] ? $layers : $layers->findAll($requested);
-            $check = BoundaryCheck::of($layers, BoundaryIgnoreList::fromConfig(), (bool) $this->option('strict'), $this->laravel->basePath());
-        } catch (LayerNotFoundException|AmbiguousLayerNameException|InvalidBoundaryIgnoreEntryException|InvalidLayerManifestException $exception) {
-            $this->components->error($exception->getMessage());
-
-            return self::FAILURE;
-        }
+        $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
+        $requested = LayerNameList::parse((array) $this->option('layer'));
+        $selected = $requested === [] ? $layers : $layers->findAll($requested);
+        $check = BoundaryCheck::of($layers, BoundaryIgnoreList::fromConfig(), (bool) $this->option('strict'), $this->laravel->basePath());
 
         $report = $check->run($selected);
         $format->renderer()->render($report, $this->output);

@@ -3,52 +3,49 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Generation\ClassLocation;
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:factory')]
-class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryMakeCommand
+final class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryMakeCommand
 {
-    use ChoosesOsddLayer;
-    use QualifiesModelsAcrossLayers;
+    use GeneratesClassesInLayer;
 
-    /**
-     * The console command name.
-     *
-     * @var string
-     */
-    protected $name = 'osdd:factory';
+    private const string NAMESPACE_PLACEHOLDER = '{{ factoryNamespace }}';
 
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
+    private const string CLASS_SUFFIX = 'Factory';
 
     #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\').'\\Database\\Factories';
+        return rtrim($this->factories()->namespace, '\\');
     }
 
-    #[\Override]
-    protected function buildClass($name): string
-    {
-        $wrongNamespace = $this->getNamespace(
-            Str::replaceFirst($this->rootNamespace(), 'Database\\Factories\\', $name)
-        );
-
-        return str_replace($wrongNamespace, $this->getNamespace($name), parent::buildClass($name));
-    }
-
+    /**
+     * @param  string  $name
+     */
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->rootNamespace, '\\');
+        return $this->factories()->fileOf(Str::finish($name, self::CLASS_SUFFIX));
+    }
 
-        $relative = Str::replaceFirst($layerNamespace.'\\Database\\Factories\\', '', $name);
+    /**
+     * @param  string  $stub
+     * @param  string  $name
+     */
+    #[\Override]
+    protected function replaceNamespace(&$stub, $name): static
+    {
+        $stub = str_replace(self::NAMESPACE_PLACEHOLDER, $this->getNamespace($name), $stub);
 
-        return $layer->directory->path(LayerFolder::Factories).'/'.str_replace('\\', '/', $relative).'.php';
+        return parent::replaceNamespace($stub, $name);
+    }
+
+    private function factories(): ClassLocation
+    {
+        return $this->target()->folder(LayerFolder::Factories);
     }
 }

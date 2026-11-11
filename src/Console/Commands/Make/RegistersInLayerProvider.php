@@ -21,7 +21,7 @@ trait RegistersInLayerProvider
      */
     protected function registerInLayerProvider(ProviderMethod $method, Closure $statement, string $label, ?string $existingCall = null): void
     {
-        $layer = $this->resolveLayer();
+        $layer = $this->target()->layer;
         $provider = LayerProvider::of($layer);
         $line = $statement($provider);
 

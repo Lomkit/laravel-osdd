@@ -2,59 +2,33 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Illuminate\Console\GeneratorCommand;
 use Illuminate\Foundation\Console\ProviderMakeCommand;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Lomkit\Osdd\Layers\RefreshLayers;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:provider')]
-class ServiceProviderMakeCommand extends ProviderMakeCommand
+final class ServiceProviderMakeCommand extends ProviderMakeCommand
 {
-    use ChoosesOsddLayer;
-
-    /**
-     * The console command name.
-     *
-     * @var string
-     */
-    protected $name = 'osdd:provider';
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
-
-    #[\Override]
-    protected function getDefaultNamespace($rootNamespace): string
-    {
-        return rtrim($rootNamespace, '\\').'\\Providers';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
-    }
+    use GeneratesClassesInLayer;
 
     #[\Override]
     public function handle(): ?bool
     {
-        $result = parent::handle();
-
-        if ($result === false) {
+        if (GeneratorCommand::handle() === false) {
             return false;
         }
 
         $this->registerProviderInComposer();
 
-        return $result;
+        return null;
     }
 
-    protected function registerProviderInComposer(): void
+    private function registerProviderInComposer(): void
     {
-        $layer = $this->resolveLayer();
-        $composerPath = $layer->directory->manifestFile();
+        $composerPath = $this->target()->layer->directory->manifestFile();
         $providerClass = $this->qualifyClass($this->getNameInput());
 
         $composer = ComposerJsonFile::open($this->files, $composerPath);

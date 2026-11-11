@@ -2,27 +2,32 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Illuminate\Database\Migrations\MigrationCreator;
+use Illuminate\Support\Composer;
 use Lomkit\Osdd\Console\Providers\LayerProvider;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
+use Lomkit\Osdd\Generation\GeneratesInLayer;
 use Lomkit\Osdd\Layers\LayerFolder;
 use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Input\InputOption;
 
 #[AsCommand(name: 'osdd:migration')]
-class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\MigrateMakeCommand
+final class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\MigrateMakeCommand
 {
-    use ChoosesOsddLayer;
+    use GeneratesInLayer;
     use RegistersInLayerProvider;
 
-    /**
-     * The console command signature.
-     *
-     * @var string
-     */
-    protected $signature = 'osdd:migration {name : The name of the migration}
-        {--create= : The table to be created}
-        {--table= : The table to migrate}
-        {--fullpath : Output the full path of the migration (Deprecated)}
-        {--layer= : The layer to generate the file in}';
+    private const array PATH_OPTIONS = ['path', 'realpath'];
+
+    public function __construct(MigrationCreator $creator, Composer $composer)
+    {
+        parent::__construct($creator, $composer);
+
+        $this->getDefinition()->setOptions(array_filter(
+            $this->getDefinition()->getOptions(),
+            fn (InputOption $option): bool => ! in_array($option->getName(), self::PATH_OPTIONS, true),
+        ));
+    }
 
     #[\Override]
     public function handle(): void
@@ -41,6 +46,6 @@ class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\Migrate
     #[\Override]
     protected function getMigrationPath(): string
     {
-        return $this->resolveLayer()->directory->path(LayerFolder::Migrations);
+        return $this->target()->layer->directory->path(LayerFolder::Migrations);
     }
 }

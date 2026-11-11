@@ -134,6 +134,10 @@ Most applications only use `LayerServiceProvider` and the seeders, which keep th
 
 `Lomkit\Osdd\Layers\LayerManifest` now only parses a `composer.json` into a `Layer`, and `Lomkit\Osdd\Layers\ProviderLayerManifest` is removed. `Lomkit\Osdd\Layers\LayerManifestNotFoundException` is replaced by `Lomkit\Osdd\Layers\ProviderLayerNotFoundException` (see below).
 
+#### The generator classes are final
+
+The `osdd:*` generator classes in `Lomkit\Osdd\Console\Commands\Make` are now `final`, and the traits they shared are gone: `ChoosesOsddLayer` (with `resolveLayer()`, `$resolvedLayer` and `layerSourcePath()`), `QualifiesModelsAcrossLayers` and `CreatesModelCompanions`. The generators now share `Lomkit\Osdd\Generation\GeneratesInLayer`, which is internal. If you extended a generator, write your own command that extends the Laravel `make:*` command instead, or call the osdd generator with `$this->call(\Lomkit\Osdd\Console\Commands\Make\ModelMakeCommand::class, [..., '--layer' => 'functional/orders'])`.
+
 #### Other internal classes
 
 These classes are internal, but code that used them must follow the move: `Lomkit\Osdd\Support\Path` is now `Lomkit\Osdd\Filesystem\Path`; `Lomkit\Osdd\Console\StubWriter` is now `Lomkit\Osdd\Stubs\StubWriter`; `LayerGenerator`, `LayerGeneratorRunner` and `LayerComposerJson` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Scaffolding`; `MissingLayerNameException`, `MissingLayerOptionException`, `UnknownLayerBucketException` and `UnknownLayerGeneratorException` moved from `Lomkit\Osdd\Console` to `Lomkit\Osdd\Console\Exceptions`.
@@ -250,6 +254,16 @@ These fix 2.x bugs; existing layers keep working without changes.
 - Generators write classes under the directory of the layer's root psr-4 entry (the shortest namespace prefix), not always under `src/`.
 - `--model` on `osdd:policy`, `osdd:controller`, `osdd:observer` and `osdd:factory` keeps a model of another layer (`--model='Functional\Users\Models\User'`) instead of nesting it under the current layer.
 - `osdd:layer`, `osdd:start` and `osdd:provider` keep empty objects such as `"require-dev": {}` in `composer.json`, follow `config.sort-packages`, and write a `../` repository URL for a layer path outside the project.
+- A generator run twice in the same process (`Artisan::call()` from a command, a seeder or a test) writes each run into the layer given to that run. In 2.x the second run reused the layer of the first, and `osdd:view` and `osdd:component` reused its view namespace.
+- `osdd:factory Order` writes `OrderFactory.php`, the file of the `OrderFactory` class it holds, as `make:factory` does. In 2.x it wrote `Order.php`, which the autoloader could not find: rename such files.
+
+#### `osdd:provider` no longer edits `bootstrap/providers.php`
+
+`osdd:provider` registers the provider in the layer's `composer.json` (`extra.laravel.providers`) only. In 2.x it also added it to `bootstrap/providers.php`, as `make:provider` does, so every command failed with "class not found" until `composer update` installed the layer, and the provider was registered twice afterwards. Remove the layer providers that `osdd:provider` added to `bootstrap/providers.php`; package discovery loads them.
+
+#### `osdd:model` on an existing model
+
+`osdd:model` now behaves like `make:model` when the model already exists: it prints "Model already exists." and, in a terminal, asks "Do you want to generate additional components for the model?" before creating the components you passed (`--factory`, `--migration`, `--seed`, `--controller`, `--policy`, `--requests`, `--all`). Without a terminal or with `--no-interaction`, it creates them without asking. In 2.x it stopped after the error and created nothing. `--force` still overwrites the model and creates the components without asking.
 
 #### `osdd:command` and `osdd:view` register what they generate
 

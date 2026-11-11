@@ -2,30 +2,17 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:scope')]
-class ScopeMakeCommand extends \Illuminate\Foundation\Console\ScopeMakeCommand
+final class ScopeMakeCommand extends \Illuminate\Foundation\Console\ScopeMakeCommand
 {
-    use ChoosesOsddLayer;
-
-    protected $name = 'osdd:scope';
-
-    #[\Override]
-    protected function rootNamespace(): string
-    {
-        return $this->resolveLayer()->rootNamespace;
-    }
+    use GeneratesClassesInLayer;
 
     #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\').'\\Models\\Scopes';
-    }
-
-    #[\Override]
-    protected function getPath($name): string
-    {
-        return $this->layerSourcePath($name);
+        return $rootNamespace.'\\Models\\Scopes';
     }
 }

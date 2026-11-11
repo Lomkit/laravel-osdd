@@ -5,7 +5,7 @@ namespace Lomkit\Osdd\Console\Exceptions;
 use InvalidArgumentException;
 use Lomkit\Osdd\Scaffolding\LayerGenerator;
 
-class UnknownLayerGeneratorException extends InvalidArgumentException
+class UnknownLayerGeneratorException extends InvalidArgumentException implements OsddConsoleException
 {
     public function __construct(public readonly string $generator)
     {

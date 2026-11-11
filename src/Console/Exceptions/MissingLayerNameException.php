@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Console\Exceptions;
 
 use InvalidArgumentException;
 
-class MissingLayerNameException extends InvalidArgumentException
+class MissingLayerNameException extends InvalidArgumentException implements OsddConsoleException
 {
     public function __construct()
     {

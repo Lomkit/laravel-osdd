@@ -3,8 +3,9 @@
 namespace Lomkit\Osdd\Layers;
 
 use InvalidArgumentException;
+use Lomkit\Osdd\Console\Exceptions\OsddConsoleException;
 
-class InvalidLayerNameException extends InvalidArgumentException
+class InvalidLayerNameException extends InvalidArgumentException implements OsddConsoleException
 {
     public static function notAComposerName(string $name): self
     {

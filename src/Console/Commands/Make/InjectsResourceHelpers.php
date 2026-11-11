@@ -3,20 +3,25 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Lomkit\Osdd\Console\Providers\LayerProvider;
-use Lomkit\Osdd\Console\Providers\LayerResourceNamespace;
 use Lomkit\Osdd\Console\Providers\ProviderMethod;
 use Lomkit\Osdd\Layers\LayerFolder;
-use Lomkit\Osdd\Layers\Layers;
 
 trait InjectsResourceHelpers
 {
     use RegistersInLayerProvider;
 
-    private ?LayerResourceNamespace $layerResourceNamespace = null;
+    protected function warnWhenTheResourceNamespaceIsShared(): void
+    {
+        $target = $this->target();
+
+        if ($target->resourceNamespace->isExplicit()) {
+            $this->components->warn("Another layer is also named [{$target->layer->name->package}]: this layer's views and components use the [{$target->resourceNamespace->name()}] namespace.");
+        }
+    }
 
     protected function injectWithViews(): void
     {
-        $namespace = $this->resourceNamespace();
+        $namespace = $this->target()->resourceNamespace;
 
         $this->registerInLayerProvider(
             ProviderMethod::Boot,
@@ -28,7 +33,7 @@ trait InjectsResourceHelpers
 
     protected function injectWithComponents(string $componentNamespace): void
     {
-        $namespace = $this->resourceNamespace();
+        $namespace = $this->target()->resourceNamespace;
         $quotedNamespace = str_replace('\\', '\\\\', trim($componentNamespace, '\\'));
 
         $this->registerInLayerProvider(
@@ -37,20 +42,5 @@ trait InjectsResourceHelpers
             $componentNamespace,
             '$this->withComponents(',
         );
-    }
-
-    protected function resourceNamespace(): LayerResourceNamespace
-    {
-        if ($this->layerResourceNamespace !== null) {
-            return $this->layerResourceNamespace;
-        }
-
-        $namespace = LayerResourceNamespace::of($this->resolveLayer()->name, $this->laravel->make(Layers::class));
-
-        if ($namespace->isExplicit()) {
-            $this->components->warn("Another layer is also named [{$this->resolveLayer()->name->package}]: this layer's views and components use the [{$namespace->name()}] namespace.");
-        }
-
-        return $this->layerResourceNamespace = $namespace;
     }
 }
