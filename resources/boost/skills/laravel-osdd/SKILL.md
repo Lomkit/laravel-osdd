@@ -411,7 +411,7 @@ php artisan osdd:clear   # also run by php artisan optimize:clear
 ```bash
 php artisan osdd:check                       # every layer, text output
 php artisan osdd:check --layer=orders        # some layers (repeatable or comma separated)
-php artisan osdd:check --strict              # direct requirements only
+php artisan osdd:check --transitive          # also allow the layers of the required layers
 php artisan osdd:check --format=json         # machine-readable, for agents
 php artisan osdd:check --format=github       # GitHub Actions annotations
 php artisan osdd:graph --format=mermaid      # or dot, json
@@ -426,7 +426,7 @@ Strings, comments and docblocks are ignored, and an unqualified name only counts
 
 It reports:
 
-- **undeclared dependencies** (error): the layer uses a layer that is not in its `require`. Files under `tests/` may also use the layers of `require-dev`. By default the layers required by a required layer are allowed too (Composer installs them); `--strict` allows the direct requirements only.
+- **undeclared dependencies** (error): the layer uses a layer that is not in its `require`. Files under `tests/` may also use the layers of `require-dev`. By default only the layers in the layer's own `require` are allowed: a layer reached through another requirement must be declared too, so removing a requirement elsewhere never breaks this layer silently. `--transitive` also allows the layers that the required layers require.
 - **cycles** (error): layers requiring each other through `require` (`functional/orders -> functional/users -> functional/orders`).
 - **unused requirements** (warning): a layer in `require` or `require-dev` that the layer's code never references.
 
@@ -437,7 +437,7 @@ Exit code: 1 when there is an undeclared dependency or a cycle, 0 otherwise (war
 ```json
 {
     "layers": ["functional/billing", "functional/orders"],
-    "strict": false,
+    "strict": true,
     "undeclared": [
         {"layer": "functional/orders", "uses": "functional/billing", "class": "Functional\\Billing\\Models\\Invoice", "file": "functional/orders/src/Checkout.php", "line": 7}
     ],
@@ -480,7 +480,7 @@ return [
 ],
 ```
 
-Any other entry makes `osdd:check` fail with `Invalid osdd.boundaries.ignore entry […]`. Set it in `technical/osdd/config/osdd.php` (written by `osdd:start`, loaded with `overrideConfigFrom()`), like the other keys.
+A class prefix matches on namespace boundaries: `Functional\Billing` ignores `Functional\Billing` and everything under `Functional\Billing\`, but not `Functional\BillingReports\…`. Any other entry makes `osdd:check` fail with `Invalid osdd.boundaries.ignore entry […]`. Set it in `technical/osdd/config/osdd.php` (written by `osdd:start`, loaded with `overrideConfigFrom()`), like the other keys.
 
 The layers are discovered once per process and resolved from the container: `app(\Lomkit\Osdd\Layers\Layers::class)` (`names()`, `find('orders')`, `owning($class)`; each `Layer` has `name`, `directory`, `rootNamespace`, `sourceDirectory`, `providers` and `requires`). Discovery reads `config('osdd.layers.paths')`, scans each path **recursively**, and treats any directory containing a `composer.json` with `"type": "layer"` as a layer. Nested layers (e.g. `functional/billing/invoices/`) are supported when the directories above them have no `composer.json`; scanning never descends into a directory that has one (a layer or any other package).
 
@@ -819,7 +819,7 @@ If you write a test by hand, match the layer's namespace — a test class in `Te
 | Run all layer seeders | `osdd:seed [--fresh or --refresh] [--force] [--database=…]` |
 | Run the seeders of some layers | `osdd:seed --layer=orders [--layer=billing]` |
 | List layers, their contents and health | `osdd:list [--json]` |
-| Check that layers only use the layers they require | `osdd:check [--layer=…] [--strict] [--format=json]` |
+| Check that layers only use the layers they require | `osdd:check [--layer=…] [--transitive] [--format=json]` |
 | Layer dependency graph | `osdd:graph` (`--format=mermaid`, `dot` or `json`) |
 | New domain that uses another one | `osdd:layer vendor/package --requires=vendor/other` |
 | Show layers, migration paths, seeders | `about --only=osdd` |

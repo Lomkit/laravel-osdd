@@ -38,7 +38,7 @@ class CheckCommandTest extends TestCase
         $this->assertSame(1, $exitCode);
         $this->assertSame([
             'layers' => ['functional/billing', 'functional/orders', 'functional/users', 'technical/core'],
-            'strict' => false,
+            'strict' => true,
             'undeclared' => [
                 ['layer' => 'functional/orders', 'uses' => 'functional/billing', 'class' => 'Functional\\Billing\\Models\\Invoice', 'file' => 'functional/orders/src/Checkout.php', 'line' => 7],
                 ['layer' => 'functional/orders', 'uses' => 'functional/billing', 'class' => 'Functional\\Billing\\format_amount', 'file' => 'functional/orders/src/Checkout.php', 'line' => 7],
@@ -61,18 +61,20 @@ class CheckCommandTest extends TestCase
         $this->assertSame(['functional/orders/src/Checkout.php'], array_values(array_unique(array_column($undeclared, 'file'))));
     }
 
-    public function test_strict_mode_forbids_layers_reached_through_another_requirement(): void
+    public function test_layers_reached_through_another_requirement_are_forbidden_unless_transitive(): void
     {
-        $this->editManifest('functional/orders', fn (array $manifest): array => [...$manifest, 'require' => [...$manifest['require'], 'functional/billing' => '*']]);
+        $this->editManifest('functional/orders', fn (array $manifest): array => [...$manifest, 'require' => ['functional/users' => '*', 'functional/billing' => '*', 'lomkit/laravel-osdd' => '*']]);
 
-        $this->assertSame(0, Artisan::call('osdd:check', ['--format' => 'json']));
-        $this->assertSame(1, Artisan::call('osdd:check', ['--format' => 'json', '--strict' => true]));
+        $this->assertSame(1, Artisan::call('osdd:check', ['--format' => 'json']));
 
         $report = json_decode(Artisan::output(), true);
         $this->assertTrue($report['strict']);
         $this->assertSame([
             ['layer' => 'functional/orders', 'uses' => 'technical/core', 'class' => 'Technical\\Core\\Clock', 'file' => 'functional/orders/src/Checkout.php', 'line' => 9],
         ], $report['undeclared']);
+
+        $this->assertSame(0, Artisan::call('osdd:check', ['--format' => 'json', '--transitive' => true]));
+        $this->assertFalse(json_decode(Artisan::output(), true)['strict']);
     }
 
     public function test_it_reports_cycles_in_the_requirements(): void
@@ -82,6 +84,19 @@ class CheckCommandTest extends TestCase
         Artisan::call('osdd:check', ['--format' => 'json']);
 
         $this->assertSame([['functional/orders', 'functional/users', 'functional/orders']], json_decode(Artisan::output(), true)['cycles']);
+    }
+
+    public function test_class_prefixes_of_the_ignore_list_stop_at_a_namespace_boundary(): void
+    {
+        $this->app['config']->set('osdd.boundaries.ignore', ['Functional\\Bill']);
+
+        Artisan::call('osdd:check', ['--format' => 'json']);
+        $this->assertCount(3, json_decode(Artisan::output(), true)['undeclared']);
+
+        $this->app['config']->set('osdd.boundaries.ignore', ['Functional\\Billing']);
+
+        Artisan::call('osdd:check', ['--format' => 'json']);
+        $this->assertSame([], json_decode(Artisan::output(), true)['undeclared']);
     }
 
     public function test_class_prefixes_of_the_ignore_list_are_not_reported(): void
@@ -187,7 +202,7 @@ class CheckCommandTest extends TestCase
             'src/Models/Invoice.php' => "<?php\n\nnamespace Functional\\Billing\\Models;\n\nclass Invoice {}\n",
         ]);
 
-        $this->layer('functional/orders', 'Functional\\Orders\\', ['functional/users', 'lomkit/laravel-osdd'], [
+        $this->layer('functional/orders', 'Functional\\Orders\\', ['functional/users', 'technical/core', 'lomkit/laravel-osdd'], [
             'src/Checkout.php' => <<<'PHP'
                 <?php
 

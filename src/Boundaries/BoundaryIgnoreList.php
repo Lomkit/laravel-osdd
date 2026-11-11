@@ -38,7 +38,7 @@ final class BoundaryIgnoreList
     public function ignoresClass(string $name): bool
     {
         foreach ($this->classPrefixes as $prefix) {
-            if (str_starts_with($name, $prefix)) {
+            if ($name === rtrim($prefix, '\\') || str_starts_with($name, rtrim($prefix, '\\').'\\')) {
                 return true;
             }
         }
