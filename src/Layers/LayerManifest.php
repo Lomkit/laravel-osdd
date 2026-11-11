@@ -1,16 +1,22 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Layers;
+namespace Lomkit\Osdd\Layers;
 
 use Illuminate\Filesystem\Filesystem;
 
 class LayerManifest
 {
+    /**
+     * @param  array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}}  $data
+     */
     private function __construct(private readonly array $data) {}
 
     public static function fromPath(string $path): self
     {
-        return new self(json_decode(app(Filesystem::class)->get($path), true, 512, JSON_THROW_ON_ERROR));
+        /** @var array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}} $data */
+        $data = json_decode(app(Filesystem::class)->get($path), true, 512, JSON_THROW_ON_ERROR);
+
+        return new self($data);
     }
 
     public function name(): string
@@ -46,6 +52,7 @@ class LayerManifest
     public function srcPath(string $layerPath): string
     {
         $relative = current($this->data['autoload']['psr-4'] ?? ['src/']);
-        return rtrim($layerPath, '/') . '/' . trim($relative, '/');
+
+        return rtrim($layerPath, '/').'/'.trim($relative === false ? '' : $relative, '/');
     }
 }

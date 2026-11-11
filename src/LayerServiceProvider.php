@@ -1,9 +1,10 @@
 <?php
 
-namespace Xefi\LaravelOSDD;
+namespace Lomkit\Osdd;
 
 use Illuminate\Contracts\Foundation\CachesConfiguration;
 use Illuminate\Contracts\Foundation\CachesRoutes;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -11,8 +12,8 @@ use Illuminate\Support\ServiceProvider;
 abstract class LayerServiceProvider extends ServiceProvider
 {
     /**
-     * @param class-string<\Illuminate\Database\Seeder>[] $seeders
-     * @param int $priority Lower values run first; ties preserve registration order
+     * @param  class-string<Seeder>[]  $seeders
+     * @param  int  $priority  Lower values run first; ties preserve registration order
      */
     protected function loadSeeders(array $seeders, int $priority = 0): void
     {
@@ -36,10 +37,13 @@ abstract class LayerServiceProvider extends ServiceProvider
 
         $config = $this->app->make('config');
 
-        $config->set($key, array_replace_recursive(
-            $config->get($key, []),
-            require $path,
-        ));
+        /** @var array<array-key, mixed> $loaded */
+        $loaded = $config->get($key, []);
+
+        /** @var array<array-key, mixed> $overrides */
+        $overrides = require $path;
+
+        $config->set($key, array_replace_recursive($loaded, $overrides));
     }
 
     /**
@@ -54,6 +58,9 @@ abstract class LayerServiceProvider extends ServiceProvider
      *
      * For anything beyond these conventions (custom prefixes, route groups,
      * domains, ...), use Laravel's Route facade directly in boot().
+     *
+     * @param  list<string>|string|null  $web
+     * @param  list<string>|string|null  $api
      */
     protected function withRouting(
         array|string|null $web = null,
@@ -80,7 +87,7 @@ abstract class LayerServiceProvider extends ServiceProvider
         }
 
         if (is_string($health)) {
-            Route::get($health, fn() => response()->json(['status' => 'ok']));
+            Route::get($health, fn () => response()->json(['status' => 'ok']));
         }
 
         if (is_string($channels) && is_file($channels)) {

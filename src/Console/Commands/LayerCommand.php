@@ -1,13 +1,13 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands;
+namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Process\Process;
-use Xefi\LaravelOSDD\Console\Concerns\RegistersLayerInComposer;
 
 use function Laravel\Prompts\confirm;
 use function Laravel\Prompts\multiselect;
@@ -26,7 +26,7 @@ class LayerCommand extends Command
 
     protected $description = 'Create a new OSDD layer';
 
-    private const GENERATORS = [
+    private const array GENERATORS = [
         'migration',
         'model',
         'factory',
@@ -38,9 +38,9 @@ class LayerCommand extends Command
         'routes',
     ];
 
-    private const DEFAULT_GENERATORS = ['migration', 'model', 'factory', 'service-provider', 'test'];
+    private const array DEFAULT_GENERATORS = ['migration', 'model', 'factory', 'service-provider', 'test'];
 
-    protected $files;
+    protected Filesystem $files;
 
     public function __construct(Filesystem $files)
     {
@@ -56,7 +56,7 @@ class LayerCommand extends Command
         } else {
             [$vendor, $targetPath] = $this->askForVendorAndPath();
             $package = $this->askForPackage();
-            $name = $vendor . '/' . $package;
+            $name = $vendor.'/'.$package;
         }
 
         $generators = $this->option('generators') ?: $this->askForGenerators();
@@ -72,15 +72,19 @@ class LayerCommand extends Command
         return self::SUCCESS;
     }
 
+    /**
+     * @return array{string, string}
+     */
     private function askForVendorAndPath(): array
     {
+        /** @var array<string, string> $paths */
         $paths = config('osdd.layers.paths');
 
         if (count($paths) === 1) {
-            return [array_key_first($paths), reset($paths)];
+            return [(string) array_key_first($paths), (string) reset($paths)];
         }
 
-        $key = select(
+        $key = (string) select(
             label: 'Where should the layer be created?',
             options: array_keys($paths),
         );
@@ -99,12 +103,15 @@ class LayerCommand extends Command
             label: 'Layer name',
             placeholder: 'my-layer',
             required: true,
-            validate: fn(string $value) => preg_match('/^[a-z0-9-]+$/', $value)
+            validate: fn (string $value) => preg_match('/^[a-z0-9-]+$/', $value)
                 ? null
                 : 'Name must use lowercase letters, numbers and hyphens.',
         );
     }
 
+    /**
+     * @return array<int|string>
+     */
     private function askForGenerators(): array
     {
         return multiselect(
@@ -114,28 +121,31 @@ class LayerCommand extends Command
         );
     }
 
+    /**
+     * @param  array<int|string|null>  $generators
+     */
     private function generate(string $name, string $targetPath, array $generators): void
     {
         [$vendor, $package] = explode('/', $name);
 
-        $layerPath   = $targetPath . '/' . $package;
-        $namespace   = $this->toNamespace($vendor, $package);
-        $singular    = Str::singular(Str::studly($package));
-        $pascal      = Str::studly($package);
+        $layerPath = $targetPath.'/'.$package;
+        $namespace = $this->toNamespace($vendor, $package);
+        $singular = Str::singular(Str::studly($package));
+        $pascal = Str::studly($package);
         $pluralSnake = Str::snake(Str::pluralStudly($pascal));
 
         // Create composer.json first — layer must be discoverable before make commands run
         $this->createFile(
-            $layerPath . '/composer.json',
+            $layerPath.'/composer.json',
             $this->resolveStub('composer'),
             [
-                '{{ name }}'      => $name,
+                '{{ name }}' => $name,
                 '{{ namespace }}' => str_replace('\\', '\\\\', $namespace),
             ],
         );
 
         $withFactory = in_array('factory', $generators);
-        $withModel   = in_array('model', $generators);
+        $withModel = in_array('model', $generators);
 
         // When model is also generated, --factory on osdd:model handles factory creation.
         // Remove it from the loop so we don't duplicate it.
@@ -145,16 +155,16 @@ class LayerCommand extends Command
 
         foreach ($effectiveGenerators as $generator) {
             match ($generator) {
-                'migration'        => $this->call('osdd:migration', ['name' => "create_{$pluralSnake}_table", '--create' => $pluralSnake, '--layer' => $name]),
-                'model'            => $this->call('osdd:model', array_filter(['name' => $singular, '--layer' => $name, '--factory' => $withFactory ?: null])),
-                'factory'          => $this->call('osdd:factory', ['name' => "{$singular}Factory", '--layer' => $name]),
-                'seeder'           => $this->call('osdd:seeder', ['name' => "{$pascal}Seeder", '--layer' => $name]),
-                'service-provider' => $this->generateServiceProvider($layerPath . '/src/Providers', $namespace, $package, $layerPath),
-                'test'             => $this->call('osdd:test', ['name' => "{$pascal}Test", '--layer' => $name]),
-                'controller'       => $this->call('osdd:controller', ['name' => "{$pascal}Controller", '--layer' => $name]),
-                'policy'           => $this->call('osdd:policy', array_filter(['name' => "{$pascal}Policy", '--layer' => $name, '--model' => $withModel ? $singular : null])),
-                'routes'           => $this->generateRoutes($layerPath),
-                default            => null,
+                'migration' => $this->call('osdd:migration', ['name' => "create_{$pluralSnake}_table", '--create' => $pluralSnake, '--layer' => $name]),
+                'model' => $this->call('osdd:model', array_filter(['name' => $singular, '--layer' => $name, '--factory' => $withFactory ?: null])),
+                'factory' => $this->call('osdd:factory', ['name' => "{$singular}Factory", '--layer' => $name]),
+                'seeder' => $this->call('osdd:seeder', ['name' => "{$pascal}Seeder", '--layer' => $name]),
+                'service-provider' => $this->generateServiceProvider($layerPath.'/src/Providers', $namespace, $package, $layerPath),
+                'test' => $this->call('osdd:test', ['name' => "{$pascal}Test", '--layer' => $name]),
+                'controller' => $this->call('osdd:controller', ['name' => "{$pascal}Controller", '--layer' => $name]),
+                'policy' => $this->call('osdd:policy', array_filter(['name' => "{$pascal}Policy", '--layer' => $name, '--model' => $withModel ? $singular : null])),
+                'routes' => $this->generateRoutes($layerPath),
+                default => null,
             };
         }
 
@@ -165,8 +175,8 @@ class LayerCommand extends Command
     {
         foreach (['web', 'api', 'console', 'channels'] as $file) {
             $this->createFile(
-                $layerPath . '/routes/' . $file . '.php',
-                $this->files->get(__DIR__ . '/../stubs/layer/routes/' . $file . '.stub'),
+                $layerPath.'/routes/'.$file.'.php',
+                $this->files->get(__DIR__.'/../stubs/layer/routes/'.$file.'.stub'),
             );
         }
     }
@@ -177,26 +187,29 @@ class LayerCommand extends Command
 
         $this->files->makeDirectory($path, 0755, true, true);
         $this->createFile(
-            $path . '/' . $serviceProviderClass . '.php',
+            $path.'/'.$serviceProviderClass.'.php',
             $this->resolveStub('service-provider'),
             [
-                '{{ namespace }}'   => $namespace,
-                '{{ class }}'       => $serviceProviderClass,
+                '{{ namespace }}' => $namespace,
+                '{{ class }}' => $serviceProviderClass,
                 '{{ seederClass }}' => $this->toSeederClass($package),
             ],
         );
 
         $this->injectProviderInComposerJson(
-            $layerPath . '/composer.json',
-            $namespace . '\\Providers\\' . $serviceProviderClass,
+            $layerPath.'/composer.json',
+            $namespace.'\\Providers\\'.$serviceProviderClass,
         );
     }
 
+    /**
+     * @param  array<string, string>  $replacements
+     */
     private function createFile(string $path, string $contents, array $replacements = []): void
     {
         $directory = dirname($path);
 
-        if (!$this->files->isDirectory($directory)) {
+        if (! $this->files->isDirectory($directory)) {
             $this->files->makeDirectory($directory, 0755, true, true);
         }
 
@@ -205,22 +218,22 @@ class LayerCommand extends Command
 
     private function resolveStub(string $stub): string
     {
-        return $this->files->get(__DIR__ . '/../stubs/layer/' . $stub . '.stub');
+        return $this->files->get(__DIR__.'/../stubs/layer/'.$stub.'.stub');
     }
 
     private function toNamespace(string $vendor, string $package): string
     {
-        return Str::pascal($vendor) . '\\' . Str::pascal($package);
+        return Str::pascal($vendor).'\\'.Str::pascal($package);
     }
 
     private function toServiceProviderClass(string $package): string
     {
-        return Str::pascal($package) . 'ServiceProvider';
+        return Str::pascal($package).'ServiceProvider';
     }
 
     private function toSeederClass(string $package): string
     {
-        return Str::pascal($package) . 'Seeder';
+        return Str::pascal($package).'Seeder';
     }
 
     private function runComposerUpdate(string $name): void
@@ -232,9 +245,9 @@ class LayerCommand extends Command
             $this->laravel->basePath(),
         );
         $process->setTimeout(null);
-        $process->run(fn ($type, $buffer) => $this->output->write($buffer));
+        $process->run(fn (string $type, string $buffer) => $this->output->write($buffer));
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             $this->components->error('composer update failed. You may need to run it manually.');
         }
     }

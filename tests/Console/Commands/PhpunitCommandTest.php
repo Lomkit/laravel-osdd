@@ -1,8 +1,8 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands;
+namespace Lomkit\Osdd\Tests\Console\Commands;
 
-use Xefi\LaravelOSDD\Tests\TestCase;
+use Lomkit\Osdd\Tests\TestCase;
 
 class PhpunitCommandTest extends TestCase
 {
@@ -42,12 +42,12 @@ class PhpunitCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItAddsTestsuiteForDiscoveredLayers(): void
+    public function test_it_adds_testsuite_for_discovered_layers(): void
     {
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
         $xml = $this->app['files']->get($this->xmlPath);
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadXML($xml);
 
         $xpath = new \DOMXPath($dom);
@@ -60,7 +60,7 @@ class PhpunitCommandTest extends TestCase
         );
     }
 
-    public function testItSkipsAlreadyPresentTestsuites(): void
+    public function test_it_skips_already_present_testsuites(): void
     {
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
@@ -71,11 +71,11 @@ class PhpunitCommandTest extends TestCase
         $this->assertSame($xmlAfterFirst, $this->app['files']->get($this->xmlPath));
     }
 
-    public function testItSkipsLayersWithoutTestsDirectory(): void
+    public function test_it_skips_layers_without_tests_directory(): void
     {
         $layerPath = $this->app->basePath('functional/no-tests-layer');
         $this->app['files']->makeDirectory($layerPath, 0755, true, true);
-        $this->app['files']->put($layerPath . '/composer.json', json_encode([
+        $this->app['files']->put($layerPath.'/composer.json', json_encode([
             'name' => 'functional/no-tests-layer',
             'type' => 'layer',
             'autoload' => ['psr-4' => ['Functional\\NoTestsLayer\\' => 'src/']],
@@ -84,7 +84,7 @@ class PhpunitCommandTest extends TestCase
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
         $xml = $this->app['files']->get($this->xmlPath);
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadXML($xml);
 
         $xpath = new \DOMXPath($dom);
@@ -95,12 +95,12 @@ class PhpunitCommandTest extends TestCase
         $this->app['files']->deleteDirectory($layerPath);
     }
 
-    public function testItExcludesLayerMigrationsFromCoverage(): void
+    public function test_it_excludes_layer_migrations_from_coverage(): void
     {
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
         $xml = $this->app['files']->get($this->xmlPath);
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadXML($xml);
 
         $xpath = new \DOMXPath($dom);
@@ -112,13 +112,13 @@ class PhpunitCommandTest extends TestCase
         $this->assertSame('.php', $directory->getAttribute('suffix'));
     }
 
-    public function testItDoesNotDuplicateTheMigrationsExclusion(): void
+    public function test_it_does_not_duplicate_the_migrations_exclusion(): void
     {
         $this->artisan('osdd:phpunit')->assertExitCode(0);
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
         $xml = $this->app['files']->get($this->xmlPath);
-        $dom = new \DOMDocument();
+        $dom = new \DOMDocument;
         $dom->loadXML($xml);
 
         $xpath = new \DOMXPath($dom);
@@ -127,7 +127,7 @@ class PhpunitCommandTest extends TestCase
         $this->assertSame(1, $directories->length);
     }
 
-    public function testItFailsWhenPhpunitXmlIsMissing(): void
+    public function test_it_fails_when_phpunit_xml_is_missing(): void
     {
         $this->app['files']->delete($this->xmlPath);
 

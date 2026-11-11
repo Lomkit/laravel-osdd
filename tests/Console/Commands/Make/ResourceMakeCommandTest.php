@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands\Make;
+namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\TestCase;
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
-use Xefi\LaravelOSDD\Tests\TestCase;
 
 class ResourceMakeCommandTest extends TestCase
 {
@@ -16,7 +16,7 @@ class ResourceMakeCommandTest extends TestCase
         parent::tearDown();
     }
 
-    public function testItGeneratesResourceFileInCorrectPath(): void
+    public function test_it_generates_resource_file_in_correct_path(): void
     {
         $this->artisan('osdd:resource', ['name' => 'UserResource', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -24,7 +24,7 @@ class ResourceMakeCommandTest extends TestCase
         $this->assertFilenameExists('functional/test-layer/src/Http/Resources/UserResource.php');
     }
 
-    public function testItGeneratesResourceWithCorrectNamespace(): void
+    public function test_it_generates_resource_with_correct_namespace(): void
     {
         $this->artisan('osdd:resource', ['name' => 'UserResource', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -35,7 +35,7 @@ class ResourceMakeCommandTest extends TestCase
         ], 'functional/test-layer/src/Http/Resources/UserResource.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:resource', ['name' => 'UserResource'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])

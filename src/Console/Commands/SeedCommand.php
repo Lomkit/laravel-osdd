@@ -1,10 +1,10 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands;
+namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
+use Lomkit\Osdd\SeederRegistry;
 use Symfony\Component\Console\Attribute\AsCommand;
-use Xefi\LaravelOSDD\SeederRegistry;
 
 #[AsCommand(name: 'osdd:seed')]
 class SeedCommand extends Command
@@ -48,8 +48,9 @@ class SeedCommand extends Command
         }
 
         foreach ($seeders as $seederClass) {
-            if (!class_exists($seederClass)) {
+            if (! class_exists($seederClass)) {
                 $this->warn("Seeder class <comment>{$seederClass}</comment> not found, skipping.");
+
                 continue;
             }
 

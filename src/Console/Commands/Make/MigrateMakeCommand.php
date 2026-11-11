@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Symfony\Component\Console\Attribute\AsCommand;
 
@@ -21,20 +21,20 @@ class MigrateMakeCommand extends \Illuminate\Database\Console\Migrations\Migrate
         {--fullpath : Output the full path of the migration (Deprecated)}
         {--layer= : The layer to generate the file in}';
 
-    public function handle()
+    #[\Override]
+    public function handle(): void
     {
-        $result = parent::handle();
+        parent::handle();
 
         $this->registerInLayerProvider(
             "\$this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');",
             'database/migrations',
         );
-
-        return $result;
     }
 
+    #[\Override]
     protected function getMigrationPath(): string
     {
-        return $this->resolveLayer()->path . '/database/migrations';
+        return $this->resolveLayer()->path.'/database/migrations';
     }
 }

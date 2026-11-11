@@ -1,9 +1,10 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests;
+namespace Lomkit\Osdd\Tests;
 
 use Illuminate\Filesystem\Filesystem;
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Illuminate\Routing\Route;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class LayerServiceProviderTest extends TestCase
 {
@@ -13,7 +14,7 @@ class LayerServiceProviderTest extends TestCase
     {
         parent::setUp();
 
-        $this->tmpDir = sys_get_temp_dir() . '/osdd-config-test-' . uniqid();
+        $this->tmpDir = sys_get_temp_dir().'/osdd-config-test-'.uniqid();
         mkdir($this->tmpDir, 0755, true);
     }
 
@@ -26,21 +27,25 @@ class LayerServiceProviderTest extends TestCase
 
     private function writeConfig(string $filename, array $values): string
     {
-        $path = $this->tmpDir . '/' . $filename;
-        file_put_contents($path, '<?php return ' . var_export($values, true) . ';');
+        $path = $this->tmpDir.'/'.$filename;
+        file_put_contents($path, '<?php return '.var_export($values, true).';');
 
         return $path;
     }
 
     private function makeProvider(): LayerServiceProvider
     {
-        return new class($this->app) extends LayerServiceProvider {
+        return new class($this->app) extends LayerServiceProvider
+        {
             public function boot(): void {}
+
             public function register(): void {}
+
             public function callOverrideConfigFrom(string $path, string $key): void
             {
                 $this->overrideConfigFrom($path, $key);
             }
+
             public function callWithRouting(
                 array|string|null $web = null,
                 array|string|null $api = null,
@@ -63,13 +68,13 @@ class LayerServiceProviderTest extends TestCase
 
     private function writeRouteFile(string $filename, string $contents): string
     {
-        $path = $this->tmpDir . '/' . $filename;
+        $path = $this->tmpDir.'/'.$filename;
         file_put_contents($path, $contents);
 
         return $path;
     }
 
-    public function testItOverridesAnExistingConfigKey(): void
+    public function test_it_overrides_an_existing_config_key(): void
     {
         $this->app['config']->set('services.stripe.key', 'original-key');
 
@@ -83,7 +88,7 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame('layer-key', $this->app['config']->get('services.stripe.key'));
     }
 
-    public function testItPreservesExistingKeysNotPresentInTheOverride(): void
+    public function test_it_preserves_existing_keys_not_present_in_the_override(): void
     {
         $this->app['config']->set('services', [
             'stripe' => ['key' => 'original-key', 'secret' => 'original-secret'],
@@ -100,11 +105,11 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame('original-secret', $this->app['config']->get('services.stripe.secret'));
     }
 
-    public function testItMergesDeepNestedKeysRecursively(): void
+    public function test_it_merges_deep_nested_keys_recursively(): void
     {
         $this->app['config']->set('package', [
             'section' => ['a' => 1, 'b' => 2],
-            'other'   => 'untouched',
+            'other' => 'untouched',
         ]);
 
         $path = $this->writeConfig('package.php', ['section' => ['b' => 99, 'c' => 3]]);
@@ -120,7 +125,7 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame('untouched', $this->app['config']->get('package.other'));
     }
 
-    public function testItCreatesTheKeyWhenItDidNotExistBefore(): void
+    public function test_it_creates_the_key_when_it_did_not_exist_before(): void
     {
         $path = $this->writeConfig('brand-new.php', ['option' => 'value']);
 
@@ -132,13 +137,13 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame('value', $this->app['config']->get('brand-new.option'));
     }
 
-    public function testLayerAliasesAreNotRegisteredOutsideOfTinker(): void
+    public function test_layer_aliases_are_not_registered_outside_of_tinker(): void
     {
         // tinker is never in argv in this test class — aliases must stay empty
         $this->assertNotContains('Functional\\TestLayer\\', $this->app['config']->get('tinker.alias', []));
     }
 
-    public function testWithRoutingLoadsWebRoutesInsideTheWebMiddlewareGroup(): void
+    public function test_with_routing_loads_web_routes_inside_the_web_middleware_group(): void
     {
         $path = $this->writeRouteFile(
             'web.php',
@@ -154,7 +159,7 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame(['web'], $route->middleware());
     }
 
-    public function testWithRoutingLoadsApiRoutesWithApiPrefixAndMiddleware(): void
+    public function test_with_routing_loads_api_routes_with_api_prefix_and_middleware(): void
     {
         $path = $this->writeRouteFile(
             'api.php',
@@ -170,7 +175,7 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame(['api'], $route->middleware());
     }
 
-    public function testWithRoutingHonoursACustomApiPrefix(): void
+    public function test_with_routing_honours_a_custom_api_prefix(): void
     {
         $path = $this->writeRouteFile(
             'api.php',
@@ -185,7 +190,7 @@ class LayerServiceProviderTest extends TestCase
         $this->assertSame('api/v2/things', $route->uri());
     }
 
-    public function testWithRoutingAcceptsMultipleFilesPerType(): void
+    public function test_with_routing_accepts_multiple_files_per_type(): void
     {
         $a = $this->writeRouteFile('a.php', "<?php \\Illuminate\\Support\\Facades\\Route::get('/a', fn() => 'a')->name('a');\n");
         $b = $this->writeRouteFile('b.php', "<?php \\Illuminate\\Support\\Facades\\Route::get('/b', fn() => 'b')->name('b');\n");
@@ -196,7 +201,7 @@ class LayerServiceProviderTest extends TestCase
         $this->assertNotNull($this->findRouteByName('b'));
     }
 
-    public function testWithRoutingRegistersAHealthEndpoint(): void
+    public function test_with_routing_registers_a_health_endpoint(): void
     {
         $this->makeProvider()->callWithRouting(health: '/up');
 
@@ -206,9 +211,9 @@ class LayerServiceProviderTest extends TestCase
         $response->assertJson(['status' => 'ok']);
     }
 
-    public function testWithRoutingRequiresChannelsFileSoBroadcastChannelsAreRegistered(): void
+    public function test_with_routing_requires_channels_file_so_broadcast_channels_are_registered(): void
     {
-        $marker = $this->tmpDir . '/channels-loaded';
+        $marker = $this->tmpDir.'/channels-loaded';
         $path = $this->writeRouteFile('channels.php', "<?php file_put_contents('{$marker}', 'yes');\n");
 
         $this->makeProvider()->callWithRouting(channels: $path);
@@ -216,10 +221,10 @@ class LayerServiceProviderTest extends TestCase
         $this->assertFileExists($marker);
     }
 
-    public function testWithRoutingLoadsConsoleFileWhenRunningInConsole(): void
+    public function test_with_routing_loads_console_file_when_running_in_console(): void
     {
         // Testbench runs PHPUnit through Artisan, so runningInConsole() is true here.
-        $marker = $this->tmpDir . '/console-loaded';
+        $marker = $this->tmpDir.'/console-loaded';
         $path = $this->writeRouteFile('console.php', "<?php file_put_contents('{$marker}', 'yes');\n");
 
         $this->makeProvider()->callWithRouting(commands: $path);
@@ -227,25 +232,26 @@ class LayerServiceProviderTest extends TestCase
         $this->assertFileExists($marker);
     }
 
-    public function testWithRoutingSilentlySkipsMissingFiles(): void
+    public function test_with_routing_silently_skips_missing_files(): void
     {
         $this->makeProvider()->callWithRouting(
-            web: $this->tmpDir . '/missing-web.php',
-            api: $this->tmpDir . '/missing-api.php',
-            commands: $this->tmpDir . '/missing-console.php',
-            channels: $this->tmpDir . '/missing-channels.php',
+            web: $this->tmpDir.'/missing-web.php',
+            api: $this->tmpDir.'/missing-api.php',
+            commands: $this->tmpDir.'/missing-console.php',
+            channels: $this->tmpDir.'/missing-channels.php',
         );
 
         $this->assertNull($this->findRouteByName('web.dashboard'));
     }
 
-    private function findRouteByName(string $name): ?\Illuminate\Routing\Route
+    private function findRouteByName(string $name): ?Route
     {
         foreach ($this->app['router']->getRoutes()->getRoutes() as $route) {
             if ($route->getName() === $name) {
                 return $route;
             }
         }
+
         return null;
     }
 }

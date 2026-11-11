@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -12,18 +12,20 @@ class ClassMakeCommand extends \Illuminate\Foundation\Console\ClassMakeCommand
 
     protected $name = 'osdd:class';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\', '', $name);
 
-        return $layer->path . '/src/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/'.str_replace('\\', '/', $relative).'.php';
     }
 }

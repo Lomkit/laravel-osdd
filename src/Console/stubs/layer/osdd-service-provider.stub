@@ -2,7 +2,7 @@
 
 namespace Technical\Osdd\Providers;
 
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class OsddServiceProvider extends LayerServiceProvider
 {

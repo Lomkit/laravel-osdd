@@ -1,41 +1,41 @@
 {
-    "name": "xefi/laravel-osdd",
-    "description": "Package to handle OSDD in a Laravel application.",
+    "name": "lomkit/laravel-osdd",
+    "description": "A package to split a Laravel application into independent layers.",
+    "keywords": ["laravel", "osdd", "layers", "modules", "lomkit"],
     "type": "library",
     "license": "MIT",
     "authors": [
         {
-            "name": "Gautier DELEGLISE",
-            "email": "g.deleglise@xefi.fr"
+            "name": "Gautier Deleglise",
+            "email": "gautier@lomkit.com"
         }
     ],
     "require": {
-        "laravel/framework": "^12 || ^13",
         "php": "^8.3",
-        "ext-dom": "*"
+        "ext-dom": "*",
+        "laravel/framework": "^13.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^10.0"
+        "larastan/larastan": "^3.13",
+        "laravel/pint": "^1.32",
+        "orchestra/testbench": "^11.0",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpunit/phpunit": "^12.5 || ^13.0",
+        "tomasvotruba/type-coverage": "^2.5"
+    },
+    "conflict": {
+        "xefi/laravel-osdd": "*"
     },
     "autoload": {
         "psr-4": {
-            "Xefi\\LaravelOSDD\\": "src/"
+            "Lomkit\\Osdd\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Xefi\\LaravelOSDD\\Tests\\": "tests/"
+            "Lomkit\\Osdd\\Tests\\": "tests/"
         }
     },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Xefi\\LaravelOSDD\\LaravelOSDDServiceProvider"
-            ]
-        }
-    },
-    "minimum-stability": "stable",
-    "prefer-stable": true,
     "scripts": {
         "post-autoload-dump": [
             "@prepare"
@@ -47,6 +47,22 @@
             "Composer\\Config::disableProcessTimeout",
             "@build",
             "@php vendor/bin/testbench serve --ansi"
-        ]
-    }
+        ],
+        "test": "phpunit",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "format": "pint",
+        "lint": "pint --test"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Lomkit\\Osdd\\OsddServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

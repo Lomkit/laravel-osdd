@@ -1,12 +1,13 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerNotFoundException;
+use Lomkit\Osdd\Layers\LayersCollection;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Xefi\LaravelOSDD\Layers\Layer;
-use Xefi\LaravelOSDD\Layers\LayersCollection;
 
 use function Laravel\Prompts\search;
 
@@ -23,26 +24,28 @@ trait ChoosesOsddLayer
         $layers = LayersCollection::fromConfig();
 
         if ($layerOption = $this->option('layer')) {
-            $layer = $layers->first(fn(Layer $l) => $l->manifest->name() === $layerOption);
+            $layer = $layers->first(fn (Layer $l) => $l->manifest->name() === $layerOption);
 
             if ($layer === null) {
                 $this->components->error("Layer '{$layerOption}' not found.");
-                throw new \RuntimeException("Layer '{$layerOption}' not found.");
+                throw new LayerNotFoundException($layerOption);
             }
 
             return $this->resolvedLayer = $layer;
         }
 
-        $chosen = search(
+        $chosen = (string) search(
             label: 'Which layer should this be generated in?',
-            options: fn(string $value) => $layers
-                ->filter(fn(Layer $l) => str_contains($l->manifest->name(), $value))
-                ->mapWithKeys(fn(Layer $l) => [$l->manifest->name() => $l->manifest->name()])
+            options: fn (string $value): array => $layers
+                ->toBase()
+                ->filter(fn (Layer $l) => str_contains($l->manifest->name(), $value))
+                ->mapWithKeys(fn (Layer $l) => [$l->manifest->name() => $l->manifest->name()])
                 ->sort()
                 ->all(),
         );
 
-        return $this->resolvedLayer = $layers->first(fn(Layer $l) => $l->manifest->name() === $chosen);
+        return $this->resolvedLayer = $layers->first(fn (Layer $l) => $l->manifest->name() === $chosen)
+            ?? throw new LayerNotFoundException($chosen);
     }
 
     protected function interact(InputInterface $input, OutputInterface $output): void
@@ -69,6 +72,9 @@ trait ChoosesOsddLayer
         $this->addLayerOption();
     }
 
+    /**
+     * @return array<mixed>
+     */
     protected function getOptions(): array
     {
         return array_merge(parent::getOptions(), [$this->layerOption()]);

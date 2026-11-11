@@ -1,9 +1,9 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Tests\Console\Commands\Make;
+namespace Lomkit\Osdd\Tests\Console\Commands\Make;
 
+use Lomkit\Osdd\Tests\TestCase;
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
-use Xefi\LaravelOSDD\Tests\TestCase;
 
 class ConfigMakeCommandTest extends TestCase
 {
@@ -26,7 +26,7 @@ class ConfigMakeCommandTest extends TestCase
 
 namespace Functional\TestLayer\Providers;
 
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class TestLayerServiceProvider extends LayerServiceProvider
 {
@@ -53,7 +53,7 @@ PHP;
         parent::tearDown();
     }
 
-    public function testItGeneratesConfigFileInCorrectPath(): void
+    public function test_it_generates_config_file_in_correct_path(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -61,7 +61,7 @@ PHP;
         $this->assertFilenameExists('functional/test-layer/config/payments.php');
     }
 
-    public function testItAppendsPhpExtensionWhenMissing(): void
+    public function test_it_appends_php_extension_when_missing(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -70,7 +70,7 @@ PHP;
         $this->assertFilenameNotExists('functional/test-layer/config/payments.php.php');
     }
 
-    public function testItPromptsForLayerWhenNotProvided(): void
+    public function test_it_prompts_for_layer_when_not_provided(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments'])
             ->expectsSearch('Which layer should this be generated in?', 'functional/test-layer', '', ['functional/test-layer' => 'functional/test-layer'])
@@ -79,7 +79,7 @@ PHP;
         $this->assertFilenameExists('functional/test-layer/config/payments.php');
     }
 
-    public function testItInjectsOverrideConfigFromIntoServiceProvider(): void
+    public function test_it_injects_override_config_from_into_service_provider(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
             ->assertExitCode(0);
@@ -90,18 +90,18 @@ PHP;
         );
     }
 
-    public function testInjectionIsIdempotent(): void
+    public function test_injection_is_idempotent(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer', '--force' => true]);
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer', '--force' => true]);
 
         $content = file_get_contents($this->providerPath);
-        $count   = substr_count($content, "overrideConfigFrom(__DIR__ . '/../../config/payments.php'");
+        $count = substr_count($content, "overrideConfigFrom(__DIR__ . '/../../config/payments.php'");
 
         $this->assertSame(1, $count);
     }
 
-    public function testItSkipsInjectionWhenServiceProviderDoesNotExist(): void
+    public function test_it_skips_injection_when_service_provider_does_not_exist(): void
     {
         $this->app['files']->delete($this->providerPath);
 

@@ -3,7 +3,7 @@
 namespace {{ namespace }}\Providers;
 
 use {{ namespace }}\Database\Seeders\{{ seederClass }};
-use Xefi\LaravelOSDD\LayerServiceProvider;
+use Lomkit\Osdd\LayerServiceProvider;
 
 class {{ class }} extends LayerServiceProvider
 {

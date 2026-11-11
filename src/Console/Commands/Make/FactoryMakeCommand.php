@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -17,16 +17,19 @@ class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryM
      */
     protected $name = 'osdd:factory';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Database\\Factories';
+        return rtrim($rootNamespace, '\\').'\\Database\\Factories';
     }
 
+    #[\Override]
     protected function buildClass($name): string
     {
         $wrongNamespace = $this->getNamespace(
@@ -36,13 +39,14 @@ class FactoryMakeCommand extends \Illuminate\Database\Console\Factories\FactoryM
         return str_replace($wrongNamespace, $this->getNamespace($name), parent::buildClass($name));
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Database\\Factories\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Database\\Factories\\', '', $name);
 
-        return $layer->path . '/database/factories/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/database/factories/'.str_replace('\\', '/', $relative).'.php';
     }
 }

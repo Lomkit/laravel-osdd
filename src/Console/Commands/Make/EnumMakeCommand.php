@@ -1,6 +1,6 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Console\Commands\Make;
+namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -12,23 +12,26 @@ class EnumMakeCommand extends \Illuminate\Foundation\Console\EnumMakeCommand
 
     protected $name = 'osdd:enum';
 
+    #[\Override]
     protected function rootNamespace(): string
     {
         return $this->resolveLayer()->manifest->rootNamespace();
     }
 
+    #[\Override]
     protected function getDefaultNamespace($rootNamespace): string
     {
-        return rtrim($rootNamespace, '\\') . '\\Enums';
+        return rtrim($rootNamespace, '\\').'\\Enums';
     }
 
+    #[\Override]
     protected function getPath($name): string
     {
         $layer = $this->resolveLayer();
         $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
 
-        $relative = Str::replaceFirst($layerNamespace . '\\Enums\\', '', $name);
+        $relative = Str::replaceFirst($layerNamespace.'\\Enums\\', '', $name);
 
-        return $layer->path . '/src/Enums/' . str_replace('\\', '/', $relative) . '.php';
+        return $layer->path.'/src/Enums/'.str_replace('\\', '/', $relative).'.php';
     }
 }

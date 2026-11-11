@@ -1,29 +1,38 @@
 <?php
 
-namespace Xefi\LaravelOSDD\Layers;
+namespace Lomkit\Osdd\Layers;
 
 use Illuminate\Support\Collection;
 use Symfony\Component\Finder\Finder;
 
+/**
+ * @extends Collection<int, Layer>
+ */
 class LayersCollection extends Collection
 {
     public static function fromConfig(): self
     {
-        return static::discover(...array_values(config('osdd.layers.paths', [])));
+        /** @var array<string, string> $paths */
+        $paths = config('osdd.layers.paths', []);
+
+        return self::discover(...array_values($paths));
     }
 
     public static function discover(string ...$paths): self
     {
         return new self(
             collect($paths)
-                ->flatMap(fn(string $path) => static::scanPath($path))
+                ->flatMap(fn (string $path) => self::scanPath($path))
                 ->all()
         );
     }
 
+    /**
+     * @return list<Layer>
+     */
     private static function scanPath(string $path): array
     {
-        if (!is_dir($path)) {
+        if (! is_dir($path)) {
             return [];
         }
 
@@ -33,7 +42,7 @@ class LayersCollection extends Collection
             if (Layer::isValidLayerDirectory($directory)) {
                 $layers[] = Layer::fromDirectory($directory);
             } else {
-                array_push($layers, ...static::scanPath($directory->getRealPath()));
+                array_push($layers, ...self::scanPath($directory->getRealPath()));
             }
         }
 
