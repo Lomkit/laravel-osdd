@@ -3,6 +3,8 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Console\Providers\LayerProvider;
+use Lomkit\Osdd\Console\Providers\ProviderMethod;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:config')]
@@ -38,7 +40,8 @@ class ConfigMakeCommand extends \Illuminate\Foundation\Console\ConfigMakeCommand
         $configKey = Str::before($configFile, '.php');
 
         $this->registerInLayerProvider(
-            "\$this->overrideConfigFrom(__DIR__ . '/../../config/{$configFile}', '{$configKey}');",
+            ProviderMethod::Register,
+            fn (LayerProvider $provider): string => "\$this->overrideConfigFrom({$provider->pathExpression('config/'.$configFile)}, '{$configKey}');",
             "config:{$configKey}",
         );
 

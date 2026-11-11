@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:middleware')]
@@ -27,11 +26,6 @@ class MiddlewareMakeCommand extends \Illuminate\Routing\Console\MiddlewareMakeCo
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Http\\Middleware\\', '', $name);
-
-        return $layer->path.'/src/Http/Middleware/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 }

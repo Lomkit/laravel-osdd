@@ -24,10 +24,11 @@ abstract class LayerServiceProvider extends ServiceProvider
      * Override an already-loaded config key with values from a file.
      *
      * Unlike mergeConfigFrom(), the layer values take priority over whatever
-     * is already loaded — so a layer can override a third-party package's
-     * defaults (Horizon, Telescope, …) exactly like the app's own config
-     * folder does. Call this from register() so the override is in place
-     * before other packages boot and read their config.
+     * is already loaded, so a layer can override a third-party package's
+     * defaults (Horizon, Telescope, …). Maps are merged key by key at every
+     * depth; a list, or an empty array, replaces the loaded value as a whole.
+     * Call this from register() so the override is in place before other
+     * packages boot and read their config.
      */
     protected function overrideConfigFrom(string $path, string $key): void
     {
@@ -43,7 +44,33 @@ abstract class LayerServiceProvider extends ServiceProvider
         /** @var array<array-key, mixed> $overrides */
         $overrides = require $path;
 
-        $config->set($key, array_replace_recursive($loaded, $overrides));
+        $config->set($key, $this->overrideValues($loaded, $overrides));
+    }
+
+    /**
+     * @param  array<array-key, mixed>  $loaded
+     * @param  array<array-key, mixed>  $overrides
+     * @return array<array-key, mixed>
+     */
+    private function overrideValues(array $loaded, array $overrides): array
+    {
+        foreach ($overrides as $key => $value) {
+            $current = $loaded[$key] ?? null;
+
+            $loaded[$key] = $this->isMap($value) && $this->isMap($current)
+                ? $this->overrideValues($current, $value)
+                : $value;
+        }
+
+        return $loaded;
+    }
+
+    /**
+     * @phpstan-assert-if-true array<array-key, mixed> $value
+     */
+    private function isMap(mixed $value): bool
+    {
+        return is_array($value) && ! array_is_list($value);
     }
 
     /**
@@ -55,6 +82,9 @@ abstract class LayerServiceProvider extends ServiceProvider
      *   - commands → required (when running in console)
      *   - channels → required (Broadcast::channel(...) definitions)
      *   - health   → registers a GET endpoint returning {"status":"ok"}
+     *
+     * Once routes are cached, web, api and health come from the route cache;
+     * commands and channels are still loaded, as Laravel's withRouting() does.
      *
      * For anything beyond these conventions (custom prefixes, route groups,
      * domains, ...), use Laravel's Route facade directly in boot().
@@ -70,24 +100,8 @@ abstract class LayerServiceProvider extends ServiceProvider
         ?string $health = null,
         string $apiPrefix = 'api',
     ): void {
-        if ($this->app instanceof CachesRoutes && $this->app->routesAreCached()) {
-            return;
-        }
-
-        foreach (Arr::wrap($web) as $path) {
-            if (is_file($path)) {
-                Route::middleware('web')->group($path);
-            }
-        }
-
-        foreach (Arr::wrap($api) as $path) {
-            if (is_file($path)) {
-                Route::middleware('api')->prefix($apiPrefix)->group($path);
-            }
-        }
-
-        if (is_string($health)) {
-            Route::get($health, fn () => response()->json(['status' => 'ok']));
+        if (! ($this->app instanceof CachesRoutes && $this->app->routesAreCached())) {
+            $this->loadHttpRoutes(Arr::wrap($web), Arr::wrap($api), $health, $apiPrefix);
         }
 
         if (is_string($channels) && is_file($channels)) {
@@ -96,6 +110,29 @@ abstract class LayerServiceProvider extends ServiceProvider
 
         if (is_string($commands) && is_file($commands) && $this->app->runningInConsole()) {
             require $commands;
+        }
+    }
+
+    /**
+     * @param  array<array-key, string>  $web
+     * @param  array<array-key, string>  $api
+     */
+    private function loadHttpRoutes(array $web, array $api, ?string $health, string $apiPrefix): void
+    {
+        foreach ($web as $path) {
+            if (is_file($path)) {
+                Route::middleware('web')->group($path);
+            }
+        }
+
+        foreach ($api as $path) {
+            if (is_file($path)) {
+                Route::middleware('api')->prefix($apiPrefix)->group($path);
+            }
+        }
+
+        if (is_string($health)) {
+            Route::get($health, fn () => response()->json(['status' => 'ok']));
         }
     }
 }

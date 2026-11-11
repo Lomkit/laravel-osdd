@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:scope')]
@@ -27,11 +26,6 @@ class ScopeMakeCommand extends \Illuminate\Foundation\Console\ScopeMakeCommand
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Models\\Scopes\\', '', $name);
-
-        return $layer->path.'/src/Models/Scopes/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 }

@@ -112,12 +112,7 @@ class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCommand
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Models\\', '', $name);
-
-        return $layer->path.'/src/Models/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 
     #[\Override]

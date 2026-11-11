@@ -18,16 +18,16 @@ Use this skill whenever `lomkit/laravel-osdd` is in the project's `composer.json
 
 ## Features
 
-- **Project bootstrap**: convert a fresh Laravel app into the OSDD layout (deletes `app/`, `database/`, root `config/`; creates a starter `functional/users/` and `technical/osdd/`). Example usage:
+- **Project bootstrap**: convert a fresh Laravel app into the OSDD layout (creates a starter `functional/users/` and `technical/osdd/`, then deletes `app/`, root `config/` and `database/`, keeping `database/database.sqlite`). It asks for confirmation; without a terminal it needs `--force`, which you only pass when the user asked for the conversion. Example usage:
 
 ```bash
-php artisan osdd:start
+php artisan osdd:start --force
 ```
 
-- **Layer creation**: scaffold a new self-contained layer (Composer package with its own `src/`, `database/`, `tests/`, and service provider) and register it in the root `composer.json` via a wildcard path repository. Example usage:
+- **Layer creation**: scaffold a new self-contained layer (Composer package with its own `src/`, `database/`, `tests/`, and service provider) and register it in the root `composer.json` via a wildcard path repository. The vendor of the name picks the layer path (`functional/orders` goes to `osdd.layers.paths.functional`). Example usage:
 
 ```bash
-php artisan osdd:layer functional/orders --generators=migration,model,factory,service-provider,test
+php artisan osdd:layer functional/orders --generators=migration,model,factory,service-provider,test --composer-update
 ```
 
 - **`osdd:*` make mirrors**: most Laravel `make:*` class generators have an `osdd:*` equivalent that targets a layer via `--layer=vendor/package` (covers `model`, `controller`, `migration`, `factory`, `seeder`, `policy`, `request`, `resource`, `test`, `config`, `view`, `class`, and more). Example usage:
@@ -48,13 +48,13 @@ php artisan osdd:seed --fresh
 php artisan osdd:config orders --layer=functional/orders
 ```
 
-- **Layer-scoped routing**: a generated layer provider calls `$this->withRouting(...)`, which mounts `routes/web.php` (in the `web` group), `routes/api.php` (in the `api` group, prefixed `api`), `routes/console.php`, and `routes/channels.php` — each only if the file exists, and skipped entirely when routes are cached. Scaffold the route files with the `routes` generator. Example usage:
+- **Layer-scoped routing**: a generated layer provider calls `$this->withRouting(...)`, which mounts `routes/web.php` (in the `web` group), `routes/api.php` (in the `api` group, prefixed `api`), `routes/console.php`, and `routes/channels.php` — each only if the file exists. Once routes are cached, the web and api routes come from the route cache; the console and channels files are still loaded. Scaffold the route files with the `routes` generator when you create the layer. Example usage:
 
 ```bash
 php artisan osdd:layer functional/orders --generators=service-provider,routes
 ```
 
-- **PHPUnit suite sync**: `osdd:phpunit` walks every discovered layer and adds a `<testsuite>` entry for each one to the root `phpunit.xml`. Idempotent. Example usage:
+- **PHPUnit suite sync**: `osdd:phpunit` walks every discovered layer, adds a `<testsuite>` entry for each one to the root `phpunit.xml` and adds its source directory to `<source><include>`. Idempotent; `--prune` removes the suites of deleted layers. Example usage:
 
 ```bash
 php artisan osdd:phpunit
@@ -123,7 +123,7 @@ The vendor-segment of the layer name maps to the top-level config category (`fun
 
 ### Layer naming rules
 
-`osdd:layer` validates the package part of the name against `/^[a-z0-9-]+$/` — lowercase letters, digits, hyphens only. Hyphens are converted to PascalCase for the namespace:
+`osdd:layer` validates the name with Composer's package name rules: `vendor/package`, lowercase letters and digits, words separated by `-`, `_` or `.`, and each part must start with a letter so it maps to a PHP namespace. An invalid name fails with a message and writes nothing. Separators are converted to PascalCase for the namespace:
 
 | Layer name | Namespace root | Service provider |
 |---|---|---|
@@ -146,15 +146,14 @@ Don't put HTTP plumbing (controllers, requests, routes) in a `technical/` layer 
 
 - **`Lomkit\Osdd\LayerServiceProvider`** — the abstract base class **every layer's own provider must extend** (not Laravel's `ServiceProvider`). It exposes:
   - `loadSeeders(array $seeders, int $priority = 0)` — registers seeder classes with the global registry. Lower priority runs first. This is the **only** way to make a seeder runnable by `osdd:seed`.
-  - `overrideConfigFrom(string $path, string $key)` — like `mergeConfigFrom`, but the layer's values win over previously-loaded defaults. Used by the technical OSDD layer to override `config('osdd')` from inside the application. Skips the merge when configuration is cached.
-  - `withRouting(web:, api:, commands:, channels:, health:, apiPrefix: 'api')` — mounts a layer's route files following Laravel's standard conventions: `web` files in the `web` middleware group, `api` files in the `api` group behind the `apiPrefix`, `commands`/`channels` files `require`d, and `health` registered as a GET endpoint returning `{"status":"ok"}`. Each argument is optional; missing files are skipped, and the whole call is a no-op when routes are cached. For anything beyond these conventions (custom prefixes, domains, named groups), use the `Route` facade directly in `boot()`.
+  - `overrideConfigFrom(string $path, string $key)` — like `mergeConfigFrom`, but the layer's values win over previously-loaded defaults. Maps are merged key by key at every depth; a list (or an empty array) replaces the loaded value as a whole, so `['queues' => ['high']]` gives `['high']`, not `['high', 'low']`. Used by the technical OSDD layer to override `config('osdd')` from inside the application. Skips the merge when configuration is cached.
+  - `withRouting(web:, api:, commands:, channels:, health:, apiPrefix: 'api')` — mounts a layer's route files following Laravel's standard conventions: `web` files in the `web` middleware group, `api` files in the `api` group behind the `apiPrefix`, `commands`/`channels` files `require`d, and `health` registered as a GET endpoint returning `{"status":"ok"}`. Each argument is optional and missing files are skipped. Once routes are cached, `web`, `api` and `health` are skipped (they are in the cache); `commands` and `channels` are always loaded, as in Laravel's own `withRouting()`. For anything beyond these conventions (custom prefixes, domains, named groups), use the `Route` facade directly in `boot()`.
 
 A freshly generated layer provider looks like:
 
 ```php
 namespace Functional\Orders\Providers;
 
-use Functional\Orders\Database\Seeders\OrdersSeeder;
 use Lomkit\Osdd\LayerServiceProvider;
 
 class OrdersServiceProvider extends LayerServiceProvider
@@ -163,7 +162,6 @@ class OrdersServiceProvider extends LayerServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
-            $this->loadSeeders([OrdersSeeder::class]);
         }
 
         $this->withRouting(
@@ -181,17 +179,17 @@ class OrdersServiceProvider extends LayerServiceProvider
 }
 ```
 
-The `withRouting()` call is always present in a generated provider. The referenced route files are **not** created unless you run the `routes` generator (or `osdd:layer --generators=…,routes`) — `withRouting()` simply skips any path that doesn't exist, so an unused call is harmless.
+The `withRouting()` call is always present in a generated provider. The referenced route files are **not** created unless you run the `routes` generator when creating the layer (`osdd:layer … --generators=…,routes`); in an existing layer, create `routes/web.php` (or `api.php`, `console.php`, `channels.php`) by hand. `withRouting()` simply skips any path that doesn't exist, so an unused call is harmless.
 
 ### What the generator wires — and what it doesn't
 
-The generated provider wires **migrations**, **seeders**, and **routing** (`withRouting()`). On top of that, the make commands keep the provider in sync as you generate:
+The generated provider wires **migrations** and **routing** (`withRouting()`). It registers no seeder: the `seeder` generator, like `osdd:seeder`, adds its `loadSeeders()` call. On top of that, the make commands keep the provider in sync as you generate:
 
-- `osdd:migration` injects `$this->loadMigrationsFrom(...)` (if not already present).
-- `osdd:seeder` injects `$this->loadSeeders([...])`.
-- `osdd:config` injects `$this->overrideConfigFrom(...)`.
+- `osdd:migration` injects `$this->loadMigrationsFrom(...)` into `boot()` (if not already present).
+- `osdd:seeder` injects `$this->loadSeeders([...])` into `boot()`.
+- `osdd:config` injects `$this->overrideConfigFrom(...)` into `register()`, so other packages see the override when they boot.
 
-These injections are idempotent and silently no-op when the layer's service provider is missing or already contains the statement. (They land in `boot()`; for `overrideConfigFrom` specifically, see the note under `osdd:config` about moving it to `register()` when cross-package boot timing matters.)
+These injections are idempotent. The provider is the first class of the layer's `extra.laravel.providers` found on disk, else `src/Providers/{Package}ServiceProvider.php`; the `__DIR__` path is computed from its folder. When the layer has no provider, or the provider has no `boot()`/`register()` method, the command prints a warning and the exact line to add by hand: add it.
 
 Views and translations are still **not** wired automatically — add them by hand when the layer has them:
 
@@ -231,16 +229,16 @@ The `routes/` directory is created by the `routes` generator (`osdd:layer --gene
 php artisan osdd:start
 ```
 
-Run **once**, immediately after `composer require lomkit/laravel-osdd`, on a fresh Laravel app. It:
+Run **once**, immediately after `composer require lomkit/laravel-osdd`, on a fresh Laravel app. It asks for confirmation (default no) before deleting anything; without a terminal it fails unless you pass `--force`. Pass `--force` only when the user asked for the conversion. It:
 
-1. Creates `functional/users/` (a starter Users layer with Model, Factory, Seeder, and migration). Its `UsersServiceProvider::register()` rebinds Laravel's default auth user model with `config(['auth.providers.users.model' => User::class])` so `auth()`/guards resolve the layer's `Functional\Users\Models\User`.
-2. Creates `technical/osdd/` (a layer that owns the `config/osdd.php` override).
-3. Deletes `app/`, `database/`, and root `config/`.
+1. Creates `functional/users/` (a starter Users layer with Model, Factory, Seeder, and the skeleton's `0001_01_01_000000_create_users_table` migration: `users`, `password_reset_tokens`, `sessions`). Its `UsersServiceProvider::register()` rebinds Laravel's default auth user model with `config(['auth.providers.users.model' => User::class])` so `auth()`/guards resolve the layer's `Functional\Users\Models\User`.
+2. Creates `technical/osdd/` (a layer that owns the `config/osdd.php` override and the skeleton's `cache`/`cache_locks` and `jobs`/`job_batches`/`failed_jobs` migrations, loaded by `Technical\Osdd\Providers\OsddServiceProvider::boot()`). The database session, cache and queue drivers keep working after `php artisan migrate`.
+3. Deletes `app/` and root `config/`, and empties `database/` except `database/database.sqlite` and its `.gitignore`, so the default SQLite connection keeps working.
 4. Strips the `Database\\Factories\\` and `Database\\Seeders\\` PSR-4 entries from the root `composer.json`. The `App\\` mapping is **kept** (so Laravel can still detect the application namespace) — no code should live under `app/`, but the mapping stays.
-5. Empties `bootstrap/providers.php` (layer providers are auto-discovered).
-6. Prompts `composer update`.
+5. Removes the `App\Providers\…` entries from `bootstrap/providers.php` (their classes are gone; layer providers are auto-discovered). Providers of installed packages listed there stay.
+6. Runs `composer update functional/users technical/osdd` when you accept the question or pass `--composer-update`; without a terminal it only prints the command.
 
-**Destructive.** Only run on a fresh project. Never run on an existing OSDD project — it will wipe the Users layer and re-create it.
+**Destructive.** Only run on a fresh project. It refuses to run when `functional/users` or `technical/osdd` already exists.
 
 ### Create a layer
 
@@ -248,22 +246,29 @@ Run **once**, immediately after `composer require lomkit/laravel-osdd`, on a fre
 # Interactive
 php artisan osdd:layer
 
-# Non-interactive
+# Non-interactive: the vendor picks the layer path (functional/… → osdd.layers.paths.functional)
 php artisan osdd:layer functional/orders \
-  --target-path=/abs/path/to/functional \
-  --generators=migration,model,factory,service-provider,test
+  --generators=migration,model,factory,service-provider,test \
+  --composer-update
 ```
 
-Available generators: `migration`, `model`, `factory`, `seeder`, `service-provider`, `test`, `controller`, `policy`, `routes`. Defaults: `migration, model, factory, service-provider, test` (note: `routes` is **not** a default — add it explicitly when the layer needs route files).
+Available generators: `migration`, `model`, `factory`, `seeder`, `service-provider`, `test`, `controller`, `policy`, `routes`. Pass them comma-separated (`--generators=model,policy`) or repeat the option (`--generators=model --generators=policy`); an unknown name fails the command with the list of valid ones. Defaults, also used without a terminal when `--generators` is omitted: `migration, model, factory, service-provider, test` (note: `routes` is **not** a default — add it explicitly when the layer needs route files).
+
+Options:
+
+- `--target-path=/abs/path` — create the layer in that directory instead of the path named after the vendor. Required without a terminal when the vendor matches no key of `osdd.layers.paths` (the command fails and lists the keys).
+- `--composer-update` / `--no-composer-update` — run or skip `composer update vendor/package` without asking. Without either, the command asks in a terminal and skips the update otherwise (it then prints the command to run).
+- `--force` — overwrite an existing layer. Without it, `osdd:layer` fails when the layer directory exists and is not empty. With it, the provider and route files are rewritten, the existing `composer.json` is kept and only gains the keys of a new layer it lacks (its `require` and `extra.laravel.providers` stay), the model and controller are overwritten, the other generated files are kept, and no second `create_*_table` migration is added. To add files to an existing layer, prefer the `osdd:*` generators.
 
 Behind the scenes `osdd:layer`:
 
 1. Writes the layer's `composer.json` first (so make commands can discover it).
-2. Calls each chosen generator (e.g. `osdd:migration --create=orders --layer=functional/orders`).
-3. When both `model` and `factory` are selected, it passes `--factory` to `osdd:model` instead of running `osdd:factory` twice.
-4. Generates the service provider from `stubs/layer/service-provider.stub` and injects its FQCN into `extra.laravel.providers` in the layer's `composer.json`.
-5. Registers a path repository in the root `composer.json` using a **wildcard URL** (`./functional/*`) and adds `"vendor/package": "*"` under `require`.
-6. Optionally runs `composer update vendor/package`.
+2. Generates the service provider first, from `stubs/layer/service-provider.stub`, and injects its FQCN into `extra.laravel.providers` in the layer's `composer.json`.
+3. Calls each other chosen generator (e.g. `osdd:migration --create=orders --layer=functional/orders`); `seeder` registers the seeder in the provider.
+4. When both `model` and `factory` are selected, it passes `--factory` to `osdd:model` instead of running `osdd:factory` twice.
+5. Registers a path repository in the root `composer.json` using a **wildcard URL** (`./functional/*`, or a `../` path for a layer path outside the project) and adds `"vendor/package": "*"` under `require` (sorted when `config.sort-packages` is on). Empty objects such as `"require-dev": {}` stay objects.
+6. Runs `composer update vendor/package` when asked (see `--composer-update`).
+
 
 The wildcard is intentional — every layer added to that directory will be picked up by a single repository entry; don't replace it with a per-layer URL.
 
@@ -290,11 +295,12 @@ Full list of mirrored generators: `cast`, `channel`, `class`, `config`, `console
 Notes on a few that diverge from vanilla Laravel:
 
 - **`osdd:model`** — bypasses Laravel's interactive "also create…" prompt. Use the flags directly: `--factory`, `--migration`, `--seed`, `--controller`, `--resource`, `--api`, `--requests`, `--policy`, or `--all`. When `--factory` is set, the generated model uses a custom stub that adds `use HasFactory;` and `#[UseFactory(...)]` pointing at the layer's factory namespace. Without `--factory`, the model is bare — neither the trait nor the attribute is added. **Nested models work**: `osdd:model Admin/User --layer=…` creates `src/Models/Admin/User.php` with namespace `…\Models\Admin`.
-- **`osdd:config <name>`** — creates `{layer}/config/{name}.php` **and** injects `$this->overrideConfigFrom(__DIR__ . '/../../config/{name}.php', '{name}');` into the layer's service provider `boot()` method (via the shared `RegistersInLayerProvider` helper). The injection is idempotent; don't add this line by hand. If the layer's service provider doesn't exist, the config file is still created but no override is wired. Note: `overrideConfigFrom` is most effective in `register()` (so the override is in place before other packages boot and read their config); if a layer overrides config that another package consumes during its own boot, move the injected line into `register()` manually.
+- **`osdd:config <name>`** — creates `{layer}/config/{name}.php` **and** injects `$this->overrideConfigFrom(__DIR__ . '/../../config/{name}.php', '{name}');` into the layer's service provider `register()` method, so the override is in place before other packages boot and read their config. The injection is idempotent; don't add this line by hand. If the layer has no service provider, or the provider has no `register()` method, the config file is still created and the command prints the line to add.
 - **`osdd:migration`** — places the file in the resolved layer's `database/migrations/` directory and injects `$this->loadMigrationsFrom(...)` into the layer provider (idempotent). The generated provider already loads migrations, so this is usually a no-op for the standard layout.
 - **`osdd:seeder`** — creates the seeder **and** injects `$this->loadSeeders([\…\YourSeeder::class]);` into the layer provider's `boot()` (idempotent). You no longer have to wire `loadSeeders()` by hand for generated seeders — but a hand-written seeder still needs the call added manually.
 - **`osdd:test`** — `--unit` switches the namespace to `Tests\Unit` and the path to `tests/Unit/`; otherwise it's `Tests\Feature` / `tests/Feature/`.
 - **`osdd:policy --model=Name`** — generates a full Laravel policy with type-hinted model methods (`viewAny`, `view`, `create`, …). Without `--model`, a minimal stub class is generated.
+- **`--model` across layers** (`osdd:policy`, `osdd:controller`, `osdd:observer`, `osdd:factory`) — a short name (`--model=Order`) is qualified under the current layer (`…\Models\Order`); a fully qualified class of another layer or of a package (`--model='Functional\Users\Models\User'`) is kept as is. Pass the full class name to reference another layer's model.
 - **`osdd:controller --requests`** — generates `Store{Model}Request` and `Update{Model}Request` in the same layer alongside the controller.
 
 ### Run seeders across all layers
@@ -303,9 +309,12 @@ Notes on a few that diverge from vanilla Laravel:
 php artisan osdd:seed
 php artisan osdd:seed --fresh    # runs migrate:fresh first
 php artisan osdd:seed --refresh  # runs migrate:refresh first
+php artisan osdd:seed --force --database=tenant   # production, another connection
 ```
 
 `osdd:seed` iterates the `SeederRegistry` and calls `db:seed --class=…` for every registered class. A seeder appears in this list **only** if its layer's service provider called `$this->loadSeeders([...])`. `osdd:seeder` injects that call automatically; a **hand-written** seeder still needs it added by hand. If `osdd:seed` reports no seeders, the missing piece is a `loadSeeders()` call in the relevant `LayerServiceProvider::boot()`.
+
+`--force` and `--database` are forwarded to `db:seed` (and to `migrate:fresh` / `migrate:refresh`). In production, `db:seed` asks for confirmation, so without a terminal pass `--force`. `osdd:seed` stops at the first seeder that fails or is cancelled and returns its non-zero exit code. `--fresh` and `--refresh` cannot be combined. A seeder registered twice runs once.
 
 ### Sync `phpunit.xml` with layer test suites
 
@@ -313,7 +322,12 @@ php artisan osdd:seed --refresh  # runs migrate:refresh first
 php artisan osdd:phpunit
 ```
 
-Walks every discovered layer and, for each one with a `tests/` directory, adds a `<testsuite name="vendor/package"><directory>relative/path/to/tests</directory></testsuite>` entry to the root `phpunit.xml`. It also adds a `<directory>**/database/migrations</directory>` exclusion under `<source>` so layer migrations don't count against code coverage. Both are idempotent — existing entries are skipped, and the file is written even when no layers are discovered (so the coverage exclusion still gets added). Run after creating a layer if you want `vendor/bin/phpunit` to pick it up automatically.
+Walks every discovered layer and:
+
+- for each one with a `tests/` directory, adds a `<testsuite name="vendor/package"><directory>relative/path/to/tests</directory></testsuite>` entry to the root `phpunit.xml`;
+- adds its source directory (`functional/orders/src`) to `<source><include>`, so code coverage covers the layers.
+
+It also excludes `<path>/*/database/migrations` under `<source><exclude>` for each configured layer path (`functional/*/database/migrations`, `technical/*/database/migrations`), so layer migrations don't count against code coverage. Everything is idempotent — existing entries are skipped. `--prune` also removes the test suites named after a layer that no longer exists and the `<source><include>` directories that are gone (such as `app` after `osdd:start`). Run after creating or deleting a layer.
 
 ## Configuration
 
@@ -501,7 +515,7 @@ Before adding code, locate the right layer. The `app/` and root `database/` dire
 2. **List all layers.** `find functional technical -maxdepth 2 -name composer.json -exec grep -l '"type": "layer"' {} \;` (or browse the two configured directories — `functional/` and `technical/` by default).
 3. **Find where a class lives.** Search for the class name in the relevant layer's `src/`. Layers don't share code by accident — if a class isn't there, it's in another layer, in the package itself, or in `vendor/`.
 4. **Find a route.** Routes are layer-local. Check each layer's `routes/` directory (`web.php`, `api.php`, `console.php`, `channels.php`) — they're mounted by the `$this->withRouting(...)` call in the layer's `LayerServiceProvider::boot()`. Routes only exist if the layer ships the file and the provider's `withRouting()` references it.
-5. **Find a config key.** Layer-defined config lives in `{layer}/config/{name}.php` and is loaded into `config('{name}')` via `overrideConfigFrom`. Look at the layer's `LayerServiceProvider` (`osdd:config` injects the call into `boot()`; hand-wired overrides often sit in `register()`) to see what keys it overrides.
+5. **Find a config key.** Layer-defined config lives in `{layer}/config/{name}.php` and is loaded into `config('{name}')` via `overrideConfigFrom`. Look at the layer's `LayerServiceProvider` (`osdd:config` injects the call into `register()`) to see what keys it overrides.
 
 When a user asks "where should I add X?", the answer is always "in the layer responsible for X" — never `app/`. If no layer matches, the answer is "create a new layer with `osdd:layer`."
 
@@ -523,7 +537,7 @@ When debugging an OSDD project:
 composer create-project laravel/laravel my-app
 cd my-app
 composer require lomkit/laravel-osdd
-php artisan osdd:start            # accept "composer update" prompt
+php artisan osdd:start            # confirm, then accept the "composer update" prompt
 php artisan osdd:layer functional/orders   # or interactive
 php artisan migrate
 ```
@@ -549,7 +563,7 @@ php artisan osdd:model Invoice --layer=functional/billing --all
 # 2. Add a route. Scaffold the route files (if the layer doesn't have them yet),
 #    then define the route — the generated provider's withRouting() already mounts
 #    routes/web.php, so no extra wiring is needed.
-#      php artisan osdd:layer functional/billing --generators=routes   # if missing
+#    If the layer has no routes/web.php yet, create it by hand (osdd:layer refuses an existing layer).
 #    functional/billing/routes/web.php:
 #      Route::resource('invoices', \Functional\Billing\Http\Controllers\InvoiceController::class);
 
@@ -640,7 +654,7 @@ If you write a test by hand, match the layer's namespace exactly — putting a t
 | Migration | `osdd:migration name --layer=vendor/package` |
 | Controller / request / resource | `osdd:controller / osdd:request / osdd:resource --layer=…` |
 | Seeder (must be wired in the layer's provider!) | `osdd:seeder Name --layer=…` then `loadSeeders([Name::class])` |
-| Run all layer seeders | `osdd:seed [--fresh / --refresh]` |
+| Run all layer seeders | `osdd:seed [--fresh or --refresh] [--force] [--database=…]` |
 | Layer-scoped config file | `osdd:config name --layer=…` (auto-injects override) |
 | Register layer test suite in phpunit.xml | `osdd:phpunit` |
 | Arbitrary class | `osdd:class Path/To/Class --layer=…` |
@@ -666,9 +680,9 @@ Before running any `osdd:*` make command, confirm:
 - **Putting a test class under the default `Tests\` namespace**: the layer's PSR-4 won't autoload it. Always use `…\Tests\Feature` or `…\Tests\Unit` matching the layer namespace.
 - **Editing the package's `config/osdd.php` directly** instead of overriding it from `technical/osdd`: changes get lost on `composer update`. Override via the technical OSDD layer.
 - **Re-adding `App\\` to the root `composer.json` `autoload.psr-4`**: re-introduces the dead `app/` directory mapping. `osdd:start` removes it deliberately.
-- **Running `osdd:start` on a non-fresh project**: it deletes `app/`, `database/`, and `config/`. Only ever run it once, on a brand-new Laravel app.
+- **Running `osdd:start` on a non-fresh project**: it deletes `app/`, `config/` and most of `database/`. Only ever run it once, on a brand-new Laravel app; it refuses to run again once `functional/users` or `technical/osdd` exists. Never pass `--force` unless the user asked for the conversion.
 - **Forgetting to run `osdd:phpunit`** after creating a layer: new tests are invisible to `vendor/bin/phpunit` until the suite is added.
-- **Composer not seeing a new layer**: after `osdd:layer`, run `composer update vendor/package` (or accept the prompt). Without it, the layer's classes aren't installed in `vendor/composer/autoload_psr4.php`.
+- **Composer not seeing a new layer**: after `osdd:layer`, run `composer update vendor/package` (or pass `--composer-update`, or accept the prompt). Without it, the layer's classes aren't installed in `vendor/composer/autoload_psr4.php`.
 
 ## Quick reference: what NEVER goes where
 

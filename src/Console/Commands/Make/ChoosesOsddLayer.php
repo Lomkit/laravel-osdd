@@ -2,6 +2,7 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
+use Illuminate\Support\Str;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\LayerNotFoundException;
 use Lomkit\Osdd\Layers\LayersCollection;
@@ -46,6 +47,14 @@ trait ChoosesOsddLayer
 
         return $this->resolvedLayer = $layers->first(fn (Layer $l) => $l->manifest->name() === $chosen)
             ?? throw new LayerNotFoundException($chosen);
+    }
+
+    protected function layerSourcePath(string $class): string
+    {
+        $layer = $this->resolveLayer();
+        $relative = Str::replaceFirst($layer->manifest->rootNamespace(), '', $class);
+
+        return $layer->manifest->srcPath($layer->path).'/'.str_replace('\\', '/', $relative).'.php';
     }
 
     protected function interact(InputInterface $input, OutputInterface $output): void

@@ -25,18 +25,26 @@ class SeedCommand extends Command
 
     protected $signature = 'osdd:seed
         {--fresh : Run migrate:fresh before seeding}
-        {--refresh : Run migrate:refresh before seeding}';
+        {--refresh : Run migrate:refresh before seeding}
+        {--database= : The database connection to seed}
+        {--force : Force the operation to run when in production}';
 
     public function handle(SeederRegistry $registry): int
     {
-        if ($this->option('fresh')) {
-            if (($exitCode = $this->call('migrate:fresh')) !== self::SUCCESS) {
-                return $exitCode;
-            }
-        } elseif ($this->option('refresh')) {
-            if (($exitCode = $this->call('migrate:refresh')) !== self::SUCCESS) {
-                return $exitCode;
-            }
+        if ($this->option('fresh') && $this->option('refresh')) {
+            $this->components->error('Pass either --fresh or --refresh, not both.');
+
+            return self::FAILURE;
+        }
+
+        $migration = match (true) {
+            (bool) $this->option('fresh') => 'migrate:fresh',
+            (bool) $this->option('refresh') => 'migrate:refresh',
+            default => null,
+        };
+
+        if ($migration !== null && ($exitCode = $this->call($migration, $this->forwardedOptions())) !== self::SUCCESS) {
+            return $exitCode;
         }
 
         $seeders = $registry->seeders();
@@ -55,9 +63,25 @@ class SeedCommand extends Command
             }
 
             $this->info("Seeding <comment>{$seederClass}</comment>...");
-            $this->call('db:seed', ['--class' => $seederClass]);
+
+            if (($exitCode = $this->call('db:seed', ['--class' => $seederClass, ...$this->forwardedOptions()])) !== self::SUCCESS) {
+                $this->components->error("Seeder {$seederClass} failed; the next seeders were not run.");
+
+                return $exitCode;
+            }
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function forwardedOptions(): array
+    {
+        return array_filter([
+            '--database' => $this->option('database'),
+            '--force' => $this->option('force'),
+        ]);
     }
 }

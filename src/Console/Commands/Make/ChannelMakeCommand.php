@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:channel')]
@@ -27,11 +26,6 @@ class ChannelMakeCommand extends \Illuminate\Foundation\Console\ChannelMakeComma
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Broadcasting\\', '', $name);
-
-        return $layer->path.'/src/Broadcasting/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 }

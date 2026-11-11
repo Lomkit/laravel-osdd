@@ -2,7 +2,6 @@
 
 namespace {{ namespace }}\Providers;
 
-use {{ namespace }}\Database\Seeders\{{ seederClass }};
 use Lomkit\Osdd\LayerServiceProvider;
 
 class {{ class }} extends LayerServiceProvider
@@ -11,7 +10,6 @@ class {{ class }} extends LayerServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->loadMigrationsFrom(__DIR__ . '/../../database/migrations');
-            $this->loadSeeders([{{ seederClass }}::class]);
         }
 
         $this->withRouting(

@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:class')]
@@ -21,11 +20,6 @@ class ClassMakeCommand extends \Illuminate\Foundation\Console\ClassMakeCommand
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\', '', $name);
-
-        return $layer->path.'/src/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 }

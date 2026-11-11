@@ -105,7 +105,7 @@ class PhpunitCommandTest extends TestCase
 
         $xpath = new \DOMXPath($dom);
         $directory = $xpath
-            ->query('//source/exclude/directory[normalize-space()="**/database/migrations"]')
+            ->query('//source/exclude/directory[normalize-space()="functional/*/database/migrations"]')
             ->item(0);
 
         $this->assertNotNull($directory);
@@ -122,9 +122,98 @@ class PhpunitCommandTest extends TestCase
         $dom->loadXML($xml);
 
         $xpath = new \DOMXPath($dom);
-        $directories = $xpath->query('//source/exclude/directory[normalize-space()="**/database/migrations"]');
+        $directories = $xpath->query('//source/exclude/directory[normalize-space()="functional/*/database/migrations"]');
 
         $this->assertSame(1, $directories->length);
+    }
+
+    public function test_it_syncs_the_coverage_source_of_laravels_default_phpunit_xml(): void
+    {
+        $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
+        $this->app['files']->put($this->xmlPath, <<<'XML'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <phpunit bootstrap="vendor/autoload.php" colors="true">
+                <testsuites>
+                    <testsuite name="Unit"><directory>tests/Unit</directory></testsuite>
+                </testsuites>
+                <source>
+                    <include>
+                        <directory>app</directory>
+                    </include>
+                </source>
+            </phpunit>
+            XML);
+
+        $this->artisan('osdd:phpunit')->assertExitCode(0);
+
+        $xpath = $this->xpath();
+        $this->assertSame(['app', 'functional/test-layer/src'], $this->texts($xpath, '//source/include/directory'));
+        $this->assertSame(
+            ['functional/*/database/migrations', 'technical/*/database/migrations'],
+            $this->texts($xpath, '//source/exclude/directory'),
+        );
+        $this->assertSame('.php', $xpath->query('//source/include/directory')->item(1)->getAttribute('suffix'));
+    }
+
+    public function test_the_migrations_exclusion_matches_the_layer_migrations_only(): void
+    {
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
+        $this->artisan('osdd:phpunit')->assertExitCode(0);
+
+        $excluded = glob($this->app->basePath($this->texts($this->xpath(), '//source/exclude/directory')[0]), GLOB_ONLYDIR);
+
+        $this->assertSame([realpath($this->app->basePath('functional/test-layer/database/migrations'))], array_map('realpath', $excluded));
+    }
+
+    public function test_prune_removes_suites_of_removed_layers_and_missing_source_directories(): void
+    {
+        $this->app['files']->put($this->xmlPath, <<<'XML'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <phpunit>
+                <testsuites>
+                    <testsuite name="Unit"><directory>tests</directory></testsuite>
+                    <testsuite name="functional/removed-layer"><directory>functional/removed-layer/tests</directory></testsuite>
+                </testsuites>
+                <source>
+                    <include>
+                        <directory>app</directory>
+                        <directory>functional/removed-layer/src</directory>
+                    </include>
+                </source>
+            </phpunit>
+            XML);
+
+        $this->artisan('osdd:phpunit')->assertExitCode(0);
+        $this->assertContains('functional/removed-layer', $this->texts($this->xpath(), '//testsuites/testsuite/@name'));
+
+        $this->artisan('osdd:phpunit', ['--prune' => true])->assertExitCode(0);
+
+        $xpath = $this->xpath();
+        $this->assertSame(['Unit', 'functional/test-layer'], $this->texts($xpath, '//testsuites/testsuite/@name'));
+        $this->assertSame(['functional/test-layer/src'], $this->texts($xpath, '//source/include/directory'));
+    }
+
+    private function xpath(): \DOMXPath
+    {
+        $dom = new \DOMDocument;
+        $dom->loadXML($this->app['files']->get($this->xmlPath));
+
+        return new \DOMXPath($dom);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function texts(\DOMXPath $xpath, string $expression): array
+    {
+        $texts = [];
+
+        foreach ($xpath->query($expression) as $node) {
+            $texts[] = trim($node->textContent);
+        }
+
+        return $texts;
     }
 
     public function test_it_fails_when_phpunit_xml_is_missing(): void

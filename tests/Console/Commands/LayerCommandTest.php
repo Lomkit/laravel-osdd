@@ -33,6 +33,10 @@ class LayerCommandTest extends TestCase
         $this->app['files']->deleteDirectory($this->app->basePath('functional/my-auth-layer'));
         $this->app['files']->deleteDirectory($this->app->basePath('functional/external-accounts'));
         $this->app['files']->deleteDirectory($this->app->basePath('technical/my-layer'));
+        $this->app['files']->deleteDirectory($this->app->basePath('technical/orders'));
+        $this->app['files']->deleteDirectory($this->app->basePath('functional/orders'));
+        $this->app['files']->deleteDirectory($this->app->basePath('functional/plain-layer'));
+        $this->app['files']->deleteDirectory($this->app->basePath('functional/process-layer'));
 
         if ($this->composerOriginal !== null) {
             $this->app['files']->put($this->composerPath, $this->composerOriginal);
@@ -125,7 +129,7 @@ class LayerCommandTest extends TestCase
             'use Lomkit\Osdd\LayerServiceProvider;',
             'class MyLayerServiceProvider extends LayerServiceProvider',
             "loadMigrationsFrom(__DIR__ . '/../../database/migrations')",
-            'loadSeeders([MyLayerSeeder::class])',
+            '$this->loadSeeders([\Functional\MyLayer\Database\Seeders\MyLayerSeeder::class]);',
             '$this->withRouting(',
             "web: __DIR__ . '/../../routes/web.php'",
             "api: __DIR__ . '/../../routes/api.php'",
@@ -293,19 +297,60 @@ class LayerCommandTest extends TestCase
 
     public function test_it_does_not_duplicate_repository_on_repeat_runs(): void
     {
-        $run = fn () => $this->artisan('osdd:layer')
-            ->expectsQuestion('Layer name', 'my-layer')
+        $run = fn (string $package) => $this->artisan('osdd:layer')
+            ->expectsQuestion('Layer name', $package)
             ->expectsChoice('Which generators should be run?', $this->defaultGenerators(), $this->allGenerators())
             ->expectsConfirmation('Run composer update now?', 'no')
             ->assertExitCode(0);
 
-        $run();
-        $run();
+        $run('my-layer');
+        $run('my-auth-layer');
 
         $composer = json_decode($this->app['files']->get($this->composerPath), true);
 
         $matching = array_filter($composer['repositories'] ?? [], fn ($r) => ($r['url'] ?? '') === './functional/*');
         $this->assertCount(1, $matching);
+    }
+
+    public function test_it_keeps_empty_objects_in_the_root_composer_json(): void
+    {
+        $this->app['files']->put($this->composerPath, <<<'JSON'
+            {
+                "require": {},
+                "require-dev": {},
+                "config": {"allow-plugins": {}, "sort-packages": true}
+            }
+            JSON);
+
+        $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--generators' => ['service-provider']])
+            ->expectsConfirmation('Run composer update now?', 'no')
+            ->assertExitCode(0);
+
+        $composer = json_decode($this->app['files']->get($this->composerPath), false);
+
+        $this->assertEquals(new \stdClass, $composer->{'require-dev'});
+        $this->assertEquals(new \stdClass, $composer->config->{'allow-plugins'});
+        $this->assertSame('*', $composer->require->{'functional/my-layer'});
+    }
+
+    public function test_it_registers_a_layer_bucket_outside_the_project_with_a_relative_url(): void
+    {
+        $outside = sys_get_temp_dir().'/osdd-outside-'.uniqid();
+        $this->app['config']->set('osdd.layers.paths.functional', $outside);
+
+        try {
+            $this->artisan('osdd:layer', ['name' => 'functional/my-layer', '--target-path' => $outside, '--generators' => ['service-provider']])
+                ->expectsConfirmation('Run composer update now?', 'no')
+                ->assertExitCode(0);
+
+            $composer = json_decode($this->app['files']->get($this->composerPath), true);
+            $url = end($composer['repositories'])['url'];
+
+            $this->assertStringStartsWith('../', $url);
+            $this->assertSame(realpath($outside), realpath($this->app->basePath(substr($url, 0, -2))));
+        } finally {
+            $this->app['files']->deleteDirectory($outside);
+        }
     }
 
     public function test_it_skips_composer_registration_when_no_composer_json_exists(): void

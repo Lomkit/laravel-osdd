@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Support\Str;
+use Lomkit\Osdd\Console\Providers\ProviderMethod;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:seeder')]
@@ -26,7 +27,8 @@ class SeederMakeCommand extends \Illuminate\Database\Console\Seeds\SeederMakeCom
         $seederClass = $this->qualifyClass($this->getNameInput());
 
         $this->registerInLayerProvider(
-            "\$this->loadSeeders([\\{$seederClass}::class]);",
+            ProviderMethod::Boot,
+            fn (): string => "\$this->loadSeeders([\\{$seederClass}::class]);",
             $seederClass,
         );
     }
