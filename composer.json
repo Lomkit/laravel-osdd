@@ -16,8 +16,12 @@
         "laravel/framework": "^12.0 || ^13.0"
     },
     "require-dev": {
+        "larastan/larastan": "^3.13",
+        "laravel/pint": "^1.32",
         "orchestra/testbench": "^10.0 || ^11.0",
-        "phpunit/phpunit": "^11.5 || ^12.0 || ^13.0"
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpunit/phpunit": "^11.5 || ^12.0 || ^13.0",
+        "tomasvotruba/type-coverage": "^2.5"
     },
     "conflict": {
         "xefi/laravel-osdd": "*"
@@ -43,7 +47,11 @@
             "Composer\\Config::disableProcessTimeout",
             "@build",
             "@php vendor/bin/testbench serve --ansi"
-        ]
+        ],
+        "test": "phpunit",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "format": "pint",
+        "lint": "pint --test"
     },
     "extra": {
         "laravel": {
