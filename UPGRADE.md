@@ -152,6 +152,25 @@ These classes are internal, but code that used them must follow the move: `Lomki
 
 `osdd:cache` fails and writes nothing while a layer `composer.json` is invalid, so `optimize` reports the `osdd` task as failed: run `php artisan osdd:list` to see the error.
 
+#### Layer listeners are discovered
+
+The listeners in each layer's `src/Listeners` are now registered automatically, as Laravel does for `app/Listeners`: each public `handle*()` or `__invoke()` method listens to the event class of its first parameter. `php artisan event:cache` (and `optimize`) caches them, and `php artisan event:list` shows them. In 2.x a layer listener ran only when registered by hand.
+
+A listener you already register with `Event::listen()` (or `$listen`) in a provider's `boot()`, for the same event and method, still runs once. Check the other cases before you deploy:
+
+- a listener registered later, in a `booted()` callback or at runtime, now runs twice: remove that registration;
+- a listener of `src/Listeners` that you did not register, or registered only under a condition, now runs on every matching event;
+- a listener whose `handle()` takes an interface now runs for every event that implements it, not only for the event you registered it on;
+- an event dispatched while the providers boot does not reach the discovered listeners, which are registered once the application has booted.
+
+Move the classes that must not be discovered out of `src/Listeners`. To keep the 2.x behaviour, turn discovery off in `technical/osdd/config/osdd.php`:
+
+```php
+'events' => [
+    'discover' => false,
+],
+```
+
 #### Default view, translation and component namespace
 
 `withViews()`, `withTranslations()` and `withComponents()` without a namespace now take the package name of the discovered layer that owns the provider: the layer under `osdd.layers.paths` whose `autoload.psr-4` prefix covers the provider class. In 2.x it came from the `composer.json` closest to the provider file, in or out of a layer. A provider that belongs to no discovered layer, or whose layer has no `autoload.psr-4` entry for its namespace, now throws `Lomkit\Osdd\Layers\ProviderLayerNotFoundException` at boot: pass the namespace as second argument (`$this->withViews(__DIR__ . '/../../resources/views', 'orders');`). Layers created by `osdd:layer` or `osdd:start` are not affected.

@@ -22,7 +22,7 @@ Laravel OSDD (Open Source Driven Development) splits your application into layer
 - **Layer boundaries**: `osdd:check` fails when a layer uses a layer it does not require in its `composer.json`, or when layers require each other; `osdd:graph` draws the layer graph.
 - **Cached in production**: `php artisan optimize` caches the discovered layers in `bootstrap/cache/osdd.php` (`osdd:cache`), so a request never scans the layer folders.
 - **One test suite per layer**: `osdd:phpunit` syncs `phpunit.xml` with the test suite of each layer.
-- **Layer listeners, discovered**: with `osdd.events.discover` on, the listeners in each layer's `src/Listeners` are registered for the events their `handle()` method takes, and `php artisan event:cache` (or `optimize`) caches them like the listeners of `app/`.
+- **Layer listeners, discovered**: as Laravel does for `app/Listeners`, the listeners in each layer's `src/Listeners` are registered for the events their `handle()` method takes, and `php artisan event:cache` (or `optimize`) caches them. Set `osdd.events.discover` to `false` to register them by hand.
 - **Removing a layer**: `osdd:remove` refuses a layer that another layer requires, shows what it will change, then removes the layer from the root `composer.json` and `phpunit.xml` and deletes its directory.
 - **Seeders and config per layer**: `LayersSeeder` runs the seeders every layer registers (through `osdd:seed`, `migrate --seed` or `RefreshDatabase`; `osdd:seed --layer` runs the seeders of some layers only), and a layer can override the config of another package.
 - **Laravel Boost**: the package ships a Boost skill, so your agent writes files inside layers, not in `app/`.
