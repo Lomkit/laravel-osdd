@@ -45,6 +45,16 @@ class SeedCommandTest extends TestCase
         $this->assertSame(['Seeder\\First', 'Seeder\\Second'], $registry->seeders());
     }
 
+    public function test_a_seeder_registered_twice_runs_once_with_its_first_priority(): void
+    {
+        $registry = $this->app->make(SeederRegistry::class);
+        $registry->push(5, 'Seeder\\Orders');
+        $registry->push(0, 'Seeder\\Users');
+        $registry->push(-10, '\\Seeder\\Orders');
+
+        $this->assertSame(['Seeder\\Users', 'Seeder\\Orders'], $registry->seeders());
+    }
+
     public function test_it_runs_migrate_fresh_when_fresh_option_is_given(): void
     {
         $this->artisan('osdd:seed --fresh')->assertExitCode(0);
