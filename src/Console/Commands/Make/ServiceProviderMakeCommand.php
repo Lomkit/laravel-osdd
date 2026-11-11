@@ -3,7 +3,6 @@
 namespace Lomkit\Osdd\Console\Commands\Make;
 
 use Illuminate\Foundation\Console\ProviderMakeCommand;
-use Illuminate\Support\Str;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
 use Symfony\Component\Console\Attribute\AsCommand;
 
@@ -34,12 +33,7 @@ class ServiceProviderMakeCommand extends ProviderMakeCommand
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Providers\\', '', $name);
-
-        return $layer->path.'/src/Providers/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 
     #[\Override]

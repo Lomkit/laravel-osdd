@@ -71,11 +71,6 @@ class PolicyMakeCommand extends \Illuminate\Foundation\Console\PolicyMakeCommand
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Policies\\', '', $name);
-
-        return $layer->path.'/src/Policies/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 }

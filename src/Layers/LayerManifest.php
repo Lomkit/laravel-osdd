@@ -6,6 +6,8 @@ use Illuminate\Filesystem\Filesystem;
 
 class LayerManifest
 {
+    private const string DEFAULT_SOURCE_DIRECTORY = 'src/';
+
     /**
      * @param  array{name: string, type?: string, autoload?: array{psr-4?: array<string, string>}}  $data
      */
@@ -46,13 +48,30 @@ class LayerManifest
 
     public function rootNamespace(): string
     {
-        return array_key_first($this->data['autoload']['psr-4'] ?? []) ?? '';
+        return $this->sourceMapping()[0];
     }
 
     public function srcPath(string $layerPath): string
     {
-        $relative = current($this->data['autoload']['psr-4'] ?? ['src/']);
+        return rtrim($layerPath, '/').'/'.trim($this->sourceMapping()[1], '/');
+    }
 
-        return rtrim($layerPath, '/').'/'.trim($relative === false ? '' : $relative, '/');
+    /**
+     * The shortest psr-4 prefix, so a Database\Factories\ entry listed first is not taken for the source.
+     *
+     * @return array{string, string}
+     */
+    private function sourceMapping(): array
+    {
+        $psr4 = $this->data['autoload']['psr-4'] ?? [];
+
+        if ($psr4 === []) {
+            return ['', self::DEFAULT_SOURCE_DIRECTORY];
+        }
+
+        $namespaces = array_keys($psr4);
+        usort($namespaces, fn (string $a, string $b): int => strlen($a) <=> strlen($b));
+
+        return [$namespaces[0], $psr4[$namespaces[0]]];
     }
 }

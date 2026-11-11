@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:controller')]
@@ -32,12 +31,7 @@ class ControllerMakeCommand extends \Illuminate\Routing\Console\ControllerMakeCo
     #[\Override]
     protected function getPath($name): string
     {
-        $layer = $this->resolveLayer();
-        $layerNamespace = rtrim($layer->manifest->rootNamespace(), '\\');
-
-        $relative = Str::replaceFirst($layerNamespace.'\\Http\\Controllers\\', '', $name);
-
-        return $layer->path.'/src/Http/Controllers/'.str_replace('\\', '/', $relative).'.php';
+        return $this->layerSourcePath($name);
     }
 
     /**
