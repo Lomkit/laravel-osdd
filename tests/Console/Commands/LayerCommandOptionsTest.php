@@ -2,6 +2,7 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands;
 
+use Illuminate\Support\Facades\Artisan;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\SeederRegistry;
 use Lomkit\Osdd\Tests\TestCase;
@@ -293,6 +294,53 @@ class LayerCommandOptionsTest extends TestCase
 
         $this->assertSame("update functional/orders\n", file_get_contents($this->fakeBin.'/calls'));
         $this->assertFileExists($this->app->basePath('functional/orders/src/Providers/OrdersServiceProvider.php'));
+    }
+
+    public function test_requires_writes_the_resolved_layers_into_the_new_layer(): void
+    {
+        $this->artisan('osdd:layer', ['name' => 'technical/logging', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'functional/billing', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--requires' => ['billing,technical/logging'], '--no-interaction' => true])
+            ->assertExitCode(0);
+
+        $manifest = json_decode((string) file_get_contents($this->app->basePath('functional/orders/composer.json')), true);
+        $this->assertSame(['lomkit/laravel-osdd' => '*', 'functional/billing' => '*', 'technical/logging' => '*'], $manifest['require']);
+        $this->assertSame(['Functional\\Orders\\Providers\\OrdersServiceProvider'], $manifest['extra']['laravel']['providers']);
+
+        Artisan::call('osdd:graph');
+        $this->assertStringContainsString('functional_orders --> functional_billing'.PHP_EOL.'    functional_orders --> technical_logging', Artisan::output());
+    }
+
+    public function test_requires_refuses_an_unknown_layer_before_writing_anything(): void
+    {
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--requires' => ['functional/shipping'], '--no-interaction' => true])
+            ->expectsOutputToContain('Layer [functional/shipping] not found.')
+            ->assertExitCode(1);
+
+        $this->assertDirectoryDoesNotExist($this->app->basePath('functional/orders'));
+    }
+
+    public function test_requires_refuses_the_layer_itself(): void
+    {
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--requires' => ['orders'], '--force' => true, '--no-interaction' => true])
+            ->expectsOutputToContain('Layer [functional/orders] cannot require itself.')
+            ->assertExitCode(1);
+    }
+
+    public function test_requires_adds_to_the_requirements_of_an_existing_layer_on_force(): void
+    {
+        $this->artisan('osdd:layer', ['name' => 'functional/billing', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['routes'], '--requires' => ['functional/billing'], '--force' => true, '--no-interaction' => true])
+            ->assertExitCode(0);
+
+        $manifest = json_decode((string) file_get_contents($this->app->basePath('functional/orders/composer.json')), true);
+        $this->assertSame(['lomkit/laravel-osdd' => '*', 'functional/billing' => '*'], $manifest['require']);
+        $this->assertSame(['Functional\\Orders\\Providers\\OrdersServiceProvider'], $manifest['extra']['laravel']['providers']);
     }
 
     private function withFakeComposer(\Closure $callback): void

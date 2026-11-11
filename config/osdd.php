@@ -7,4 +7,8 @@ return [
             'technical' => base_path('technical'),
         ],
     ],
+
+    'boundaries' => [
+        'ignore' => [],
+    ],
 ];

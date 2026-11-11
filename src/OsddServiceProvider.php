@@ -5,6 +5,8 @@ namespace Lomkit\Osdd;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\ServiceProvider;
+use Lomkit\Osdd\Console\Commands\CheckCommand;
+use Lomkit\Osdd\Console\Commands\GraphCommand;
 use Lomkit\Osdd\Console\Commands\LayerCommand;
 use Lomkit\Osdd\Console\Commands\ListCommand;
 use Lomkit\Osdd\Console\Commands\Make\CacheTableMakeCommand;
@@ -97,6 +99,8 @@ class OsddServiceProvider extends ServiceProvider
         $this->commands([
             LayerCommand::class,
             ListCommand::class,
+            CheckCommand::class,
+            GraphCommand::class,
             StartCommand::class,
             PhpunitCommand::class,
             SeedCommand::class,

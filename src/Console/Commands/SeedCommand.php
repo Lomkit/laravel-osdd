@@ -4,7 +4,7 @@ namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
 use Lomkit\Osdd\Layers\AmbiguousLayerNameException;
-use Lomkit\Osdd\Layers\Layer;
+use Lomkit\Osdd\Layers\LayerNameList;
 use Lomkit\Osdd\Layers\LayerNotFoundException;
 use Lomkit\Osdd\Layers\LayersCollection;
 use Lomkit\Osdd\Seeders\LayersSeeder;
@@ -74,28 +74,15 @@ class SeedCommand extends Command
      */
     private function layerSelection(): ?SeedersOfLayers
     {
-        $requested = $this->requestedLayers();
+        $requested = LayerNameList::parse((array) $this->option('layer'));
 
         if ($requested === []) {
             return null;
         }
 
         $layers = LayersCollection::fromConfig();
-        $selected = new LayersCollection(array_map($layers->findByName(...), $requested));
 
-        return SeedersOfLayers::of($selected->unique(fn (Layer $layer): string => $layer->manifest->name()), $layers);
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function requestedLayers(): array
-    {
-        /** @var list<string> $options */
-        $options = $this->option('layer');
-        $names = array_map(trim(...), explode(',', implode(',', $options)));
-
-        return array_values(array_unique(array_filter($names, fn (string $name): bool => $name !== '')));
+        return SeedersOfLayers::of($layers->findAllByName($requested), $layers);
     }
 
     /**
