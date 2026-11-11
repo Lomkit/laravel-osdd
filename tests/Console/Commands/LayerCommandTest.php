@@ -2,6 +2,7 @@
 
 namespace Lomkit\Osdd\Tests\Console\Commands;
 
+use Lomkit\Osdd\LayerServiceProvider;
 use Lomkit\Osdd\Tests\TestCase;
 use Orchestra\Testbench\Concerns\InteractsWithPublishedFiles;
 
@@ -121,6 +122,7 @@ class LayerCommandTest extends TestCase
 
         $this->assertFileContains([
             'namespace Functional\MyLayer\Providers;',
+            'use Lomkit\Osdd\LayerServiceProvider;',
             'class MyLayerServiceProvider extends LayerServiceProvider',
             "loadMigrationsFrom(__DIR__ . '/../../database/migrations')",
             'loadSeeders([MyLayerSeeder::class])',
@@ -130,6 +132,10 @@ class LayerCommandTest extends TestCase
             "commands: __DIR__ . '/../../routes/console.php'",
             "channels: __DIR__ . '/../../routes/channels.php'",
         ], 'functional/my-layer/src/Providers/MyLayerServiceProvider.php');
+
+        require_once $this->app->basePath('functional/my-layer/src/Providers/MyLayerServiceProvider.php');
+
+        $this->assertTrue(is_subclass_of('Functional\MyLayer\Providers\MyLayerServiceProvider', LayerServiceProvider::class));
     }
 
     public function test_it_creates_layer_with_selected_generators(): void
@@ -249,6 +255,7 @@ class LayerCommandTest extends TestCase
 
         $this->assertFileContains([
             'namespace Functional\MyAuthLayer\Providers;',
+            'use Lomkit\Osdd\LayerServiceProvider;',
             'class MyAuthLayerServiceProvider extends LayerServiceProvider',
         ], 'functional/my-auth-layer/src/Providers/MyAuthLayerServiceProvider.php');
     }

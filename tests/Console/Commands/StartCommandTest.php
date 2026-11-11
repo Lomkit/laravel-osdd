@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\LayerServiceProvider;
 use Lomkit\Osdd\Tests\TestCase;
 
 class StartCommandTest extends TestCase
@@ -147,9 +148,23 @@ class StartCommandTest extends TestCase
         $contents = file_get_contents($this->projectPath.'/functional/users/src/Providers/UsersServiceProvider.php');
 
         $this->assertStringContainsString('namespace Functional\Users\Providers;', $contents);
+        $this->assertStringContainsString('use Lomkit\Osdd\LayerServiceProvider;', $contents);
         $this->assertStringContainsString('class UsersServiceProvider extends LayerServiceProvider', $contents);
         $this->assertStringContainsString("loadMigrationsFrom(__DIR__ . '/../../database/migrations')", $contents);
         $this->assertStringContainsString('loadSeeders([UsersSeeder::class])', $contents);
+    }
+
+    public function test_the_generated_providers_extend_the_package_layer_service_provider(): void
+    {
+        $this->artisan('osdd:start')
+            ->expectsConfirmation('Run composer update now?', 'no')
+            ->assertExitCode(0);
+
+        require_once $this->projectPath.'/functional/users/src/Providers/UsersServiceProvider.php';
+        require_once $this->projectPath.'/technical/osdd/src/Providers/OsddServiceProvider.php';
+
+        $this->assertTrue(is_subclass_of('Functional\Users\Providers\UsersServiceProvider', LayerServiceProvider::class));
+        $this->assertTrue(is_subclass_of('Technical\Osdd\Providers\OsddServiceProvider', LayerServiceProvider::class));
     }
 
     public function test_it_rebinds_the_auth_user_model_to_the_users_layer(): void
@@ -291,6 +306,7 @@ class StartCommandTest extends TestCase
         $contents = file_get_contents($this->projectPath.'/technical/osdd/src/Providers/OsddServiceProvider.php');
 
         $this->assertStringContainsString('namespace Technical\Osdd\Providers;', $contents);
+        $this->assertStringContainsString('use Lomkit\Osdd\LayerServiceProvider;', $contents);
         $this->assertStringContainsString('class OsddServiceProvider extends LayerServiceProvider', $contents);
         $this->assertStringContainsString('overrideConfigFrom', $contents);
     }
