@@ -32,11 +32,18 @@ final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCom
             return $stub;
         }
 
+        $factory = $this->target()->folder(LayerFolder::Factories)->namespace.str_replace('/', '\\', $this->factoryName());
+
         return str_replace(
             ['{{ factoryNamespace }}', '{{ factoryClass }}'],
-            [rtrim($this->target()->folder(LayerFolder::Factories)->namespace, '\\'), class_basename($name).'Factory'],
+            [Str::beforeLast($factory, '\\'), class_basename($factory)],
             $stub,
         );
+    }
+
+    private function factoryName(): string
+    {
+        return Str::studly($this->argument('name')).'Factory';
     }
 
     #[\Override]
@@ -49,7 +56,7 @@ final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCom
     protected function createFactory(): void
     {
         $this->generateInTargetLayer(FactoryMakeCommand::class, [
-            'name' => Str::studly($this->argument('name')).'Factory',
+            'name' => $this->factoryName(),
             '--model' => $this->qualifyClass($this->getNameInput()),
         ]);
     }
@@ -73,7 +80,7 @@ final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCom
     protected function createSeeder(): void
     {
         $this->generateInTargetLayer(SeederMakeCommand::class, [
-            'name' => Str::studly($this->argument('name')).'Seeder',
+            'name' => Str::studly(class_basename($this->argument('name'))).'Seeder',
         ]);
     }
 
@@ -93,7 +100,7 @@ final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCom
     #[\Override]
     protected function createFormRequests(): void
     {
-        $request = Str::studly($this->argument('name'));
+        $request = Str::studly(class_basename($this->argument('name')));
 
         $this->generateInTargetLayer(RequestMakeCommand::class, ['name' => "Store{$request}Request"]);
         $this->generateInTargetLayer(RequestMakeCommand::class, ['name' => "Update{$request}Request"]);
@@ -103,7 +110,7 @@ final class ModelMakeCommand extends \Illuminate\Foundation\Console\ModelMakeCom
     protected function createPolicy(): void
     {
         $this->generateInTargetLayer(PolicyMakeCommand::class, [
-            'name' => Str::studly($this->argument('name')).'Policy',
+            'name' => Str::studly(class_basename($this->argument('name'))).'Policy',
             '--model' => $this->qualifyClass($this->getNameInput()),
         ]);
     }
