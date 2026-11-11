@@ -31,6 +31,7 @@ abstract class TestCase extends \Orchestra\Testbench\TestCase
     protected function defineEnvironment($app): void
     {
         $app['config']->set('view.compiled', $this->project()->path('storage/framework/views'));
+        $app['config']->set('osdd.events.discover', false);
     }
 
     #[\Override]

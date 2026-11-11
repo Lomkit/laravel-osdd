@@ -13,7 +13,7 @@ use SplFileInfo;
 
 class LayerEventDiscoveryTest extends TestCase
 {
-    private static ?bool $discover = true;
+    private static ?bool $discover = null;
 
     /**
      * @var list<ListenerLayer>
@@ -33,7 +33,7 @@ class LayerEventDiscoveryTest extends TestCase
             $layer->unregister();
         }
 
-        self::$discover = true;
+        self::$discover = null;
         FixtureEventsProvider::reset();
         DiscoverEvents::$guessClassNamesUsingCallback = null;
 
@@ -49,7 +49,7 @@ class LayerEventDiscoveryTest extends TestCase
     #[\Override]
     protected function defineEnvironment($app): void
     {
-        parent::defineEnvironment($app);
+        $app['config']->set('view.compiled', $this->project()->path('storage/framework/views'));
 
         if (self::$discover !== null) {
             $app['config']->set('osdd.events.discover', self::$discover);
@@ -144,16 +144,21 @@ class LayerEventDiscoveryTest extends TestCase
         $this->assertArrayNotHasKey(LayerEventServiceProvider::class, $cache);
     }
 
-    public function test_discovery_turned_on_by_a_layer_config_override_is_honoured(): void
+    public function test_discovery_is_on_without_any_config(): void
     {
-        self::$discover = null;
-        FixtureEventsProvider::$discoverInRegister = true;
+        $this->assertNotNull($this->app->getProvider(LayerEventServiceProvider::class));
+    }
+
+    public function test_discovery_turned_off_by_a_layer_config_override_is_honoured(): void
+    {
+        FixtureEventsProvider::$discoverInRegister = false;
         $layer = $this->listenerLayer();
         $this->refreshApplication();
 
         Event::dispatch(new ($layer->event()));
 
-        $this->assertSame([$layer->listener().'@handle'], ListenerCalls::$calls);
+        $this->assertSame([], ListenerCalls::$calls);
+        $this->assertSame([], $this->app->getProviders(LayerEventServiceProvider::class));
     }
 
     /**
