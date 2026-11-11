@@ -48,8 +48,6 @@ class OsddServiceProvider extends ServiceProvider
             $this->registerCommands();
         }
 
-        $this->publishConfig();
-
         $this->app->booted(function () {
             /** @var list<string> $argv */
             $argv = $_SERVER['argv'] ?? [];
@@ -113,13 +111,6 @@ class OsddServiceProvider extends ServiceProvider
             TestMakeCommand::class,
             TraitMakeCommand::class,
             ViewMakeCommand::class,
-        ]);
-    }
-
-    private function publishConfig(): void
-    {
-        $this->publishes([
-            __DIR__.'/../config/osdd.php' => config_path('osdd.php'),
         ]);
     }
 
