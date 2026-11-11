@@ -1,19 +1,24 @@
-name: Packagist Deploy
+name: packagist
 
 on:
   release:
-    types: [created]
+    types: [ published ]
+
+permissions:
+  contents: read
 
 jobs:
-  publish:
+  update:
+
     runs-on: ubuntu-latest
 
-    permissions:
-      contents: read
+    name: Update Packagist
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: mnavarrocarter/packagist-update@v1.0.0
-        with:
-          username: "GautierDele"
-          api_token: ${{ secrets.PACKAGIST_TOKEN }}
+      - name: Notify Packagist
+        run: |
+          curl --fail --silent --show-error -X POST \
+            -H "Authorization: Bearer GautierDele:${{ secrets.PACKAGIST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"repository":"https://github.com/Lomkit/laravel-osdd"}' \
+            https://packagist.org/api/update-package
