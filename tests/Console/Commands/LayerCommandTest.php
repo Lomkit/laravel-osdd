@@ -135,11 +135,30 @@ class LayerCommandTest extends TestCase
             "api: __DIR__ . '/../../routes/api.php'",
             "commands: __DIR__ . '/../../routes/console.php'",
             "channels: __DIR__ . '/../../routes/channels.php'",
+            "\$this->withViews(__DIR__ . '/../../resources/views');",
+            "\$this->withTranslations(__DIR__ . '/../../lang');",
         ], 'functional/my-layer/src/Providers/MyLayerServiceProvider.php');
 
         require_once $this->app->basePath('functional/my-layer/src/Providers/MyLayerServiceProvider.php');
 
         $this->assertTrue(is_subclass_of('Functional\MyLayer\Providers\MyLayerServiceProvider', LayerServiceProvider::class));
+    }
+
+    public function test_a_layer_sharing_a_package_name_gets_its_own_resource_namespace(): void
+    {
+        $this->app['config']->set('osdd.layers.paths.technical', $this->app->basePath('technical'));
+
+        foreach (['functional/orders', 'technical/orders'] as $name) {
+            $this->artisan('osdd:layer', ['name' => $name, '--generators' => ['service-provider'], '--no-composer-update' => true])->assertExitCode(0);
+        }
+
+        $this->assertFileContains([
+            "\$this->withViews(__DIR__ . '/../../resources/views');",
+        ], 'functional/orders/src/Providers/OrdersServiceProvider.php');
+        $this->assertFileContains([
+            "\$this->withViews(__DIR__ . '/../../resources/views', 'technical-orders');",
+            "\$this->withTranslations(__DIR__ . '/../../lang', 'technical-orders');",
+        ], 'technical/orders/src/Providers/OrdersServiceProvider.php');
     }
 
     public function test_it_creates_layer_with_selected_generators(): void

@@ -19,7 +19,7 @@ trait RegistersInLayerProvider
      *
      * @param  Closure(LayerProvider): string  $statement
      */
-    protected function registerInLayerProvider(ProviderMethod $method, Closure $statement, string $label): void
+    protected function registerInLayerProvider(ProviderMethod $method, Closure $statement, string $label, ?string $existingCall = null): void
     {
         $layer = $this->resolveLayer();
         $provider = LayerProvider::of($layer);
@@ -36,6 +36,10 @@ trait RegistersInLayerProvider
         $source = $files->get($provider->path);
 
         if (str_contains($source, $line)) {
+            return;
+        }
+
+        if ($existingCall !== null && str_contains($source, $existingCall)) {
             return;
         }
 

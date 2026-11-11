@@ -8,9 +8,12 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Lomkit\Osdd\Resources\RegistersLayerResources;
 
 abstract class LayerServiceProvider extends ServiceProvider
 {
+    use RegistersLayerResources;
+
     /**
      * @param  class-string<Seeder>[]  $seeders
      * @param  int  $priority  Lower values run first; ties preserve registration order

@@ -10,12 +10,12 @@ class LayersSeeder extends Seeder
     /**
      * @throws SeederNotFoundException
      */
-    public function run(SeederRegistry $registry): void
+    public function run(SeederRegistry $registry, SeederSelection $selection): void
     {
-        $seeders = $registry->seeders();
+        $seeders = $selection->select($registry->seeders());
 
         if ($seeders === []) {
-            $this->command?->outputComponents()->warn('No OSDD seeders registered. Make sure your layer service providers call loadSeeders().');
+            $this->command?->outputComponents()->warn($selection->nothingSelectedWarning());
 
             return;
         }

@@ -18,6 +18,9 @@ class {{ class }} extends LayerServiceProvider
             commands: __DIR__ . '/../../routes/console.php',
             channels: __DIR__ . '/../../routes/channels.php',
         );
+
+        $this->withViews(__DIR__ . '/../../resources/views'{{ resourceNamespace }});
+        $this->withTranslations(__DIR__ . '/../../lang'{{ resourceNamespace }});
     }
 
     public function register(): void

@@ -8,8 +8,19 @@ use Symfony\Component\Console\Attribute\AsCommand;
 class ViewMakeCommand extends \Illuminate\Foundation\Console\ViewMakeCommand
 {
     use ChoosesOsddLayer;
+    use InjectsResourceHelpers;
 
     protected $name = 'osdd:view';
+
+    #[\Override]
+    public function handle(): ?bool
+    {
+        $created = parent::handle();
+
+        $this->injectWithViews();
+
+        return $created;
+    }
 
     #[\Override]
     protected function rootNamespace(): string

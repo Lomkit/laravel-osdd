@@ -9,9 +9,11 @@ use Symfony\Component\Console\Command\Command;
 class CommandRegistrationTest extends TestCase
 {
     private const GENERATOR_COMMANDS = [
+        'osdd:cache-table',
         'osdd:cast',
         'osdd:channel',
         'osdd:class',
+        'osdd:component',
         'osdd:command',
         'osdd:config',
         'osdd:controller',
@@ -21,20 +23,26 @@ class CommandRegistrationTest extends TestCase
         'osdd:factory',
         'osdd:interface',
         'osdd:job',
+        'osdd:job-middleware',
         'osdd:listener',
         'osdd:mail',
         'osdd:middleware',
         'osdd:migration',
         'osdd:model',
         'osdd:notification',
+        'osdd:notifications-table',
         'osdd:observer',
         'osdd:policy',
         'osdd:provider',
+        'osdd:queue-batches-table',
+        'osdd:queue-failed-table',
+        'osdd:queue-table',
         'osdd:request',
         'osdd:resource',
         'osdd:rule',
         'osdd:scope',
         'osdd:seeder',
+        'osdd:session-table',
         'osdd:test',
         'osdd:trait',
         'osdd:view',
@@ -42,6 +50,7 @@ class CommandRegistrationTest extends TestCase
 
     private const NON_GENERATOR_COMMANDS = [
         'osdd:layer',
+        'osdd:list',
         'osdd:phpunit',
         'osdd:seed',
         'osdd:start',
@@ -92,6 +101,18 @@ class CommandRegistrationTest extends TestCase
         $this->assertTrue($commands['osdd:model']->getDefinition()->hasOption('migration'));
         $this->assertTrue($commands['osdd:controller']->getDefinition()->hasOption('requests'));
         $this->assertTrue($commands['osdd:migration']->getDefinition()->hasOption('create'));
+        $this->assertTrue($commands['osdd:component']->getDefinition()->hasOption('inline'));
+        $this->assertTrue($commands['osdd:component']->getDefinition()->hasOption('view'));
+    }
+
+    public function test_the_table_generators_leave_the_framework_aliases_alone(): void
+    {
+        $all = $this->app->make(Kernel::class)->all();
+
+        foreach (['cache:table' => 'make:cache-table', 'session:table' => 'make:session-table', 'queue:table' => 'make:queue-table', 'queue:failed-table' => 'make:queue-failed-table', 'queue:batches-table' => 'make:queue-batches-table', 'notifications:table' => 'make:notifications-table'] as $alias => $name) {
+            $this->assertSame($name, $all[$alias]->getName());
+            $this->assertSame([], $all[str_replace('make:', 'osdd:', $name)]->getAliases());
+        }
     }
 
     /**
