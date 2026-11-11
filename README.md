@@ -19,6 +19,7 @@ Laravel OSDD (Open Source Driven Development) splits your application into layer
 - **Artisan ready**: most `make:*` class generators (`make:model`, `make:controller`, …) have an `osdd:*` twin that writes the file inside the layer you pick.
 - **One test suite per layer**: `osdd:phpunit` syncs `phpunit.xml` with the test suite of each layer.
 - **Seeders and config per layer**: `LayersSeeder` runs the seeders every layer registers (through `osdd:seed`, `migrate --seed` or `RefreshDatabase`), and a layer can override the config of another package.
+- **Multi-tenant layers**: `--tenant` on `osdd:migration`, `osdd:seeder` and `osdd:model` keeps tenant migrations and seeders out of the central `migrate` and `osdd:seed`, and exposes them to your tenancy package (stancl/tenancy, spatie/laravel-multitenancy or your own loop).
 - **Laravel Boost**: the package ships a Boost skill, so your agent writes files inside layers, not in `app/`.
 
 ## Documentation
@@ -84,7 +85,7 @@ The controller lands in `functional/orders/src/Http/Controllers`, not in `app/`.
 | `osdd:phpunit` | Sync `phpunit.xml` with the test suite and the source directory of each layer |
 | `osdd:*` | Twins of most `make:*` class generators, writing inside a layer |
 
-`php artisan about --only=osdd` lists the discovered layers, the migration paths and the number of registered seeders.
+`php artisan about --only=osdd` lists the discovered layers, the migration paths, the number of registered seeders, and their tenant counterparts.
 
 See the [command reference](https://laravel-osdd.lomkit.com/commands) for every option.
 

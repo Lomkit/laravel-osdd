@@ -43,6 +43,12 @@ php artisan osdd:seed --fresh
 php artisan migrate:fresh --seed --seeder="Lomkit\Osdd\Seeders\LayersSeeder"
 ```
 
+- **Multi-tenant layers**: `--tenant` on `osdd:migration`, `osdd:seeder` and `osdd:model` writes tenant migrations into `{layer}/database/migrations/tenant/` and registers them with `loadTenantMigrationsFrom()` / `loadTenantSeeders()`, never with `loadMigrationsFrom()` / `loadSeeders()`, so `migrate`, `migrate:fresh`, `RefreshDatabase` and `osdd:seed` never see them. The tenancy package receives them through `osdd.tenancy.expose_migration_paths_to`, `Lomkit\Osdd\Tenancy\TenantMigrationPaths` and `Lomkit\Osdd\Seeders\TenantLayersSeeder` (see "Multi-tenant layers"). Example usage:
+
+```bash
+php artisan osdd:model Invoice --layer=functional/billing --migration --seed --tenant
+```
+
 - **Layer-scoped config**: `osdd:config` creates `{layer}/config/{name}.php` and automatically injects `$this->overrideConfigFrom(...)` into the layer's service provider. Example usage:
 
 ```bash
@@ -61,7 +67,7 @@ php artisan osdd:layer functional/orders --generators=service-provider,routes
 php artisan osdd:phpunit
 ```
 
-- **`LayerServiceProvider` base class**: every layer's own provider extends `Lomkit\Osdd\LayerServiceProvider` (not Laravel's `ServiceProvider`) to gain `loadSeeders()`, `overrideConfigFrom()`, and `withRouting()`. Example usage:
+- **`LayerServiceProvider` base class**: every layer's own provider extends `Lomkit\Osdd\LayerServiceProvider` (not Laravel's `ServiceProvider`) to gain `loadSeeders()`, `loadTenantMigrationsFrom()`, `loadTenantSeeders()`, `overrideConfigFrom()`, and `withRouting()`. Example usage:
 
 ```php
 class OrdersServiceProvider extends \Lomkit\Osdd\LayerServiceProvider
@@ -143,10 +149,12 @@ Don't put HTTP plumbing (controllers, requests, routes) in a `technical/` layer 
 
 ## The two service providers
 
-- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `SeederRegistry` singleton, an `OSDD` section in `php artisan about`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers. The `technical/osdd` layer has its own `Technical\Osdd\Providers\OsddServiceProvider`, unrelated to the package's: it is a layer provider like any other.
+- **`Lomkit\Osdd\OsddServiceProvider`** — the package's own provider. Registers all `osdd:*` commands, the `SeederRegistry`, `Lomkit\Osdd\Tenancy\TenantSeederRegistry` and `Lomkit\Osdd\Tenancy\TenantMigrationPaths` singletons, the tenant migration paths exposure (once every provider has booted, when `osdd.tenancy.expose_migration_paths_to` is set), an `OSDD` section in `php artisan about`, and (when `php artisan tinker` runs) builds class-name aliases so you can reference layer models by their short name in tinker without typing the full FQCN. When `php artisan ide-helper:models` runs, it also merges every layer's `src/` directory into `ide-helper.model_locations` (preserving existing locations and de-duplicating) so `barryvdh/laravel-ide-helper` discovers models that live inside layers. The `technical/osdd` layer has its own `Technical\Osdd\Providers\OsddServiceProvider`, unrelated to the package's: it is a layer provider like any other.
 
 - **`Lomkit\Osdd\LayerServiceProvider`** — the abstract base class **every layer's own provider must extend** (not Laravel's `ServiceProvider`). It exposes:
   - `loadSeeders(array $seeders, int $priority = 0)` — registers seeder classes with the global registry. Lower priority runs first. This is the **only** way to make a seeder runnable by `LayersSeeder` and `osdd:seed`.
+  - `loadTenantMigrationsFrom(string ...$paths)` — registers tenant migration folders with `Lomkit\Osdd\Tenancy\TenantMigrationPaths` (absolute, normalised, unique, in registration order). The migrator never receives them, so the central `migrate` cannot run them. Call it outside any `runningInConsole()` check: tenancy packages also migrate a new tenant from an HTTP request.
+  - `loadTenantSeeders(array $seeders, int $priority = 0)` — registers seeders with `Lomkit\Osdd\Tenancy\TenantSeederRegistry`, which `TenantLayersSeeder` reads. Same priority and dedupe rules as `loadSeeders()`; `LayersSeeder` and `osdd:seed` never run them.
   - `overrideConfigFrom(string $path, string $key)` — like `mergeConfigFrom`, but the layer's values win over previously-loaded defaults. Maps are merged key by key at every depth; a list (or an empty array) replaces the loaded value as a whole, so `['queues' => ['high']]` gives `['high']`, not `['high', 'low']`. Used by the technical OSDD layer to override `config('osdd')` from inside the application. Skips the merge when configuration is cached.
   - `withRouting(web:, api:, commands:, channels:, health:, apiPrefix: 'api')` — mounts a layer's route files following Laravel's standard conventions: `web` files in the `web` middleware group, `api` files in the `api` group behind the `apiPrefix`, `commands`/`channels` files `require`d, and `health` registered as a GET endpoint returning `{"status":"ok"}`. Each argument is optional and missing files are skipped. Once routes are cached, `web`, `api` and `health` are skipped (they are in the cache); `commands` and `channels` are always loaded, as in Laravel's own `withRouting()`. For anything beyond these conventions (custom prefixes, domains, named groups), use the `Route` facade directly in `boot()`.
 
@@ -188,6 +196,7 @@ The generated provider wires **migrations** and **routing** (`withRouting()`). I
 
 - `osdd:migration` injects `$this->loadMigrationsFrom(...)` into `boot()` (if not already present).
 - `osdd:seeder` injects `$this->loadSeeders([...])` into `boot()`.
+- `osdd:migration --tenant` injects `$this->loadTenantMigrationsFrom(...)` and `osdd:seeder --tenant` injects `$this->loadTenantSeeders([...])` into `boot()`, never their central counterparts.
 - `osdd:config` injects `$this->overrideConfigFrom(...)` into `register()`, so other packages see the override when they boot.
 
 These injections are idempotent. The provider is the first class of the layer's `extra.laravel.providers` found on disk, else `src/Providers/{Package}ServiceProvider.php`; the `__DIR__` path is computed from its folder. When the layer has no provider, or the provider has no `boot()`/`register()` method, the command prints a warning and the exact line to add by hand: add it.
@@ -297,10 +306,10 @@ Full list of mirrored generators: `cast`, `channel`, `class`, `command`, `config
 
 Notes on a few that diverge from vanilla Laravel:
 
-- **`osdd:model`** — bypasses Laravel's interactive "also create…" prompt. Use the flags directly: `--factory`, `--migration`, `--seed`, `--controller`, `--resource`, `--api`, `--requests`, `--policy`, or `--all`. When `--factory` is set, the generated model uses a custom stub that adds `use HasFactory;` and `#[UseFactory(...)]` pointing at the layer's factory namespace. Without `--factory`, the model is bare — neither the trait nor the attribute is added. **Nested models work**: `osdd:model Admin/User --layer=…` creates `src/Models/Admin/User.php` with namespace `…\Models\Admin`.
+- **`osdd:model`** — bypasses Laravel's interactive "also create…" prompt. Use the flags directly: `--factory`, `--migration`, `--seed`, `--controller`, `--resource`, `--api`, `--requests`, `--policy`, or `--all`. When `--factory` is set, the generated model uses a custom stub that adds `use HasFactory;` and `#[UseFactory(...)]` pointing at the layer's factory namespace. Without `--factory`, the model is bare — neither the trait nor the attribute is added. **Nested models work**: `osdd:model Admin/User --layer=…` creates `src/Models/Admin/User.php` with namespace `…\Models\Admin`. `--tenant` is passed on to the migration and the seeder it creates (`--migration`, `--seed`, `--all`).
 - **`osdd:config <name>`** — creates `{layer}/config/{name}.php` **and** injects `$this->overrideConfigFrom(__DIR__ . '/../../config/{name}.php', '{name}');` into the layer's service provider `register()` method, so the override is in place before other packages boot and read their config. The injection is idempotent; don't add this line by hand. If the layer has no service provider, or the provider has no `register()` method, the config file is still created and the command prints the line to add.
-- **`osdd:migration`** — places the file in the resolved layer's `database/migrations/` directory and injects `$this->loadMigrationsFrom(...)` into the layer provider (idempotent). The generated provider already loads migrations, so this is usually a no-op for the standard layout.
-- **`osdd:seeder`** — creates the seeder **and** injects `$this->loadSeeders([\…\YourSeeder::class]);` into the layer provider's `boot()` (idempotent). You no longer have to wire `loadSeeders()` by hand for generated seeders — but a hand-written seeder still needs the call added manually.
+- **`osdd:migration`** — places the file in the resolved layer's `database/migrations/` directory and injects `$this->loadMigrationsFrom(...)` into the layer provider (idempotent). The generated provider already loads migrations, so this is usually a no-op for the standard layout. With `--tenant`, the file goes into `{layer}/{osdd.tenancy.migrations}` (default `database/migrations/tenant/`) and the provider gets `$this->loadTenantMigrationsFrom(__DIR__ . '/../../database/migrations/tenant');` instead.
+- **`osdd:seeder`** — creates the seeder **and** injects `$this->loadSeeders([\…\YourSeeder::class]);` into the layer provider's `boot()` (idempotent). You no longer have to wire `loadSeeders()` by hand for generated seeders — but a hand-written seeder still needs the call added manually. With `--tenant`, the seeder stays in `database/seeders/` and the provider gets `$this->loadTenantSeeders([\…\YourSeeder::class]);` instead.
 - **`osdd:test`** — `--unit` switches the namespace to `Tests\Unit` and the path to `tests/Unit/`; otherwise it's `Tests\Feature` / `tests/Feature/`.
 - **`osdd:policy --model=Name`** — generates a full Laravel policy with type-hinted model methods (`viewAny`, `view`, `create`, …). Without `--model`, a minimal stub class is generated.
 - **`--model` across layers** (`osdd:policy`, `osdd:controller`, `osdd:observer`, `osdd:factory`) — a short name (`--model=Order`) is qualified under the current layer (`…\Models\Order`); a fully qualified class of another layer or of a package (`--model='Functional\Users\Models\User'`) is kept as is. Pass the full class name to reference another layer's model.
@@ -367,12 +376,108 @@ return [
             'technical'  => base_path('technical'),
         ],
     ],
+
+    'tenancy' => [
+        'migrations'                => 'database/migrations/tenant',
+        'expose_migration_paths_to' => null,
+    ],
 ];
 ```
+
+`osdd.tenancy.migrations` is the tenant migration folder, relative to each layer root, used by `osdd:migration --tenant`. `osdd.tenancy.expose_migration_paths_to` is a config key (dot path) that receives every tenant migration path; `null` turns the exposure off. See "Multi-tenant layers".
 
 `LayersCollection::fromConfig()` reads `config('osdd.layers.paths')`, scans each path **recursively**, and treats any directory containing a `composer.json` with `"type": "layer"` as a layer. Nested layers (e.g. `functional/billing/invoices/`) are supported as long as each level satisfies that contract; once a layer is matched at a given depth, scanning stops descending into it.
 
 To add a new category (e.g. `support/`), append it to `osdd.layers.paths` from inside the `technical/osdd` layer's `Technical\Osdd\Providers\OsddServiceProvider::register()` using `$this->overrideConfigFrom(...)`. Don't edit the package's own `config/osdd.php` directly.
+
+## Multi-tenant layers
+
+For an application with one database per tenant (or a tenant connection), a layer keeps two migration folders:
+
+- `{layer}/database/migrations/` — central tables, registered with `loadMigrationsFrom()`, run by `migrate`;
+- `{layer}/database/migrations/tenant/` — tenant tables, registered with `loadTenantMigrationsFrom()`, run only by the tenancy package.
+
+Laravel's migrator does not read sub-folders, so `migrate`, `migrate:fresh` and `RefreshDatabase` never run the tenant folder. Generate tenant files with `--tenant`:
+
+```bash
+php artisan osdd:migration create_invoices_table --create=invoices --layer=functional/billing --tenant
+php artisan osdd:seeder InvoicesSeeder --layer=functional/billing --tenant
+php artisan osdd:model Invoice --layer=functional/billing --migration --seed --tenant
+```
+
+The layer provider then contains:
+
+```php
+public function boot(): void
+{
+    $this->loadTenantMigrationsFrom(__DIR__ . '/../../database/migrations/tenant');
+    $this->loadTenantSeeders([\Functional\Billing\Database\Seeders\InvoicesSeeder::class]);
+}
+```
+
+OSDD never loops over tenants and depends on no tenancy package. It exposes the tenant side three ways:
+
+- `Lomkit\Osdd\Tenancy\TenantMigrationPaths` (container singleton): `app(TenantMigrationPaths::class)->all()` returns the absolute tenant migration folders of every layer.
+- `osdd.tenancy.expose_migration_paths_to`: once every provider has booted, that config key is set to its existing values plus the tenant paths (no duplicates, also with `config:cache`).
+- `Lomkit\Osdd\Seeders\TenantLayersSeeder`: runs every seeder registered with `loadTenantSeeders()`, in priority order. Run it per tenant with `db:seed --class="Lomkit\Osdd\Seeders\TenantLayersSeeder"`.
+
+The paths are absolute: any `migrate --path=...` call needs `--realpath`.
+
+### stancl/tenancy
+
+In `technical/osdd/config/osdd.php`:
+
+```php
+'tenancy' => [
+    'expose_migration_paths_to' => 'tenancy.migration_parameters.--path',
+],
+```
+
+In the tenancy config (in an OSDD project, a layer file such as `technical/tenancy/config/tenancy.php` loaded with `$this->overrideConfigFrom(..., 'tenancy')`):
+
+```php
+'migration_parameters' => [
+    '--force' => true,
+    '--path' => [database_path('migrations/tenant')],
+    '--realpath' => true,
+],
+
+'seeder_parameters' => [
+    '--class' => \Lomkit\Osdd\Seeders\TenantLayersSeeder::class,
+],
+```
+
+`tenants:migrate` and `tenants:seed` (and the tenant creation jobs) then run the layer tenant migrations and seeders. The app's own `database_path('migrations/tenant')` stays in the list. OSDD never writes `seeder_parameters` itself: set it, or call `TenantLayersSeeder` from your own tenant seeder.
+
+### spatie/laravel-multitenancy (or your own loop)
+
+Leave `expose_migration_paths_to` at `null` and read `TenantMigrationPaths` in a command, for example in a layer's `routes/console.php`:
+
+```php
+use Illuminate\Support\Facades\Artisan;
+use Lomkit\Osdd\Seeders\TenantLayersSeeder;
+use Lomkit\Osdd\Tenancy\TenantMigrationPaths;
+use Spatie\Multitenancy\Models\Tenant;
+
+Artisan::command('tenants:migrate-layers {--seed}', function (TenantMigrationPaths $paths) {
+    if ($paths->all() === []) {
+        return;
+    }
+
+    Tenant::all()->eachCurrent(function () use ($paths) {
+        $this->call('migrate', ['--database' => 'tenant', '--path' => $paths->all(), '--realpath' => true, '--force' => true]);
+
+        if ($this->option('seed')) {
+            $this->call('db:seed', ['--database' => 'tenant', '--class' => TenantLayersSeeder::class, '--force' => true]);
+        }
+    });
+});
+```
+
+Keep the empty-list guard: `migrate` with an empty `--path` falls back to the central migration paths and would run them on the tenant database.
+`tenant` stands for the tenant connection name of your setup (`multitenancy.tenant_database_connection_name`).
+
+Not handled by OSDD: tenant routes, tenant-aware `withRouting()`, a `--tenant` option on `osdd:layer`, and the model's `$connection` (set it in the model when the tenancy package needs it).
 
 ## Idiomatic file content
 
@@ -549,9 +654,10 @@ When a user asks "where should I add X?", the answer is always "in the layer res
 
 When debugging an OSDD project:
 
-- **Overview** — `php artisan about --only=osdd` lists the discovered layers with their paths, the migration paths registered by the providers, and the number of registered seeders (`php artisan about --only=osdd --json` for a machine-readable copy, under the `o_s_d_d` key).
+- **Overview** — `php artisan about --only=osdd` lists the discovered layers with their paths, the migration paths registered by the providers, the number of registered seeders, the tenant migration paths and the number of tenant seeders (`php artisan about --only=osdd --json` for a machine-readable copy, under the `o_s_d_d` key).
 - **List discovered layers** — start `tinker` and run `Lomkit\Osdd\Layers\LayersCollection::fromConfig()->map(fn($l) => $l->manifest->name())->all();`. If a directory you expect isn't listed, its `composer.json` is missing `"type": "layer"` or the directory isn't under a path in `config('osdd.layers.paths')`.
 - **List registered seeders** — `app(\Lomkit\Osdd\SeederRegistry::class)->seeders();`. Empty? No layer provider called `loadSeeders()`.
+- **Tenant side** — `app(\Lomkit\Osdd\Tenancy\TenantMigrationPaths::class)->all()` and `app(\Lomkit\Osdd\Tenancy\TenantSeederRegistry::class)->seeders()`. A tenant path must never show up in `app('migrator')->paths()`; if it does, a provider registers it with `loadMigrationsFrom()` instead of `loadTenantMigrationsFrom()`.
 - **List layer providers actually loaded** — `app()->getLoadedProviders()` and filter by namespace.
 - **Check Composer wiring** — the root `composer.json` should have a `repositories[]` entry of type `path` with URL `./functional/*` (and/or `./technical/*`) and a `require` entry like `"functional/orders": "*"` for each layer. If a layer's classes don't autoload, run `composer dump-autoload` first; if that fails, the layer's `composer.json` is malformed.
 - **Re-sync `phpunit.xml`** — run `osdd:phpunit` after creating a layer. If `vendor/bin/phpunit --testsuite=functional/orders` reports "unknown testsuite", the sync hasn't run.
