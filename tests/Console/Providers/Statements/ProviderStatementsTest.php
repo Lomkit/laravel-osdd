@@ -13,6 +13,7 @@ use Lomkit\Osdd\Console\Providers\Statements\OverrideConfig;
 use Lomkit\Osdd\Console\Providers\Statements\ProviderStatement;
 use Lomkit\Osdd\Console\Providers\Statements\RegisterCommand;
 use Lomkit\Osdd\Console\Providers\Statements\WithComponents;
+use Lomkit\Osdd\Console\Providers\Statements\WithLivewire;
 use Lomkit\Osdd\Console\Providers\Statements\WithTranslations;
 use Lomkit\Osdd\Console\Providers\Statements\WithViews;
 use Lomkit\Osdd\Layers\Layer;
@@ -47,6 +48,8 @@ class ProviderStatementsTest extends TestCase
         yield 'translations of a shared package name' => [new WithTranslations($shared), ProviderMethod::Boot, "\$this->withTranslations(__DIR__ . '/../../lang', 'technical-orders');", 'lang'];
         yield 'components' => [new WithComponents('Functional\Orders\View\Components\\', $default), ProviderMethod::Boot, "\$this->withComponents('Functional\\\\Orders\\\\View\\\\Components');", 'Functional\Orders\View\Components'];
         yield 'components of a shared package name' => [new WithComponents('Technical\Orders\View\Components', $shared), ProviderMethod::Boot, "\$this->withComponents('Technical\\\\Orders\\\\View\\\\Components', 'technical-orders');", 'Technical\Orders\View\Components'];
+        yield 'livewire' => [new WithLivewire($default), ProviderMethod::Boot, '$this->withLivewire();', 'livewire:orders'];
+        yield 'livewire of a shared package name' => [new WithLivewire($shared), ProviderMethod::Boot, "\$this->withLivewire('technical-orders');", 'livewire:technical-orders'];
     }
 
     #[DataProvider('statements')]

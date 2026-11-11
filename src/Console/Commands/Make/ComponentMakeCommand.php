@@ -2,7 +2,6 @@
 
 namespace Lomkit\Osdd\Console\Commands\Make;
 
-use Lomkit\Osdd\Console\Providers\BootedLayerResources;
 use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Symfony\Component\Console\Attribute\AsCommand;
 
@@ -39,20 +38,12 @@ final class ComponentMakeCommand extends \Illuminate\Foundation\Console\Componen
 
         $view = $this->getView();
 
-        return str_replace("view('{$view}')", "view('{$this->viewNamespace()}::{$view}')", $class);
+        return str_replace("view('{$view}')", "view('{$this->layerViewNamespace()}::{$view}')", $class);
     }
 
     #[\Override]
     protected function viewPath($path = ''): string
     {
         return $this->target()->viewPath($path);
-    }
-
-    private function viewNamespace(): string
-    {
-        $target = $this->target();
-
-        return $this->laravel->make(BootedLayerResources::class)->viewNamespace($target->layer)
-            ?? $target->resourceNamespace->name();
     }
 }

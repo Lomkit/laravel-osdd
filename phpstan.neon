@@ -6,6 +6,9 @@ includes:
 parameters:
     paths:
         - src
+    scanFiles:
+        - phpstan/livewire.php
+        - phpstan/filament.php
     level: 10
     phpVersion: 80300
     checkMissingOverrideMethodAttribute: true

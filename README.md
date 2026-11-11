@@ -18,6 +18,7 @@ Laravel OSDD (Open Source Driven Development) splits your application into layer
 - **Independent layers**: every domain lives in its own package, installed through a local path repository.
 - **Artisan ready**: every `make:*` generator of Laravel (`make:model`, `make:component`, `make:queue-table`, …) has an `osdd:*` twin that writes the file inside the layer you pick.
 - **Views, translations, components and commands per layer**: `withViews()`, `withTranslations()` and `withComponents()` register them under the layer name (`view('orders::index')`, `<x-orders::alert />`), and `osdd:view`, `osdd:component` and `osdd:command` wire what they generate into the layer provider.
+- **Livewire and Filament, optional**: with Livewire 4, `withLivewire()` registers the layer components under the layer name (`<livewire:orders::cart />`) and `osdd:livewire` generates them in the layer. With Filament 5, the `Lomkit\Osdd\Filament\LayersPlugin` panel plugin discovers the resources, pages, widgets and clusters of every layer in `src/Filament/{Panel}/`, and Filament's own `make:filament-*` commands can write into a layer. Neither package is required.
 - **Layer inventory**: `osdd:list` shows every layer with its contents and health (`--json` for scripts and agents). A broken layer `composer.json` is listed with its error instead of stopping the command.
 - **Layer boundaries**: `osdd:check` fails when a layer uses a layer it does not require in its `composer.json`, or when layers require each other; `osdd:graph` draws the layer graph.
 - **Cached in production**: `php artisan optimize` caches the discovered layers in `bootstrap/cache/osdd.php` (`osdd:cache`), so a request never scans the layer folders.
@@ -111,6 +112,7 @@ Run it in CI with `php artisan osdd:check --format=github` to get the violations
 | `osdd:remove` | Remove a layer that no other layer requires: its root `require` entry, its path repository when no other package uses it, its `phpunit.xml` entries and its directory (`--keep-files`, `--force`) |
 | `osdd:cache` / `osdd:clear` | Cache the discovered layers in `bootstrap/cache/osdd.php`, or remove that cache. `php artisan optimize` and `optimize:clear` run them |
 | `osdd:*` | Twins of the `make:*` generators (`osdd:model`, `osdd:component`, `osdd:queue-table`, …), writing inside a layer and wiring the layer provider |
+| `osdd:livewire` | Generate a Livewire component in a layer and register the layer with `withLivewire()` (only with Livewire 4 installed) |
 
 `php artisan about --only=osdd` lists the discovered layers, the migration paths and the number of registered seeders.
 
