@@ -35,7 +35,7 @@ final readonly class LayerSummary
     }
 
     /**
-     * @return array{name: string, path: string, namespace: string, providers: list<string>, requires: list<string>, counts: array<string, int>, health: array<string, bool>}
+     * @return array{name: string, path: string, namespace: string, providers: list<string>, requires: list<string>, counts: array<string, int>, health: array<string, ?bool>}
      */
     public function toArray(): array
     {
