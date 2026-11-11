@@ -19,7 +19,7 @@ class CheckCommand extends Command
     protected $signature = 'osdd:check
         {--layer=* : Only check these layers (full or package name, repeatable or comma separated)}
         {--format=text : Output format: text, json or github}
-        {--strict : Only allow the layers required directly, not the layers they require}';
+        {--transitive : Also allow the layers that the required layers require}';
 
     protected $description = 'Check that each OSDD layer only uses the layers it requires';
 
@@ -36,7 +36,7 @@ class CheckCommand extends Command
         $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
         $requested = LayerNameList::parse((array) $this->option('layer'));
         $selected = $requested === [] ? $layers : $layers->findAll($requested);
-        $check = BoundaryCheck::of($layers, BoundaryIgnoreList::fromConfig(), (bool) $this->option('strict'), $this->laravel->basePath());
+        $check = BoundaryCheck::of($layers, BoundaryIgnoreList::fromConfig(), ! (bool) $this->option('transitive'), $this->laravel->basePath());
 
         $report = $check->run($selected);
         $format->renderer()->render($report, $this->output);
