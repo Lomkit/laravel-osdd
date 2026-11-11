@@ -28,24 +28,6 @@ class StubReferencesTest extends TestCase
         $this->assertSame([], $violations);
     }
 
-    public function test_stubs_require_the_lomkit_package(): void
-    {
-        $required = [];
-
-        foreach ($this->stubContents() as $stub => $contents) {
-            preg_match_all('#"[a-z0-9_.-]+/laravel-osdd"#', $contents, $matches);
-
-            foreach ($matches[0] as $package) {
-                $required[] = "{$stub}: {$package}";
-            }
-        }
-
-        $this->assertSame([
-            'layer/composer.stub: "lomkit/laravel-osdd"',
-            'layer/osdd-composer.stub: "lomkit/laravel-osdd"',
-        ], $required);
-    }
-
     private function violation(string $name): ?string
     {
         $root = strstr($name, '\\', true);

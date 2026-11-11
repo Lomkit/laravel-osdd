@@ -7,6 +7,7 @@ use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Filesystem\Filesystem;
 use Illuminate\Foundation\Console\AboutCommand;
 use Illuminate\Support\ServiceProvider;
+use Lomkit\Osdd\Composer\RootComposerJson;
 use Lomkit\Osdd\Console\Commands\CacheCommand;
 use Lomkit\Osdd\Console\Commands\CheckCommand;
 use Lomkit\Osdd\Console\Commands\ClearCommand;
@@ -61,6 +62,7 @@ use Lomkit\Osdd\Layers\LayerDiscovery;
 use Lomkit\Osdd\Layers\Layers;
 use Lomkit\Osdd\Layers\RefreshCacheAfterPackageDiscovery;
 use Lomkit\Osdd\Resources\ResourceNamespaces;
+use Lomkit\Osdd\Scaffolding\LayerScaffolds;
 use Lomkit\Osdd\Seeders\AllRegisteredSeeders;
 use Lomkit\Osdd\Seeders\SeederRegistry;
 use Lomkit\Osdd\Seeders\SeederSelection;
@@ -108,6 +110,8 @@ class OsddServiceProvider extends ServiceProvider
             ?? $app->make(LayerDiscovery::class)->discover());
         $this->app->singleton(SeederRegistry::class, fn () => new SeederRegistry);
         $this->app->singleton(ResourceNamespaces::class);
+        $this->app->singleton(LayerScaffolds::class, fn (): LayerScaffolds => LayerScaffolds::standard());
+        $this->app->bind(RootComposerJson::class, fn (Application $app): RootComposerJson => new RootComposerJson($app->make(Filesystem::class), $app->basePath()));
         $this->app->bind(SeederSelection::class, AllRegisteredSeeders::class);
 
         $this->app->singleton(MigrateMakeCommand::class, fn (Application $app): MigrateMakeCommand => new MigrateMakeCommand(

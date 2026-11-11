@@ -9,10 +9,9 @@ final class StubWriter
     public function __construct(private readonly Filesystem $files) {}
 
     /**
-     * @param  string  $stub  Path under src/Stubs, without the .stub extension (layer/composer)
      * @param  array<string, string>  $replacements
      */
-    public function write(string $stub, string $target, array $replacements = []): void
+    public function write(Stub $stub, string $target, array $replacements = []): void
     {
         $this->files->ensureDirectoryExists(dirname($target));
 
@@ -22,9 +21,9 @@ final class StubWriter
     /**
      * @param  array<string, string>  $replacements
      */
-    public function render(string $stub, array $replacements = []): string
+    public function render(Stub $stub, array $replacements = []): string
     {
-        $contents = $this->files->get(__DIR__.'/'.$stub.'.stub');
+        $contents = $this->files->get($stub->path());
 
         return str_replace(array_keys($replacements), array_values($replacements), $contents);
     }

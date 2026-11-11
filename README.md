@@ -53,7 +53,7 @@ php artisan osdd:layer
 The command asks where to create the layer (functional or technical), its name and the files to generate, then registers the layer in your root `composer.json`. In a script, name the layer and pick the generators:
 
 ```bash
-php artisan osdd:layer functional/orders --generators=migration,model,factory,service-provider,test --composer-update
+php artisan osdd:layer functional/orders --generators=migration,model,factory,provider,test --composer-update
 ```
 
 ```

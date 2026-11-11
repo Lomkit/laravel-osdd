@@ -1,0 +1,46 @@
+<?php
+
+namespace Lomkit\Osdd\Scaffolding;
+
+use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\ComposerJsonFile;
+use Lomkit\Osdd\Layers\LayerDirectory;
+use Lomkit\Osdd\Layers\LayerFolder;
+use Lomkit\Osdd\Layers\RefreshLayers;
+use Lomkit\Osdd\Stubs\Stub;
+use Lomkit\Osdd\Stubs\StubWriter;
+
+final readonly class DraftFiles
+{
+    public function __construct(
+        private Filesystem $files,
+        private StubWriter $stubs,
+        private RefreshLayers $refreshLayers,
+        private LayerDirectory $directory,
+    ) {}
+
+    /**
+     * @param  array<string, string>  $replacements
+     */
+    public function write(Stub $stub, string $relativePath, array $replacements = []): void
+    {
+        $this->stubs->write($stub, $this->directory->pathTo($relativePath), $replacements);
+    }
+
+    public function hasMatching(LayerFolder $folder, string $pattern): bool
+    {
+        return $this->files->glob($this->directory->path($folder).'/'.$pattern) !== [];
+    }
+
+    /**
+     * Declare the provider in the layer's extra.laravel.providers, then discover the layers again.
+     */
+    public function declareProvider(string $provider): void
+    {
+        $composer = ComposerJsonFile::open($this->files, $this->directory->manifestFile());
+        $composer->addLaravelProvider($provider);
+        $composer->save();
+
+        ($this->refreshLayers)();
+    }
+}

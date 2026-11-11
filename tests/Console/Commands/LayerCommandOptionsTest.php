@@ -61,7 +61,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_it_takes_the_bucket_from_the_vendor_when_not_interactive(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'technical/logging', '--generators' => ['service-provider'], '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => 'technical/logging', '--generators' => ['provider'], '--no-interaction' => true])
             ->assertExitCode(0);
 
         $this->assertFileExists($this->app->basePath('technical/logging/composer.json'));
@@ -70,7 +70,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_it_takes_the_bucket_from_the_vendor_without_asking(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-composer-update' => true])
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-composer-update' => true])
             ->assertExitCode(0);
 
         $this->assertFileExists($this->app->basePath('functional/orders/composer.json'));
@@ -121,10 +121,22 @@ class LayerCommandOptionsTest extends TestCase
     public function test_it_rejects_an_unknown_generator_and_lists_the_valid_ones(): void
     {
         $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['model,modle'], '--no-interaction' => true])
-            ->expectsOutputToContain('Unknown generator [modle]. Valid generators: migration, model, factory, seeder, service-provider, test, controller, policy, routes.')
+            ->expectsOutputToContain('Unknown generator [modle]. Valid generators: migration, model, factory, seeder, provider, test, controller, policy, routes.')
             ->assertExitCode(1);
 
         $this->assertDirectoryDoesNotExist($this->app->basePath('functional/orders'));
+    }
+
+    public function test_the_provider_generator_is_named_provider(): void
+    {
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])
+            ->expectsOutputToContain('Unknown generator [service-provider].')
+            ->assertExitCode(1);
+
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])
+            ->assertExitCode(0);
+
+        $this->assertFileExists($this->app->basePath('functional/orders/src/Providers/OrdersServiceProvider.php'));
     }
 
     /**
@@ -145,7 +157,7 @@ class LayerCommandOptionsTest extends TestCase
     {
         $before = $this->app['files']->get($this->composerPath);
 
-        $this->artisan('osdd:layer', ['name' => $name, '--generators' => ['service-provider'], '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => $name, '--generators' => ['provider'], '--no-interaction' => true])
             ->expectsOutputToContain($message)
             ->assertExitCode(1);
 
@@ -164,7 +176,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_it_refuses_an_existing_layer(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])
             ->assertExitCode(0);
 
         $provider = $this->app->basePath('functional/orders/src/Providers/OrdersServiceProvider.php');
@@ -181,13 +193,13 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_force_overwrites_an_existing_layer(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider', 'model'], '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider', 'model'], '--no-interaction' => true])
             ->assertExitCode(0);
 
         $provider = $this->app->basePath('functional/orders/src/Providers/OrdersServiceProvider.php');
         file_put_contents($provider, "<?php // edited by hand\n");
 
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider', 'model'], '--force' => true, '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider', 'model'], '--force' => true, '--no-interaction' => true])
             ->assertExitCode(0);
 
         $this->assertStringContainsString('class OrdersServiceProvider extends LayerServiceProvider', (string) file_get_contents($provider));
@@ -208,7 +220,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_a_seeder_added_later_is_registered_once(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'functional/seeded-layer', '--generators' => ['seeder', 'service-provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'functional/seeded-layer', '--generators' => ['seeder', 'provider'], '--no-interaction' => true])->assertExitCode(0);
         $this->artisan('osdd:seeder', ['name' => 'SeededLayerSeeder', '--layer' => 'functional/seeded-layer'])->assertExitCode(0);
 
         $provider = $this->app->basePath('functional/seeded-layer/src/Providers/SeededLayerServiceProvider.php');
@@ -222,7 +234,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_it_does_not_run_composer_update_when_not_interactive(): void
     {
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])
+        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])
             ->expectsOutputToContain('composer update functional/orders')
             ->assertExitCode(0));
 
@@ -231,7 +243,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_composer_update_option_runs_it_without_asking(): void
     {
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--composer-update' => true, '--no-interaction' => true])
+        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--composer-update' => true, '--no-interaction' => true])
             ->assertExitCode(0));
 
         $this->assertSame("update functional/orders\n", file_get_contents($this->fakeBin.'/calls'));
@@ -239,7 +251,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_no_composer_update_option_skips_the_question(): void
     {
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-composer-update' => true])
+        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-composer-update' => true])
             ->assertExitCode(0));
 
         $this->assertFileDoesNotExist($this->fakeBin.'/calls');
@@ -248,7 +260,7 @@ class LayerCommandOptionsTest extends TestCase
     public function test_without_a_terminal_it_creates_the_layer_and_skips_composer_update(): void
     {
         $process = new Process(
-            [PHP_BINARY, 'vendor/bin/testbench', 'osdd:layer', 'functional/process-layer', '--generators=service-provider,test'],
+            [PHP_BINARY, 'vendor/bin/testbench', 'osdd:layer', 'functional/process-layer', '--generators=provider,test'],
             dirname(__DIR__, 3),
             ['PATH' => $this->fakeBin.PATH_SEPARATOR.getenv('PATH')],
         );
@@ -263,7 +275,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_force_keeps_the_existing_layer_composer_json(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])
             ->assertExitCode(0);
 
         $layerComposerPath = $this->app->basePath('functional/orders/composer.json');
@@ -288,7 +300,7 @@ class LayerCommandOptionsTest extends TestCase
     {
         file_put_contents($this->fakeBin.'/composer', "#!/bin/sh\necho \"\$@\" >> \"{$this->fakeBin}/calls\"\nexit 1\n");
 
-        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--composer-update' => true, '--no-interaction' => true])
+        $this->withFakeComposer(fn () => $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--composer-update' => true, '--no-interaction' => true])
             ->expectsOutputToContain('composer update failed')
             ->assertExitCode(1));
 
@@ -298,10 +310,10 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_requires_writes_the_resolved_layers_into_the_new_layer(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'technical/logging', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
-        $this->artisan('osdd:layer', ['name' => 'functional/billing', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'technical/logging', '--generators' => ['provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'functional/billing', '--generators' => ['provider'], '--no-interaction' => true])->assertExitCode(0);
 
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--requires' => ['billing,technical/logging'], '--no-interaction' => true])
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--requires' => ['billing,technical/logging'], '--no-interaction' => true])
             ->assertExitCode(0);
 
         $manifest = json_decode((string) file_get_contents($this->app->basePath('functional/orders/composer.json')), true);
@@ -323,7 +335,7 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_requires_refuses_the_layer_itself(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])->assertExitCode(0);
 
         $this->artisan('osdd:layer', ['name' => 'functional/orders', '--requires' => ['orders'], '--force' => true, '--no-interaction' => true])
             ->expectsOutputToContain('Layer [functional/orders] cannot require itself.')
@@ -332,8 +344,8 @@ class LayerCommandOptionsTest extends TestCase
 
     public function test_requires_adds_to_the_requirements_of_an_existing_layer_on_force(): void
     {
-        $this->artisan('osdd:layer', ['name' => 'functional/billing', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
-        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['service-provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'functional/billing', '--generators' => ['provider'], '--no-interaction' => true])->assertExitCode(0);
+        $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['provider'], '--no-interaction' => true])->assertExitCode(0);
 
         $this->artisan('osdd:layer', ['name' => 'functional/orders', '--generators' => ['routes'], '--requires' => ['functional/billing'], '--force' => true, '--no-interaction' => true])
             ->assertExitCode(0);

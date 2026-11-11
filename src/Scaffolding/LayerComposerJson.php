@@ -4,44 +4,29 @@ namespace Lomkit\Osdd\Scaffolding;
 
 use Illuminate\Filesystem\Filesystem;
 use Lomkit\Osdd\Composer\ComposerJsonFile;
-use Lomkit\Osdd\Layers\LayerName;
-use Lomkit\Osdd\Stubs\StubWriter;
+use Lomkit\Osdd\Composer\LayerComposerManifest;
 
 final class LayerComposerJson
 {
-    private const string LAYER_CONSTRAINT = '*';
-
-    public function __construct(
-        private readonly Filesystem $files,
-        private readonly StubWriter $stubs,
-    ) {}
+    public function __construct(private readonly Filesystem $files) {}
 
     /**
-     * A new layer gets the stub; an existing composer.json keeps its content and only gains the stub keys it lacks.
-     *
-     * @param  list<string>  $requiredLayers
+     * A new layer gets the whole manifest; an existing composer.json keeps its content and only gains the keys it lacks.
      */
-    public function write(LayerName $name, string $path, array $requiredLayers = []): void
+    public function write(LayerComposerManifest $manifest, string $path): void
     {
-        $replacements = [
-            '{{ name }}' => $name->toString(),
-            '{{ namespace }}' => str_replace('\\', '\\\\', $name->namespace()),
-        ];
-        $isNew = ! $this->files->exists($path);
+        $this->files->ensureDirectoryExists(dirname($path));
 
-        if ($isNew) {
-            $this->stubs->write('layer/composer', $path, $replacements);
+        $composer = $this->files->exists($path)
+            ? ComposerJsonFile::open($this->files, $path)
+            : ComposerJsonFile::create($this->files, $path);
+
+        $composer->addMissing($manifest->toObject());
+
+        foreach ($manifest->requiredLayers as $requiredLayer) {
+            $composer->requirePackage($requiredLayer, LayerComposerManifest::CONSTRAINT);
         }
 
-        if (! $isNew || $requiredLayers !== []) {
-            $composer = ComposerJsonFile::open($this->files, $path);
-            $composer->addMissing($this->stubs->render('layer/composer', $replacements));
-
-            foreach ($requiredLayers as $requiredLayer) {
-                $composer->requirePackage($requiredLayer, self::LAYER_CONSTRAINT);
-            }
-
-            $composer->save();
-        }
+        $composer->save();
     }
 }

@@ -3,22 +3,23 @@
 namespace Lomkit\Osdd\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Filesystem\Filesystem;
+use Lomkit\Osdd\Composer\LayerComposerManifest;
 use Lomkit\Osdd\Console\Concerns\ChoosesLayerGenerators;
 use Lomkit\Osdd\Console\Concerns\OffersComposerUpdate;
-use Lomkit\Osdd\Console\Concerns\RegistersLayerInComposer;
 use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Console\Exceptions\MissingLayerNameException;
 use Lomkit\Osdd\Console\Exceptions\UnknownLayerBucketException;
 use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\Layers;
-use Lomkit\Osdd\Layers\RefreshLayers;
 use Lomkit\Osdd\Layers\RequiredLayers;
-use Lomkit\Osdd\Scaffolding\LayerComposerJson;
-use Lomkit\Osdd\Scaffolding\LayerGenerator;
-use Lomkit\Osdd\Scaffolding\LayerGeneratorRunner;
-use Lomkit\Osdd\Stubs\StubWriter;
+use Lomkit\Osdd\Scaffolding\LayerBlueprint;
+use Lomkit\Osdd\Scaffolding\LayerDraft;
+use Lomkit\Osdd\Scaffolding\LayerScaffolder;
+use Lomkit\Osdd\Scaffolding\LayerScaffolds;
+use Lomkit\Osdd\Scaffolding\ScaffoldConsole;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputOption;
@@ -31,25 +32,24 @@ class LayerCommand extends Command
 {
     use ChoosesLayerGenerators;
     use OffersComposerUpdate;
-    use RegistersLayerInComposer;
     use ReportsOsddConsoleExceptions;
 
     protected $name = 'osdd:layer';
 
     protected $description = 'Create a new OSDD layer';
 
-    public function __construct(protected Filesystem $files, private readonly StubWriter $stubs)
+    public function __construct(private readonly Filesystem $files, private readonly LayerScaffolds $scaffolds)
     {
         parent::__construct();
     }
 
-    public function handle(): int
+    public function handle(LayerScaffolder $scaffolder): int
     {
         [$name, $targetPath] = $this->layerNameAndTargetPath();
-        $generators = $this->generators();
+        $scaffolds = $this->chosenScaffolds($this->scaffolds);
         $requiredLayers = RequiredLayers::resolve((array) $this->option('requires'), $name, $this->laravel->make(Layers::class));
-
-        $layerPath = $targetPath.'/'.$name->package;
+        $draft = LayerDraft::inBucket($targetPath, LayerComposerManifest::for($name, requiredLayers: $requiredLayers));
+        $layerPath = $draft->directory->root;
 
         if (! $this->option('force') && $this->files->isDirectory($layerPath) && ! $this->files->isEmptyDirectory($layerPath)) {
             $this->components->error("The layer directory [{$layerPath}] already exists. Pass --force to overwrite the files osdd:layer writes.");
@@ -57,9 +57,11 @@ class LayerCommand extends Command
             return self::FAILURE;
         }
 
-        $this->generate($name, $layerPath, $generators, $requiredLayers);
-
-        $this->components->info("Layer <options=bold>{$name->toString()}</> created at <options=bold>{$targetPath}</>.");
+        $scaffolder->scaffold(
+            new LayerBlueprint($draft, $scaffolds),
+            new ScaffoldConsole($this->laravel->make(Kernel::class), $this->output, $this->input->isInteractive()),
+            (bool) $this->option('force'),
+        );
 
         return $this->offerComposerUpdate($name->toString()) ? self::SUCCESS : self::FAILURE;
     }
@@ -81,7 +83,7 @@ class LayerCommand extends Command
     {
         return [
             new InputOption('target-path', null, InputOption::VALUE_REQUIRED, 'Directory to create the layer in (default: the osdd.layers.paths entry named after the vendor)'),
-            new InputOption('generators', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Generators to run, repeated or comma-separated: '.implode(', ', LayerGenerator::names())),
+            new InputOption('generators', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Generators to run, repeated or comma-separated: '.implode(', ', $this->scaffolds->keys())),
             new InputOption('requires', null, InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY, 'Layers the new layer requires, repeated or comma-separated (full or package name)'),
             new InputOption('force', null, InputOption::VALUE_NONE, 'Overwrite the files of an existing layer'),
             $this->composerUpdateOption(),
@@ -143,27 +145,5 @@ class LayerCommand extends Command
         $buckets = $this->laravel->make(LayerBuckets::class);
 
         return $buckets->onlyBucket() ?? (string) select(label: 'Where should the layer be created?', options: $buckets->names());
-    }
-
-    /**
-     * @param  list<LayerGenerator>  $generators
-     * @param  list<string>  $requiredLayers
-     */
-    private function generate(LayerName $name, string $layerPath, array $generators, array $requiredLayers): void
-    {
-        (new LayerComposerJson($this->files, $this->stubs))->write($name, $layerPath.'/composer.json', $requiredLayers);
-
-        (new LayerGeneratorRunner(
-            command: $this,
-            stubs: $this->stubs,
-            files: $this->files,
-            name: $name,
-            layerPath: $layerPath,
-            generators: $generators,
-            force: (bool) $this->option('force'),
-            refreshLayers: $this->laravel->make(RefreshLayers::class),
-        ))->run();
-
-        $this->registerLayerInComposer($name->toString(), $layerPath);
     }
 }
