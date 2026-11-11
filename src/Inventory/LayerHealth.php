@@ -11,19 +11,20 @@ final readonly class LayerHealth
         public bool $required,
         public bool $pathRepository,
         public bool $installed,
-        public bool $providerExtendsLayerServiceProvider,
+        public ?bool $providerExtendsLayerServiceProvider,
         public bool $testSuite,
     ) {}
 
     public static function of(Layer $layer, RootProject $project): self
     {
         $name = $layer->manifest->name();
+        $installed = $project->hasInstalled($name);
 
         return new self(
             required: $project->requires($name),
             pathRepository: $project->hasPathRepositoryFor($layer->path),
-            installed: $project->hasInstalled($name),
-            providerExtendsLayerServiceProvider: self::providersExtendLayerServiceProvider($layer->manifest->providers()),
+            installed: $installed,
+            providerExtendsLayerServiceProvider: self::providersExtendLayerServiceProvider($layer->manifest->providers(), $installed),
             testSuite: $project->hasTestSuite($name),
         );
     }
@@ -37,13 +38,13 @@ final readonly class LayerHealth
             'not required in composer.json' => ! $this->required,
             'no path repository' => ! $this->pathRepository,
             'not installed' => ! $this->installed,
-            'provider does not extend LayerServiceProvider' => ! $this->providerExtendsLayerServiceProvider,
+            'provider does not extend LayerServiceProvider' => $this->providerExtendsLayerServiceProvider === false,
             'no test suite in phpunit.xml' => ! $this->testSuite,
         ]));
     }
 
     /**
-     * @return array{required: bool, path_repository: bool, installed: bool, provider_extends_layer_service_provider: bool, test_suite: bool}
+     * @return array{required: bool, path_repository: bool, installed: bool, provider_extends_layer_service_provider: ?bool, test_suite: bool}
      */
     public function toArray(): array
     {
@@ -57,12 +58,18 @@ final readonly class LayerHealth
     }
 
     /**
+     * Null when the layer is not installed: its provider classes cannot be autoloaded yet.
+     *
      * @param  list<string>  $providers
      */
-    private static function providersExtendLayerServiceProvider(array $providers): bool
+    private static function providersExtendLayerServiceProvider(array $providers, bool $installed): ?bool
     {
         if ($providers === []) {
             return false;
+        }
+
+        if (! $installed) {
+            return null;
         }
 
         foreach ($providers as $provider) {
