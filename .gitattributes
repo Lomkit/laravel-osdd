@@ -7,3 +7,4 @@
 /phpstan.neon             export-ignore
 /testbench.yaml           export-ignore
 /workbench                export-ignore
+/llms.txt                 export-ignore

@@ -1,8 +1,9 @@
 {
     "name": "lomkit/laravel-osdd",
-    "description": "A package to split a Laravel application into independent layers.",
-    "keywords": ["laravel", "osdd", "layers", "modules", "lomkit"],
+    "description": "Split a Laravel application into domain modules: one Composer package per domain, with the boundaries between them checked in CI.",
+    "keywords": ["laravel", "osdd", "modules", "modular", "modular-monolith", "domain-driven-design", "layers", "architecture", "composer", "lomkit"],
     "type": "library",
+    "homepage": "https://laravel-osdd.lomkit.com",
     "license": "MIT",
     "authors": [
         {
@@ -10,6 +11,9 @@
             "email": "gautier@lomkit.com"
         }
     ],
+    "support": {
+        "docs": "https://laravel-osdd.lomkit.com"
+    },
     "require": {
         "php": "^8.3",
         "ext-dom": "*",

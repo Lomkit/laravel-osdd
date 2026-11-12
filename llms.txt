@@ -1,0 +1,11 @@
+# Laravel OSDD
+
+> Laravel OSDD splits a Laravel application into domain modules called layers: one Composer package per domain, with its own models, migrations, routes and tests. `php artisan osdd:check` fails when a layer uses a layer it does not require. It needs PHP 8.3+ and Laravel 13.
+
+This repository holds the source of the `lomkit/laravel-osdd` package. The documentation of the current version lives at https://laravel-osdd.lomkit.com.
+
+## Docs
+
+- [Documentation index](https://laravel-osdd.lomkit.com/llms.txt): every page of the documentation, with a link to its Markdown copy
+- [Full documentation](https://laravel-osdd.lomkit.com/llms-full.txt): every page in one Markdown file
+- [Upgrade from 2.x](https://github.com/Lomkit/laravel-osdd/blob/3.x/UPGRADE.md): the changes between 2.x and 3.x

@@ -31,6 +31,8 @@ Laravel OSDD (Open Source Driven Development) splits your application into layer
 
 The full guide lives on the [documentation site](https://laravel-osdd.lomkit.com): installation, layers, every command and the API reference. Coming from 2.x? Read the [upgrade guide](UPGRADE.md).
 
+AI assistants can read the same documentation as Markdown through [llms.txt](https://laravel-osdd.lomkit.com/llms.txt).
+
 ## Requirements
 
 PHP 8.3+ and Laravel 13.
