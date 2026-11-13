@@ -12,6 +12,7 @@ use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'osdd:phpunit')]
 class PhpunitCommand extends Command
@@ -90,13 +91,11 @@ class PhpunitCommand extends Command
         $layerName = $entries->testSuite;
 
         if ($xml->hasTestSuite($layerName)) {
-            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> already present", self::SKIPPED);
-
             return;
         }
 
         if (! is_dir($layer->directory->path(LayerFolder::Tests))) {
-            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> has no tests/ directory", self::SKIPPED);
+            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> has no tests/ directory", self::SKIPPED, OutputInterface::VERBOSITY_VERBOSE);
 
             return;
         }

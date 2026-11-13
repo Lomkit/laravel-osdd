@@ -56,18 +56,32 @@ class PhpunitCommandTest extends TestCase
         );
     }
 
-    public function test_it_skips_already_present_testsuites(): void
+    public function test_a_run_without_change_prints_only_that_the_file_is_up_to_date(): void
     {
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
         $xmlAfterFirst = $this->app['files']->get($this->xmlPath);
 
         $this->artisan('osdd:phpunit')
-            ->expectsOutputToContain('already present')
+            ->doesntExpectOutputToContain('functional/test-layer')
+            ->doesntExpectOutputToContain('SKIPPED')
             ->expectsOutputToContain('phpunit.xml is already up to date.')
             ->assertExitCode(0);
 
         $this->assertSame($xmlAfterFirst, $this->app['files']->get($this->xmlPath));
+    }
+
+    public function test_a_layer_without_tests_directory_is_named_in_verbose_mode_only(): void
+    {
+        $this->layerFixture()->layer('functional/no-tests-layer', ['autoload' => ['psr-4' => ['Functional\\NoTestsLayer\\' => 'src/']]]);
+
+        $this->artisan('osdd:phpunit')
+            ->doesntExpectOutputToContain('has no tests/ directory')
+            ->assertExitCode(0);
+        $this->artisan('osdd:phpunit', ['-v' => true])
+            ->expectsOutputToContain('functional/no-tests-layer has no tests/ directory')
+            ->assertExitCode(0);
     }
 
     public function test_it_skips_layers_without_tests_directory(): void
