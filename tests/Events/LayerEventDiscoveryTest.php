@@ -80,6 +80,71 @@ class LayerEventDiscoveryTest extends TestCase
         );
     }
 
+    public function test_the_listeners_of_an_event_in_a_layer_run_in_class_name_order(): void
+    {
+        $layer = $this->listenerLayer();
+
+        foreach (['Zeta', 'Reserve', 'Notify', 'Mail', 'Ledger', 'Billing\\SendReceipt', 'Audit'] as $listener) {
+            $layer->writeListener($listener);
+        }
+
+        $this->refreshApplication();
+        $expected = array_map(
+            fn (string $listener): string => $layer->listener($listener).'@handle',
+            ['Audit', 'Billing\\SendReceipt', 'Ledger', 'Mail', 'Notify', 'Reserve', 'SendInvoice', 'Zeta'],
+        );
+
+        Event::dispatch(new ($layer->event()));
+
+        $this->assertSame($expected, ListenerCalls::$calls);
+        $this->assertSame([$layer->event() => $expected], $this->app->getProvider(LayerEventServiceProvider::class)?->discoverEvents());
+    }
+
+    public function test_the_methods_of_a_listener_run_in_name_order(): void
+    {
+        $layer = $this->listenerLayer();
+        $layer->writeListener('Ship', ['handleShipping', 'handleBilling', 'handle']);
+        $this->refreshApplication();
+
+        Event::dispatch(new ($layer->event()));
+
+        $this->assertSame([
+            $layer->listener().'@handle',
+            $layer->listener('Ship').'@handle',
+            $layer->listener('Ship').'@handleBilling',
+            $layer->listener('Ship').'@handleShipping',
+        ], ListenerCalls::$calls);
+    }
+
+    public function test_the_listeners_of_an_event_run_layer_by_layer_in_layer_name_order(): void
+    {
+        $first = $this->listenerLayer();
+        $second = $this->listenerLayer();
+        $second->writeListener('Audit', ['handle'], $first->event());
+        $this->refreshApplication();
+        $byLayer = [
+            basename($first->directory) => [$first->listener().'@handle'],
+            basename($second->directory) => [$second->listener('Audit').'@handle'],
+        ];
+        ksort($byLayer, SORT_STRING);
+
+        Event::dispatch(new ($first->event()));
+
+        $this->assertSame(array_merge(...array_values($byLayer)), ListenerCalls::$calls);
+    }
+
+    public function test_a_listener_registered_by_hand_runs_before_the_discovered_ones_and_only_once(): void
+    {
+        $layer = $this->listenerLayer();
+        $layer->writeListener('Audit');
+        FixtureEventsProvider::$listenedByHand = [[$layer->event(), $layer->listener('SendInvoice')]];
+        $this->refreshApplication();
+
+        Event::dispatch(new ($layer->event()));
+
+        $this->assertSame([$layer->listener().'@handle', $layer->listener('Audit').'@handle'], ListenerCalls::$calls);
+    }
+
     public function test_a_file_that_does_not_declare_its_psr_4_class_is_skipped(): void
     {
         $layer = $this->listenerLayer();

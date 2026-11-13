@@ -52,13 +52,20 @@ final class ListenerLayer
         return $this->namespace.'Listeners\\'.$name;
     }
 
-    public function writeListener(string $name): void
+    /**
+     * @param  list<string>  $methods  The methods handling the event, in their declaration order
+     */
+    public function writeListener(string $name, array $methods = ['handle'], ?string $event = null): void
     {
-        $event = '\\'.$this->event();
+        $event = '\\'.($event ?? $this->event());
         $calls = '\\'.ListenerCalls::class;
         $short = class_basename(str_replace('\\', '/', $name));
+        $bodies = array_map(
+            fn (string $method): string => "    public function {$method}({$event} \$event): void\n    {\n        {$calls}::\$calls[] = static::class.'@{$method}';\n    }",
+            $methods,
+        );
 
-        $this->writeClass('Listeners\\'.$name, "class {$short}\n{\n    public function handle({$event} \$event): void\n    {\n        {$calls}::\$calls[] = static::class.'@handle';\n    }\n}");
+        $this->writeClass('Listeners\\'.$name, "class {$short}\n{\n".implode("\n\n", $bodies)."\n}");
     }
 
     public function listenersDirectory(): string
