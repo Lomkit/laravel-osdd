@@ -1,5 +1,33 @@
 # Upgrade Guide
 
+## Upgrading to 3.1 from 3.0
+
+Check the points below after `composer update lomkit/laravel-osdd`.
+
+### Discovered listeners run in a stable order
+
+The listeners discovered in the layers now run by layer name, then class name, then method name (byte order), instead of the order the file system listed them in, which differed between machines. Listeners registered while the providers boot (`Event::listen()` in a `boot()`, `$listen`, `app/Listeners`) still run first.
+
+If two discovered listeners of the same event only worked in one order, make that order explicit: one listener that calls the steps in order, a follow-up event, or both registered by hand, in order, in one provider's `boot()` (discovery skips a listener already registered there). With a cached event list, the new order applies from the next `php artisan event:cache` (or `optimize`), and the cached file is now the same on every machine.
+
+### `osdd:list` health
+
+A layer whose provider does not extend `Lomkit\Osdd\LayerServiceProvider`, such as a Horizon or Telescope provider, and a layer without a provider are now healthy: the Health row no longer reports "provider does not extend LayerServiceProvider", and the Providers row marks such a class "(not a LayerServiceProvider)".
+
+In `osdd:list --json`, `health.provider_extends_layer_service_provider` keeps its name and its `true`, `false` or `null` value, but a layer without a provider now gives `null` instead of `false`. The flag is information, not a problem: a script that fails on `false` should stop checking it.
+
+### Generators write only into a `LayerServiceProvider`
+
+The generators that wire the layer provider (`osdd:migration`, `osdd:seeder`, `osdd:config`, `osdd:view`, `osdd:component`, `osdd:command` and the `osdd:*-table` commands) wrote into the first provider of `extra.laravel.providers` found on disk, whatever its class, and a call that only `LayerServiceProvider` has then failed at boot. They now write into the first listed provider that extends `LayerServiceProvider`, else into `src/Providers/{Package}ServiceProvider.php` when it does. With no such provider they change no file and print the line to add. The provider of a layer that is not installed yet counts only when its class extends `Lomkit\Osdd\LayerServiceProvider` directly.
+
+If a generator now prints the line instead of editing your provider, make that provider extend `Lomkit\Osdd\LayerServiceProvider`. `osdd:provider` writes Laravel's provider, which extends `Illuminate\Support\ServiceProvider`.
+
+### `osdd:phpunit` reads `phpunit.xml` as PHPUnit does
+
+`osdd:phpunit` no longer adds a layer source directory, or a `*/database/migrations` exclusion, that a `<source>` entry already covers: a glob (`functional/*/src`, `functional/**/src`), the same path written another way (`./functional/orders/src/`) or a parent folder, when that entry has no `prefix` and the `.php` suffix. The duplicates an earlier run added next to such entries can be removed: they are not added back.
+
+`--prune` no longer removes glob entries, and removes a literal entry only when it resolves to no folder. If `--prune` removed glob entries from your `phpunit.xml`, add them back.
+
 ## Upgrading to 3.0 from 2.x
 
 Version 3.0 moves the package from Xefi to Lomkit. The package is now `lomkit/laravel-osdd`, its namespace is `Lomkit\Osdd` and its service provider is `Lomkit\Osdd\OsddServiceProvider`.
