@@ -44,7 +44,7 @@ class SeederMakeCommandTest extends TestCase
     public function test_without_a_provider_it_writes_the_seeder_and_prints_the_line_to_add(): void
     {
         $this->artisan('osdd:seeder', ['name' => 'UserSeeder', '--layer' => 'functional/test-layer'])
-            ->expectsOutputToContain('Layer [functional/test-layer] has no service provider.')
+            ->expectsOutputToContain('Layer [functional/test-layer] has no service provider extending Lomkit\\Osdd\\LayerServiceProvider.')
             ->expectsOutputToContain('$this->loadSeeders([\Functional\TestLayer\Database\Seeders\UserSeeder::class]);')
             ->assertExitCode(0);
 

@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Tests\Fixtures;
 
 use Illuminate\Foundation\Application;
+use Lomkit\Osdd\LayerServiceProvider;
 
 final class LayerFixture
 {
@@ -43,16 +44,17 @@ final class LayerFixture
     }
 
     /**
-     * Write a provider extending LayerServiceProvider, under a name no other test of the process uses.
+     * Write a provider extending LayerServiceProvider, or the given parent, under a name no other test of the process uses.
      */
-    public function provider(string $layerPath, string $namespace, string $methods, string $folder = 'Providers'): ProviderFile
+    public function provider(string $layerPath, string $namespace, string $methods, string $folder = 'Providers', string $parent = LayerServiceProvider::class): ProviderFile
     {
         $short = 'FixtureServiceProvider'.++self::$providers;
         $classNamespace = $namespace.'\\'.str_replace('/', '\\', $folder);
         $path = $layerPath.'/src/'.$folder.'/'.$short.'.php';
+        $parentShort = class_basename($parent);
 
         $this->app['files']->ensureDirectoryExists(dirname($path));
-        $this->app['files']->put($path, "<?php\n\nnamespace {$classNamespace};\n\nuse Lomkit\\Osdd\\LayerServiceProvider;\n\nclass {$short} extends LayerServiceProvider\n{\n{$methods}\n}\n");
+        $this->app['files']->put($path, "<?php\n\nnamespace {$classNamespace};\n\nuse {$parent};\n\nclass {$short} extends {$parentShort}\n{\n{$methods}\n}\n");
 
         return new ProviderFile($classNamespace.'\\'.$short, $path);
     }
