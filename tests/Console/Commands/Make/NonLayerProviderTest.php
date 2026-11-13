@@ -30,7 +30,7 @@ class NonLayerProviderTest extends TestCase
         $before = $provider->source();
 
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => self::LAYER])
-            ->expectsOutputToContain('Layer ['.self::LAYER.'] has no service provider extending '.LayerServiceProvider::class.'. Create one with osdd:provider')
+            ->expectsOutputToContain('Layer ['.self::LAYER.'] has no service provider extending '.LayerServiceProvider::class.'. Create one with osdd:provider, then add this line to its register() method:')
             ->expectsOutputToContain("\$this->overrideConfigFrom(__DIR__ . '/../../config/payments.php', 'payments');")
             ->assertExitCode(0);
 

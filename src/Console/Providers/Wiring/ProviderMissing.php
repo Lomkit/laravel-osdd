@@ -21,7 +21,7 @@ final readonly class ProviderMissing implements WiringOutcome
     {
         (new Factory($output))->warn(
             "Layer [{$this->layer->toString()}] has no service provider extending ".LayerServiceProvider::class.'. Create one with osdd:provider, '
-            ."make it extend LayerServiceProvider, then add this line to its {$this->method->value}() method:",
+            ."then add this line to its {$this->method->value}() method:",
         );
         $output->writeln($this->line);
     }

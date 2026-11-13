@@ -20,7 +20,19 @@ In `osdd:list --json`, `health.provider_extends_layer_service_provider` keeps it
 
 The generators that wire the layer provider (`osdd:migration`, `osdd:seeder`, `osdd:config`, `osdd:view`, `osdd:component`, `osdd:command` and the `osdd:*-table` commands) wrote into the first provider of `extra.laravel.providers` found on disk, whatever its class, and a call that only `LayerServiceProvider` has then failed at boot. They now write into the first listed provider that extends `LayerServiceProvider`, else into `src/Providers/{Package}ServiceProvider.php` when it does. With no such provider they change no file and print the line to add. The provider of a layer that is not installed yet counts only when its class extends `Lomkit\Osdd\LayerServiceProvider` directly.
 
-If a generator now prints the line instead of editing your provider, make that provider extend `Lomkit\Osdd\LayerServiceProvider`. `osdd:provider` writes Laravel's provider, which extends `Illuminate\Support\ServiceProvider`.
+If a generator now prints the line instead of editing your provider, make that provider extend `Lomkit\Osdd\LayerServiceProvider`, or create one with `osdd:provider`.
+
+### `osdd:provider` writes a `LayerServiceProvider`
+
+`osdd:provider` now writes a class that extends `Lomkit\Osdd\LayerServiceProvider`, with empty `register()` and `boot()` methods, instead of Laravel's provider extending `Illuminate\Support\ServiceProvider`. It no longer reads a published `stubs/provider.stub`. A provider that 3.0's `osdd:provider` wrote can be changed to extend `LayerServiceProvider`, which only adds protected helpers to `ServiceProvider`; the generators can then wire it.
+
+```diff
+-use Illuminate\Support\ServiceProvider;
++use Lomkit\Osdd\LayerServiceProvider;
+
+-class OrderEventsServiceProvider extends ServiceProvider
++class OrderEventsServiceProvider extends LayerServiceProvider
+```
 
 ### `osdd:phpunit` reads `phpunit.xml` as PHPUnit does
 
