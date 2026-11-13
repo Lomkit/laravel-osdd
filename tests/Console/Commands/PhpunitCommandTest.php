@@ -3,6 +3,7 @@
 namespace Lomkit\Osdd\Tests\Console\Commands;
 
 use Lomkit\Osdd\Tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class PhpunitCommandTest extends TestCase
 {
@@ -184,6 +185,109 @@ class PhpunitCommandTest extends TestCase
         $xpath = $this->xpath();
         $this->assertSame(['Unit', 'functional/test-layer'], $this->texts($xpath, '//testsuites/testsuite/@name'));
         $this->assertSame(['functional/test-layer/src'], $this->texts($xpath, '//source/include/directory'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function coveringIncludes(): iterable
+    {
+        yield 'glob' => ['<directory>functional/*/src</directory>'];
+        yield 'globstar' => ['<directory>functional/**/src</directory>'];
+        yield 'dot slash and trailing slash' => ['<directory suffix=".php"> ./functional/test-layer/src/ </directory>'];
+        yield 'parent folder' => ['<directory>functional</directory>'];
+        yield 'empty prefix and suffix' => ['<directory prefix="" suffix="">functional/test-layer</directory>'];
+    }
+
+    #[DataProvider('coveringIncludes')]
+    public function test_a_layer_source_already_covered_by_an_include_is_not_added(string $include): void
+    {
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
+        $this->writeXmlWithSource("<include>{$include}</include>");
+
+        $this->artisan('osdd:phpunit')->assertExitCode(0);
+
+        $this->assertCount(1, $this->xpath()->query('//source/include/directory'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function nonCoveringIncludes(): iterable
+    {
+        yield 'prefix' => ['<directory prefix="Order">functional/*/src</directory>'];
+        yield 'other suffix' => ['<directory suffix=".inc">functional/*/src</directory>'];
+        yield 'sibling folder' => ['<directory>functional/test-layer/tests</directory>'];
+        yield 'folder sharing the name start' => ['<directory>functional/test</directory>'];
+    }
+
+    #[DataProvider('nonCoveringIncludes')]
+    public function test_a_layer_source_not_covered_by_an_include_is_added(string $include): void
+    {
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test'));
+        $this->writeXmlWithSource("<include>{$include}</include>");
+
+        $this->artisan('osdd:phpunit')->assertExitCode(0);
+
+        $this->assertContains('functional/test-layer/src', $this->texts($this->xpath(), '//source/include/directory'));
+    }
+
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function coveringExcludes(): iterable
+    {
+        yield 'same glob written differently' => ['<directory> ./functional/*/database/migrations/ </directory>'];
+        yield 'parent folder of every match' => ['<directory>functional/test-layer/database</directory>'];
+    }
+
+    #[DataProvider('coveringExcludes')]
+    public function test_the_migrations_exclusion_already_covered_is_not_added(string $exclude): void
+    {
+        $this->writeXmlWithSource("<exclude>{$exclude}</exclude>");
+
+        $this->artisan('osdd:phpunit')->assertExitCode(0);
+
+        $this->assertCount(1, $this->xpath()->query('//source/exclude/directory'));
+    }
+
+    public function test_prune_keeps_glob_entries_and_removes_missing_literal_ones(): void
+    {
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
+        $this->writeXmlWithSource(<<<'XML'
+            <include>
+                <directory>functional/*/src</directory>
+                <directory>modules/**/src</directory>
+                <directory>legacy/[ab]</directory>
+                <directory>./functional/test-layer/src/</directory>
+                <directory>functional/removed-layer/src</directory>
+            </include>
+            XML);
+
+        $this->artisan('osdd:phpunit', ['--prune' => true])
+            ->expectsOutputToContain('functional/removed-layer/src')
+            ->assertExitCode(0);
+
+        $this->assertSame(
+            ['functional/*/src', 'modules/**/src', 'legacy/[ab]', './functional/test-layer/src/'],
+            $this->texts($this->xpath(), '//source/include/directory'),
+        );
+    }
+
+    private function writeXmlWithSource(string $source): void
+    {
+        $this->app['files']->put($this->xmlPath, <<<XML
+            <?xml version="1.0" encoding="UTF-8"?>
+            <phpunit>
+                <testsuites>
+                    <testsuite name="Unit"><directory>tests</directory></testsuite>
+                </testsuites>
+                <source>
+                    {$source}
+                </source>
+            </phpunit>
+            XML);
     }
 
     private function xpath(): \DOMXPath

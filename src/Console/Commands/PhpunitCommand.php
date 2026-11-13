@@ -86,7 +86,7 @@ class PhpunitCommand extends Command
     protected function getOptions(): array
     {
         return [
-            new InputOption('prune', null, InputOption::VALUE_NONE, 'Remove the test suites of removed layers and the source directories that no longer exist'),
+            new InputOption('prune', null, InputOption::VALUE_NONE, 'Remove the test suites of removed layers and the source directories that no longer exist, keeping glob entries'),
         ];
     }
 
@@ -144,11 +144,9 @@ class PhpunitCommand extends Command
             }
         }
 
-        foreach ($xml->sourceIncludes() as $directory) {
-            if (! is_dir(Path::isAbsolute($directory) ? $directory : $this->laravel->basePath($directory))) {
-                $xml->removeSourceInclude($directory);
-                $this->components->twoColumnDetail("Coverage source <fg=gray>{$directory}</>: the directory no longer exists", self::REMOVED);
-            }
+        foreach ($xml->staleSourceIncludes() as $directory) {
+            $xml->removeSourceInclude($directory);
+            $this->components->twoColumnDetail("Coverage source <fg=gray>{$directory}</>: the directory no longer exists", self::REMOVED);
         }
     }
 
