@@ -14,16 +14,17 @@ final class PhpunitXml
         private readonly DOMDocument $document,
         private readonly DOMXPath $xpath,
         private readonly string $directory,
+        private readonly XmlIndentation $indentation,
+        private readonly XmlFileLayout $layout,
     ) {}
 
     public static function load(string $path): self
     {
+        $contents = (string) file_get_contents($path);
         $document = new DOMDocument('1.0', 'UTF-8');
-        $document->preserveWhiteSpace = false;
-        $document->formatOutput = true;
-        $document->load($path);
+        $document->loadXML($contents);
 
-        return new self($document, new DOMXPath($document), dirname($path));
+        return new self($document, new DOMXPath($document), dirname($path), XmlIndentation::of($document), XmlFileLayout::of($contents));
     }
 
     public function hasTestSuites(): bool
@@ -38,10 +39,15 @@ final class PhpunitXml
 
     public function addTestSuite(string $name, string $directory): void
     {
-        $suite = $this->document->createElement('testsuite');
+        $suites = $this->first('//testsuites');
+
+        if ($suites === null) {
+            return;
+        }
+
+        $suite = $this->appendElement($suites, 'testsuite');
         $suite->setAttribute('name', $name);
-        $suite->appendChild($this->document->createElement('directory', $directory));
-        $this->first('//testsuites')?->appendChild($suite);
+        $this->appendElement($suite, 'directory', $directory);
         $this->changed = true;
     }
 
@@ -58,7 +64,7 @@ final class PhpunitXml
         $suite = $this->testSuite($name);
 
         if ($suite !== null) {
-            $suite->parentNode?->removeChild($suite);
+            $this->indentation->remove($suite);
             $this->changed = true;
         }
     }
@@ -68,12 +74,13 @@ final class PhpunitXml
      */
     public function includeInSource(string $directory): bool
     {
-        if ((new SourceCoverage($this->sourceIncludeDirectories()))->covers(DirectoryPattern::of($directory, $this->directory))) {
+        $root = $this->document->documentElement;
+
+        if ($root === null || (new SourceCoverage($this->sourceIncludeDirectories()))->covers(DirectoryPattern::of($directory, $this->directory))) {
             return false;
         }
 
-        $element = $this->document->createElement('directory', $directory);
-        $this->sourceInclude()->appendChild($element);
+        $this->appendElement($this->sourceInclude($root), 'directory', $directory);
         $this->changed = true;
 
         return true;
@@ -101,7 +108,7 @@ final class PhpunitXml
     {
         foreach ($this->elements('//source/include/directory') as $element) {
             if (trim($element->textContent) === $directory) {
-                $element->parentNode?->removeChild($element);
+                $this->indentation->remove($element);
                 $this->changed = true;
             }
         }
@@ -114,7 +121,7 @@ final class PhpunitXml
 
     public function toXml(): string
     {
-        return (string) $this->document->saveXML();
+        return $this->layout->write($this->document);
     }
 
     /**
@@ -128,23 +135,24 @@ final class PhpunitXml
         );
     }
 
-    private function sourceInclude(): DOMElement
+    private function sourceInclude(DOMElement $root): DOMElement
     {
-        $source = $this->first('//source');
+        $source = $this->first('//source') ?? $this->appendElement($root, 'source');
 
-        if ($source === null) {
-            $source = $this->document->createElement('source');
-            $this->document->documentElement?->appendChild($source);
+        return $this->first('//source/include') ?? $this->appendElement($source, 'include');
+    }
+
+    private function appendElement(DOMElement $parent, string $name, ?string $text = null): DOMElement
+    {
+        $element = $this->document->createElement($name);
+
+        if ($text !== null) {
+            $element->appendChild($this->document->createTextNode($text));
         }
 
-        $include = $this->first('//source/include');
+        $this->indentation->append($parent, $element);
 
-        if ($include === null) {
-            $include = $this->document->createElement('include');
-            $source->appendChild($include);
-        }
-
-        return $include;
+        return $element;
     }
 
     private function testSuite(string $name): ?DOMElement
