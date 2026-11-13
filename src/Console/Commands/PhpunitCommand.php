@@ -6,14 +6,13 @@ use Illuminate\Console\Command;
 use Lomkit\Osdd\Console\Concerns\ReportsOsddConsoleExceptions;
 use Lomkit\Osdd\Console\Phpunit\LayerPhpunitEntries;
 use Lomkit\Osdd\Console\Phpunit\PhpunitXml;
-use Lomkit\Osdd\Filesystem\Path;
 use Lomkit\Osdd\Layers\Layer;
-use Lomkit\Osdd\Layers\LayerBuckets;
 use Lomkit\Osdd\Layers\LayerFolder;
 use Lomkit\Osdd\Layers\LayerName;
 use Lomkit\Osdd\Layers\Layers;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputOption;
+use Symfony\Component\Console\Output\OutputInterface;
 
 #[AsCommand(name: 'osdd:phpunit')]
 class PhpunitCommand extends Command
@@ -23,8 +22,6 @@ class PhpunitCommand extends Command
     protected $name = 'osdd:phpunit';
 
     protected $description = 'Synchronize phpunit.xml testsuites and coverage source with discovered OSDD layers';
-
-    private const string LAYER_MIGRATIONS = '*/database/migrations';
 
     private const string ADDED = '<fg=green;options=bold>ADDED</>';
 
@@ -51,8 +48,6 @@ class PhpunitCommand extends Command
         }
 
         $layers = $this->laravel->make(Layers::class)->failOnInvalidManifest();
-
-        $this->excludeLayerMigrations($xml);
 
         if ($layers->isEmpty()) {
             $this->components->warn('No OSDD layers discovered.');
@@ -90,32 +85,17 @@ class PhpunitCommand extends Command
         ];
     }
 
-    private function excludeLayerMigrations(PhpunitXml $xml): void
-    {
-        $buckets = $this->laravel->make(LayerBuckets::class);
-
-        foreach ($buckets->names() as $bucket) {
-            $directory = $this->relative($buckets->path($bucket)).'/'.self::LAYER_MIGRATIONS;
-
-            if ($xml->excludeFromSource($directory)) {
-                $this->components->twoColumnDetail("Coverage exclusion <fg=gray>{$directory}</>", self::ADDED);
-            }
-        }
-    }
-
     private function addTestSuite(PhpunitXml $xml, Layer $layer): void
     {
         $entries = LayerPhpunitEntries::of($layer, $this->laravel->basePath());
         $layerName = $entries->testSuite;
 
         if ($xml->hasTestSuite($layerName)) {
-            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> already present", self::SKIPPED);
-
             return;
         }
 
         if (! is_dir($layer->directory->path(LayerFolder::Tests))) {
-            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> has no tests/ directory", self::SKIPPED);
+            $this->components->twoColumnDetail("Testsuite <fg=gray>{$layerName}</> has no tests/ directory", self::SKIPPED, OutputInterface::VERBOSITY_VERBOSE);
 
             return;
         }
@@ -148,10 +128,5 @@ class PhpunitCommand extends Command
             $xml->removeSourceInclude($directory);
             $this->components->twoColumnDetail("Coverage source <fg=gray>{$directory}</>: the directory no longer exists", self::REMOVED);
         }
-    }
-
-    private function relative(string $path): string
-    {
-        return Path::relative($this->laravel->basePath(), $path);
     }
 }

@@ -36,9 +36,34 @@ If a generator now prints the line instead of editing your provider, make that p
 
 ### `osdd:phpunit` reads `phpunit.xml` as PHPUnit does
 
-`osdd:phpunit` no longer adds a layer source directory, or a `*/database/migrations` exclusion, that a `<source>` entry already covers: a glob (`functional/*/src`, `functional/**/src`), the same path written another way (`./functional/orders/src/`) or a parent folder, when that entry has no `prefix` and the `.php` suffix. The duplicates an earlier run added next to such entries can be removed: they are not added back.
+`osdd:phpunit` no longer adds a layer source directory that a `<source><include>` entry already covers: a glob (`functional/*/src`, `functional/**/src`), the same path written another way (`./functional/orders/src/`) or a parent folder, when that entry has no `prefix` and the `.php` suffix. The duplicates an earlier run added next to such entries can be removed: they are not added back.
 
 `--prune` no longer removes glob entries, and removes a literal entry only when it resolves to no folder. If `--prune` removed glob entries from your `phpunit.xml`, add them back.
+
+### `osdd:phpunit` no longer writes the migrations exclusions
+
+`osdd:phpunit` no longer adds `<bucket>/*/database/migrations` under `<source><exclude>` (`functional/*/database/migrations`, `technical/*/database/migrations`). It writes one test suite and one source include per layer, the layer's source directory (`src`), which holds no migrations: the exclusion removed no file. The exclusions already in your `phpunit.xml` are left as they are.
+
+If every `<source><include>` entry is a layer `src`, you can delete those lines:
+
+```diff
+ <exclude>
+-    <directory suffix=".php">functional/*/database/migrations</directory>
+-    <directory suffix=".php">technical/*/database/migrations</directory>
+ </exclude>
+```
+
+If you include a whole bucket (`<directory>functional</directory>`), keep them, or switch to `functional/*/src`.
+
+The source includes it adds no longer carry `suffix=".php"`, which is PHPUnit's default. The entries already in the file are left as they are.
+
+### `osdd:phpunit` keeps the formatting of `phpunit.xml`
+
+The first run no longer reformats `phpunit.xml` (2-space indentation, the attributes of `<phpunit>` on one line): an added entry takes the indentation of its neighbours, a removed one leaves no blank line, and the rest of the file is unchanged. `osdd:remove` writes `phpunit.xml` the same way. A file an earlier run reformatted keeps its current layout: restore yours from version control if you want it back.
+
+### `osdd:phpunit` prints only its changes
+
+`osdd:phpunit` no longer prints a `SKIPPED` line for each layer whose test suite is already present. It prints the entries it adds or removes, or `phpunit.xml is already up to date.` when nothing changes. The layers without a `tests/` directory are named with `-v` only.
 
 ## Upgrading to 3.0 from 2.x
 

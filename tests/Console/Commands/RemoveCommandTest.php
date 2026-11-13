@@ -72,6 +72,17 @@ class RemoveCommandTest extends TestCase
         $this->assertSame(['functional/orders'], $this->app->make(Layers::class)->names());
     }
 
+    public function test_it_removes_only_the_lines_of_the_layer_from_phpunit_xml(): void
+    {
+        $layerLines = "        <testsuite name=\"functional/legacy\">\n            <directory>functional/legacy/tests</directory>\n        </testsuite>\n";
+        $this->app['files']->put($this->app->basePath('phpunit.xml'), $this->fourSpacesPhpunitXml($layerLines, "            <directory>functional/legacy/src</directory>\n"));
+
+        $this->artisan('osdd:remove', ['name' => 'functional/legacy', '--force' => true, '--no-composer-update' => true])
+            ->assertExitCode(0);
+
+        $this->assertSame($this->fourSpacesPhpunitXml('', ''), $this->app['files']->get($this->app->basePath('phpunit.xml')));
+    }
+
     public function test_the_package_name_is_enough(): void
     {
         $this->artisan('osdd:remove', ['name' => 'legacy', '--force' => true, '--no-composer-update' => true])
@@ -285,6 +296,21 @@ class RemoveCommandTest extends TestCase
     private function phpunitXml(): PhpunitXml
     {
         return PhpunitXml::load($this->app->basePath('phpunit.xml'));
+    }
+
+    private function fourSpacesPhpunitXml(string $legacySuite, string $legacySource): string
+    {
+        return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            ."<phpunit xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n         bootstrap=\"vendor/autoload.php\"\n>\n"
+            ."    <testsuites>\n"
+            .$legacySuite
+            ."        <testsuite name=\"functional/orders\">\n            <directory>functional/orders/tests</directory>\n        </testsuite>\n"
+            ."    </testsuites>\n"
+            ."    <source>\n        <include>\n"
+            .$legacySource
+            ."            <directory>functional/orders/src</directory>\n"
+            ."        </include>\n    </source>\n"
+            ."</phpunit>\n";
     }
 
     /**

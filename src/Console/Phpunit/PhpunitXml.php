@@ -8,24 +8,23 @@ use DOMXPath;
 
 final class PhpunitXml
 {
-    private const string PHP_SUFFIX = '.php';
-
     private bool $changed = false;
 
     private function __construct(
         private readonly DOMDocument $document,
         private readonly DOMXPath $xpath,
         private readonly string $directory,
+        private readonly XmlIndentation $indentation,
+        private readonly XmlFileLayout $layout,
     ) {}
 
     public static function load(string $path): self
     {
+        $contents = (string) file_get_contents($path);
         $document = new DOMDocument('1.0', 'UTF-8');
-        $document->preserveWhiteSpace = false;
-        $document->formatOutput = true;
-        $document->load($path);
+        $document->loadXML($contents);
 
-        return new self($document, new DOMXPath($document), dirname($path));
+        return new self($document, new DOMXPath($document), dirname($path), XmlIndentation::of($document), XmlFileLayout::of($contents));
     }
 
     public function hasTestSuites(): bool
@@ -40,10 +39,15 @@ final class PhpunitXml
 
     public function addTestSuite(string $name, string $directory): void
     {
-        $suite = $this->document->createElement('testsuite');
+        $suites = $this->first('//testsuites');
+
+        if ($suites === null) {
+            return;
+        }
+
+        $suite = $this->appendElement($suites, 'testsuite');
         $suite->setAttribute('name', $name);
-        $suite->appendChild($this->document->createElement('directory', $directory));
-        $this->first('//testsuites')?->appendChild($suite);
+        $this->appendElement($suite, 'directory', $directory);
         $this->changed = true;
     }
 
@@ -60,7 +64,7 @@ final class PhpunitXml
         $suite = $this->testSuite($name);
 
         if ($suite !== null) {
-            $suite->parentNode?->removeChild($suite);
+            $this->indentation->remove($suite);
             $this->changed = true;
         }
     }
@@ -70,15 +74,16 @@ final class PhpunitXml
      */
     public function includeInSource(string $directory): bool
     {
-        return $this->addSourceDirectory('include', $directory);
-    }
+        $root = $this->document->documentElement;
 
-    /**
-     * @return bool whether the directory was added
-     */
-    public function excludeFromSource(string $directory): bool
-    {
-        return $this->addSourceDirectory('exclude', $directory);
+        if ($root === null || (new SourceCoverage($this->sourceIncludeDirectories()))->covers(DirectoryPattern::of($directory, $this->directory))) {
+            return false;
+        }
+
+        $this->appendElement($this->sourceInclude($root), 'directory', $directory);
+        $this->changed = true;
+
+        return true;
     }
 
     /**
@@ -94,7 +99,7 @@ final class PhpunitXml
      */
     public function staleSourceIncludes(): array
     {
-        $stale = array_filter($this->sourceDirectories('include'), fn (SourceDirectory $entry): bool => $entry->isStale());
+        $stale = array_filter($this->sourceIncludeDirectories(), fn (SourceDirectory $entry): bool => $entry->isStale());
 
         return array_values(array_map(fn (SourceDirectory $entry): string => $entry->value, $stale));
     }
@@ -103,7 +108,7 @@ final class PhpunitXml
     {
         foreach ($this->elements('//source/include/directory') as $element) {
             if (trim($element->textContent) === $directory) {
-                $element->parentNode?->removeChild($element);
+                $this->indentation->remove($element);
                 $this->changed = true;
             }
         }
@@ -116,51 +121,38 @@ final class PhpunitXml
 
     public function toXml(): string
     {
-        return (string) $this->document->saveXML();
-    }
-
-    private function addSourceDirectory(string $section, string $directory): bool
-    {
-        if ((new SourceCoverage($this->sourceDirectories($section)))->covers(DirectoryPattern::of($directory, $this->directory))) {
-            return false;
-        }
-
-        $element = $this->document->createElement('directory', $directory);
-        $element->setAttribute('suffix', self::PHP_SUFFIX);
-        $this->section($section)->appendChild($element);
-        $this->changed = true;
-
-        return true;
+        return $this->layout->write($this->document);
     }
 
     /**
      * @return list<SourceDirectory>
      */
-    private function sourceDirectories(string $section): array
+    private function sourceIncludeDirectories(): array
     {
         return array_map(
             fn (DOMElement $element): SourceDirectory => SourceDirectory::of($element, $this->directory),
-            $this->elements("//source/{$section}/directory"),
+            $this->elements('//source/include/directory'),
         );
     }
 
-    private function section(string $name): DOMElement
+    private function sourceInclude(DOMElement $root): DOMElement
     {
-        $source = $this->first('//source');
+        $source = $this->first('//source') ?? $this->appendElement($root, 'source');
 
-        if ($source === null) {
-            $source = $this->document->createElement('source');
-            $this->document->documentElement?->appendChild($source);
+        return $this->first('//source/include') ?? $this->appendElement($source, 'include');
+    }
+
+    private function appendElement(DOMElement $parent, string $name, ?string $text = null): DOMElement
+    {
+        $element = $this->document->createElement($name);
+
+        if ($text !== null) {
+            $element->appendChild($this->document->createTextNode($text));
         }
 
-        $section = $this->first("//source/{$name}");
+        $this->indentation->append($parent, $element);
 
-        if ($section === null) {
-            $section = $this->document->createElement($name);
-            $source->appendChild($section);
-        }
-
-        return $section;
+        return $element;
     }
 
     private function testSuite(string $name): ?DOMElement

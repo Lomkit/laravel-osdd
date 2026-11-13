@@ -38,7 +38,6 @@ class PhpunitCommandTest extends TestCase
     public function test_it_adds_testsuite_for_discovered_layers(): void
     {
         $this->artisan('osdd:phpunit')
-            ->expectsOutputToContain('functional/test-layer')
             ->expectsOutputToContain('ADDED')
             ->expectsOutputToContain('phpunit.xml updated.')
             ->assertExitCode(0);
@@ -57,18 +56,32 @@ class PhpunitCommandTest extends TestCase
         );
     }
 
-    public function test_it_skips_already_present_testsuites(): void
+    public function test_a_run_without_change_prints_only_that_the_file_is_up_to_date(): void
     {
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
         $xmlAfterFirst = $this->app['files']->get($this->xmlPath);
 
         $this->artisan('osdd:phpunit')
-            ->expectsOutputToContain('already present')
+            ->doesntExpectOutputToContain('functional/test-layer')
+            ->doesntExpectOutputToContain('SKIPPED')
             ->expectsOutputToContain('phpunit.xml is already up to date.')
             ->assertExitCode(0);
 
         $this->assertSame($xmlAfterFirst, $this->app['files']->get($this->xmlPath));
+    }
+
+    public function test_a_layer_without_tests_directory_is_named_in_verbose_mode_only(): void
+    {
+        $this->layerFixture()->layer('functional/no-tests-layer', ['autoload' => ['psr-4' => ['Functional\\NoTestsLayer\\' => 'src/']]]);
+
+        $this->artisan('osdd:phpunit')
+            ->doesntExpectOutputToContain('has no tests/ directory')
+            ->assertExitCode(0);
+        $this->artisan('osdd:phpunit', ['-v' => true])
+            ->expectsOutputToContain('functional/no-tests-layer has no tests/ directory')
+            ->assertExitCode(0);
     }
 
     public function test_it_skips_layers_without_tests_directory(): void
@@ -87,36 +100,16 @@ class PhpunitCommandTest extends TestCase
         $this->assertNull($suite);
     }
 
-    public function test_it_excludes_layer_migrations_from_coverage(): void
+    public function test_it_writes_one_source_include_per_layer_and_no_exclusion(): void
     {
+        $this->layerFixture()->bucket('technical');
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
+
         $this->artisan('osdd:phpunit')->assertExitCode(0);
 
-        $xml = $this->app['files']->get($this->xmlPath);
-        $dom = new \DOMDocument;
-        $dom->loadXML($xml);
-
-        $xpath = new \DOMXPath($dom);
-        $directory = $xpath
-            ->query('//source/exclude/directory[normalize-space()="functional/*/database/migrations"]')
-            ->item(0);
-
-        $this->assertNotNull($directory);
-        $this->assertSame('.php', $directory->getAttribute('suffix'));
-    }
-
-    public function test_it_does_not_duplicate_the_migrations_exclusion(): void
-    {
-        $this->artisan('osdd:phpunit')->assertExitCode(0);
-        $this->artisan('osdd:phpunit')->assertExitCode(0);
-
-        $xml = $this->app['files']->get($this->xmlPath);
-        $dom = new \DOMDocument;
-        $dom->loadXML($xml);
-
-        $xpath = new \DOMXPath($dom);
-        $directories = $xpath->query('//source/exclude/directory[normalize-space()="functional/*/database/migrations"]');
-
-        $this->assertSame(1, $directories->length);
+        $xpath = $this->xpath();
+        $this->assertSame(['functional/test-layer/src'], $this->texts($xpath, '//source/include/directory'));
+        $this->assertSame(0, $xpath->query('//source/exclude')->length);
     }
 
     public function test_it_syncs_the_coverage_source_of_laravels_default_phpunit_xml(): void
@@ -141,21 +134,8 @@ class PhpunitCommandTest extends TestCase
 
         $xpath = $this->xpath();
         $this->assertSame(['app', 'functional/test-layer/src'], $this->texts($xpath, '//source/include/directory'));
-        $this->assertSame(
-            ['functional/*/database/migrations', 'technical/*/database/migrations'],
-            $this->texts($xpath, '//source/exclude/directory'),
-        );
-        $this->assertSame('.php', $xpath->query('//source/include/directory')->item(1)->getAttribute('suffix'));
-    }
-
-    public function test_the_migrations_exclusion_matches_the_layer_migrations_only(): void
-    {
-        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
-        $this->artisan('osdd:phpunit')->assertExitCode(0);
-
-        $excluded = glob($this->app->basePath($this->texts($this->xpath(), '//source/exclude/directory')[0]), GLOB_ONLYDIR);
-
-        $this->assertSame([realpath($this->app->basePath('functional/test-layer/database/migrations'))], array_map('realpath', $excluded));
+        $this->assertSame(0, $xpath->query('//source/exclude')->length);
+        $this->assertFalse($xpath->query('//source/include/directory')->item(1)->hasAttribute('suffix'));
     }
 
     public function test_prune_removes_suites_of_removed_layers_and_missing_source_directories(): void
@@ -233,23 +213,25 @@ class PhpunitCommandTest extends TestCase
         $this->assertContains('functional/test-layer/src', $this->texts($this->xpath(), '//source/include/directory'));
     }
 
-    /**
-     * @return iterable<string, array{string}>
-     */
-    public static function coveringExcludes(): iterable
+    public function test_the_exclusions_already_in_the_file_are_kept(): void
     {
-        yield 'same glob written differently' => ['<directory> ./functional/*/database/migrations/ </directory>'];
-        yield 'parent folder of every match' => ['<directory>functional/test-layer/database</directory>'];
-    }
+        $this->app['files']->ensureDirectoryExists($this->app->basePath('functional/test-layer/src'));
+        $this->writeXmlWithSource(<<<'XML'
+            <include>
+                <directory>functional</directory>
+            </include>
+            <exclude>
+                <directory>functional/*/database/migrations</directory>
+                <directory>technical/*/database/migrations</directory>
+            </exclude>
+            XML);
 
-    #[DataProvider('coveringExcludes')]
-    public function test_the_migrations_exclusion_already_covered_is_not_added(string $exclude): void
-    {
-        $this->writeXmlWithSource("<exclude>{$exclude}</exclude>");
+        $this->artisan('osdd:phpunit', ['--prune' => true])->assertExitCode(0);
 
-        $this->artisan('osdd:phpunit')->assertExitCode(0);
-
-        $this->assertCount(1, $this->xpath()->query('//source/exclude/directory'));
+        $this->assertSame(
+            ['functional/*/database/migrations', 'technical/*/database/migrations'],
+            $this->texts($this->xpath(), '//source/exclude/directory'),
+        );
     }
 
     public function test_prune_keeps_glob_entries_and_removes_missing_literal_ones(): void
