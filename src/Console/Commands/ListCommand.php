@@ -11,6 +11,7 @@ use Lomkit\Osdd\Inventory\RootProject;
 use Lomkit\Osdd\Layers\InvalidLayerManifestException;
 use Lomkit\Osdd\Layers\Layer;
 use Lomkit\Osdd\Layers\Layers;
+use Lomkit\Osdd\LayerServiceProvider;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:list')]
@@ -84,7 +85,10 @@ class ListCommand extends Command
         $this->newLine();
         $this->components->twoColumnDetail("<fg=green;options=bold>{$summary->name}</>", $summary->path);
         $this->components->twoColumnDetail('Namespace', $summary->namespace);
-        $this->components->twoColumnDetail('Providers', implode(', ', $summary->providers) ?: self::NONE);
+        $this->components->twoColumnDetail('Providers', implode(', ', array_map(
+            fn (string $provider): string => $this->providerLabel($provider),
+            $summary->providers,
+        )) ?: self::NONE);
         $this->components->twoColumnDetail('Requires', implode(', ', $summary->requires) ?: self::NONE);
         $this->components->twoColumnDetail('Models', (string) $counts->models);
         $this->components->twoColumnDetail('Migrations', (string) $counts->migrations);
@@ -95,6 +99,13 @@ class ListCommand extends Command
             'Health',
             $problems === [] ? '<fg=green;options=bold>OK</>' : '<fg=yellow>'.implode(', ', $problems).'</>',
         );
+    }
+
+    private function providerLabel(string $provider): string
+    {
+        return class_exists($provider) && ! is_subclass_of($provider, LayerServiceProvider::class)
+            ? "{$provider} <fg=gray>(not a LayerServiceProvider)</>"
+            : $provider;
     }
 
     private function displayInvalid(InvalidManifestSummary $invalid): void

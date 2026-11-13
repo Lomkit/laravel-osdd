@@ -19,15 +19,16 @@ final readonly class ProviderWiring
     ) {}
 
     /**
-     * Append the statement to its method of the layer provider, unless the provider already makes it.
+     * Append the statement to its method of the layer provider extending LayerServiceProvider, unless the provider
+     * already makes it.
      */
     public function add(Layer $layer, ProviderStatement $statement): WiringOutcome
     {
         $provider = LayerProvider::of($layer);
         $call = $statement->call();
 
-        if (! $provider->exists()) {
-            return new ProviderMissing($layer->name, $statement->method(), $call->render(ProviderFile::withoutImports($provider)));
+        if ($provider === null) {
+            return new ProviderMissing($layer->name, $statement->method(), $call->render(ProviderFile::withoutImports(LayerProvider::conventional($layer))));
         }
 
         $source = ProviderSource::parse($this->files->get($provider->path));

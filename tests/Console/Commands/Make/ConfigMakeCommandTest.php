@@ -52,7 +52,7 @@ class ConfigMakeCommandTest extends TestCase
     public function test_without_a_provider_it_writes_the_config_and_prints_the_line_to_add(): void
     {
         $this->artisan('osdd:config', ['name' => 'payments', '--layer' => 'functional/test-layer'])
-            ->expectsOutputToContain('Layer [functional/test-layer] has no service provider.')
+            ->expectsOutputToContain('Layer [functional/test-layer] has no service provider extending Lomkit\\Osdd\\LayerServiceProvider.')
             ->expectsOutputToContain("\$this->overrideConfigFrom(__DIR__ . '/../../config/payments.php', 'payments');")
             ->assertExitCode(0);
 

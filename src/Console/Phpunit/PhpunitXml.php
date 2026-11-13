@@ -15,6 +15,7 @@ final class PhpunitXml
     private function __construct(
         private readonly DOMDocument $document,
         private readonly DOMXPath $xpath,
+        private readonly string $directory,
     ) {}
 
     public static function load(string $path): self
@@ -24,7 +25,7 @@ final class PhpunitXml
         $document->formatOutput = true;
         $document->load($path);
 
-        return new self($document, new DOMXPath($document));
+        return new self($document, new DOMXPath($document), dirname($path));
     }
 
     public function hasTestSuites(): bool
@@ -88,6 +89,16 @@ final class PhpunitXml
         return array_map(fn (DOMElement $directory): string => trim($directory->textContent), $this->elements('//source/include/directory'));
     }
 
+    /**
+     * @return list<string>
+     */
+    public function staleSourceIncludes(): array
+    {
+        $stale = array_filter($this->sourceDirectories('include'), fn (SourceDirectory $entry): bool => $entry->isStale());
+
+        return array_values(array_map(fn (SourceDirectory $entry): string => $entry->value, $stale));
+    }
+
     public function removeSourceInclude(string $directory): void
     {
         foreach ($this->elements('//source/include/directory') as $element) {
@@ -110,10 +121,8 @@ final class PhpunitXml
 
     private function addSourceDirectory(string $section, string $directory): bool
     {
-        foreach ($this->elements("//source/{$section}/directory") as $element) {
-            if (trim($element->textContent) === $directory) {
-                return false;
-            }
+        if ((new SourceCoverage($this->sourceDirectories($section)))->covers(DirectoryPattern::of($directory, $this->directory))) {
+            return false;
         }
 
         $element = $this->document->createElement('directory', $directory);
@@ -122,6 +131,17 @@ final class PhpunitXml
         $this->changed = true;
 
         return true;
+    }
+
+    /**
+     * @return list<SourceDirectory>
+     */
+    private function sourceDirectories(string $section): array
+    {
+        return array_map(
+            fn (DOMElement $element): SourceDirectory => SourceDirectory::of($element, $this->directory),
+            $this->elements("//source/{$section}/directory"),
+        );
     }
 
     private function section(string $name): DOMElement
