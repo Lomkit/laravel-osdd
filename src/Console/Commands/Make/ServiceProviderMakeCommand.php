@@ -7,6 +7,7 @@ use Illuminate\Foundation\Console\ProviderMakeCommand;
 use Lomkit\Osdd\Composer\LayerComposerJson;
 use Lomkit\Osdd\Generation\GeneratesClassesInLayer;
 use Lomkit\Osdd\Layers\RefreshLayers;
+use Lomkit\Osdd\Stubs\Stub;
 use Symfony\Component\Console\Attribute\AsCommand;
 
 #[AsCommand(name: 'osdd:provider')]
@@ -24,6 +25,12 @@ final class ServiceProviderMakeCommand extends ProviderMakeCommand
         $this->registerProviderInComposer();
 
         return null;
+    }
+
+    #[\Override]
+    protected function getStub(): string
+    {
+        return Stub::PlainLayerProvider->path();
     }
 
     private function registerProviderInComposer(): void

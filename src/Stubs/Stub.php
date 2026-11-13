@@ -20,6 +20,7 @@ enum Stub: string
     case CreateJobsTable = 'start/create-jobs-table';
     case ModelWithFactory = 'make/model.factory';
     case PlainPolicy = 'make/policy';
+    case PlainLayerProvider = 'make/layer-provider';
 
     public function path(): string
     {
