@@ -8,8 +8,6 @@ use DOMXPath;
 
 final class PhpunitXml
 {
-    private const string PHP_SUFFIX = '.php';
-
     private bool $changed = false;
 
     private function __construct(
@@ -75,7 +73,6 @@ final class PhpunitXml
         }
 
         $element = $this->document->createElement('directory', $directory);
-        $element->setAttribute('suffix', self::PHP_SUFFIX);
         $this->sourceInclude()->appendChild($element);
         $this->changed = true;
 

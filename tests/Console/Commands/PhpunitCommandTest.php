@@ -121,7 +121,7 @@ class PhpunitCommandTest extends TestCase
         $xpath = $this->xpath();
         $this->assertSame(['app', 'functional/test-layer/src'], $this->texts($xpath, '//source/include/directory'));
         $this->assertSame(0, $xpath->query('//source/exclude')->length);
-        $this->assertSame('.php', $xpath->query('//source/include/directory')->item(1)->getAttribute('suffix'));
+        $this->assertFalse($xpath->query('//source/include/directory')->item(1)->hasAttribute('suffix'));
     }
 
     public function test_prune_removes_suites_of_removed_layers_and_missing_source_directories(): void
