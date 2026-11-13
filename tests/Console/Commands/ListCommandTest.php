@@ -59,7 +59,7 @@ class ListCommandTest extends TestCase
                     'providers' => [],
                     'requires' => [],
                     'counts' => ['models' => 0, 'migrations' => 0, 'seeders' => 0, 'tests' => 0, 'route_files' => 0],
-                    'health' => ['required' => false, 'path_repository' => false, 'installed' => false, 'provider_extends_layer_service_provider' => false, 'test_suite' => false],
+                    'health' => ['required' => false, 'path_repository' => false, 'installed' => false, 'provider_extends_layer_service_provider' => null, 'test_suite' => false],
                 ],
             ],
             'invalid_manifests' => [],
@@ -71,7 +71,7 @@ class ListCommandTest extends TestCase
         $this->artisan('osdd:list')
             ->expectsOutputToContain('functional/orders')
             ->expectsOutputToContain('Functional\\Orders\\')
-            ->expectsOutputToContain('not required in composer.json, no path repository, not installed, provider does not extend LayerServiceProvider, no test suite in phpunit.xml')
+            ->expectsOutputToContain('not required in composer.json, no path repository, not installed, no test suite in phpunit.xml')
             ->expectsOutputToContain('2 layers listed.')
             ->assertExitCode(0);
     }
@@ -98,6 +98,22 @@ class ListCommandTest extends TestCase
             ->expectsOutputToContain('not required in composer.json, no path repository, not installed, no test suite in phpunit.xml')
             ->doesntExpectOutputToContain('provider does not extend LayerServiceProvider')
             ->assertExitCode(0);
+    }
+
+    public function test_a_layer_whose_provider_is_not_a_layer_service_provider_is_healthy(): void
+    {
+        $short = Str::afterLast($this->providerClass, '\\');
+        $this->writeFile("functional/orders/src/Providers/{$short}.php", "<?php\n\nnamespace Functional\\Orders\\Providers;\n\nclass {$short} extends \\Illuminate\\Support\\ServiceProvider {}\n");
+        require_once $this->projectPath."/functional/orders/src/Providers/{$short}.php";
+
+        Artisan::call('osdd:list', ['--json' => true]);
+        $orders = json_decode(Artisan::output(), true)['layers'][0];
+        Artisan::call('osdd:list');
+        $ordersText = Str::before(Artisan::output(), 'Technical\\Billing\\');
+
+        $this->assertFalse($orders['health']['provider_extends_layer_service_provider']);
+        $this->assertStringContainsString($this->providerClass.' (not a LayerServiceProvider)', $ordersText);
+        $this->assertMatchesRegularExpression('/Health \.+ OK/', $ordersText);
     }
 
     public function test_an_unreadable_root_composer_json_counts_as_one_that_requires_nothing(): void

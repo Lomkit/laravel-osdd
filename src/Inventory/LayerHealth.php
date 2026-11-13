@@ -38,7 +38,6 @@ final readonly class LayerHealth
             'not required in composer.json' => ! $this->required,
             'no path repository' => ! $this->pathRepository,
             'not installed' => ! $this->installed,
-            'provider does not extend LayerServiceProvider' => $this->providerExtendsLayerServiceProvider === false,
             'no test suite in phpunit.xml' => ! $this->testSuite,
         ]));
     }
@@ -58,17 +57,14 @@ final readonly class LayerHealth
     }
 
     /**
-     * Null when the layer is not installed: its provider classes cannot be autoloaded yet.
+     * Whether every provider extends LayerServiceProvider, for information only: any provider is healthy. Null when the
+     * layer has no provider, or is not installed and its provider classes cannot be autoloaded yet.
      *
      * @param  list<string>  $providers
      */
     private static function providersExtendLayerServiceProvider(array $providers, bool $installed): ?bool
     {
-        if ($providers === []) {
-            return false;
-        }
-
-        if (! $installed) {
+        if ($providers === [] || ! $installed) {
             return null;
         }
 
