@@ -70,15 +70,16 @@ final class PhpunitXml
      */
     public function includeInSource(string $directory): bool
     {
-        return $this->addSourceDirectory('include', $directory);
-    }
+        if ((new SourceCoverage($this->sourceIncludeDirectories()))->covers(DirectoryPattern::of($directory, $this->directory))) {
+            return false;
+        }
 
-    /**
-     * @return bool whether the directory was added
-     */
-    public function excludeFromSource(string $directory): bool
-    {
-        return $this->addSourceDirectory('exclude', $directory);
+        $element = $this->document->createElement('directory', $directory);
+        $element->setAttribute('suffix', self::PHP_SUFFIX);
+        $this->sourceInclude()->appendChild($element);
+        $this->changed = true;
+
+        return true;
     }
 
     /**
@@ -94,7 +95,7 @@ final class PhpunitXml
      */
     public function staleSourceIncludes(): array
     {
-        $stale = array_filter($this->sourceDirectories('include'), fn (SourceDirectory $entry): bool => $entry->isStale());
+        $stale = array_filter($this->sourceIncludeDirectories(), fn (SourceDirectory $entry): bool => $entry->isStale());
 
         return array_values(array_map(fn (SourceDirectory $entry): string => $entry->value, $stale));
     }
@@ -119,32 +120,18 @@ final class PhpunitXml
         return (string) $this->document->saveXML();
     }
 
-    private function addSourceDirectory(string $section, string $directory): bool
-    {
-        if ((new SourceCoverage($this->sourceDirectories($section)))->covers(DirectoryPattern::of($directory, $this->directory))) {
-            return false;
-        }
-
-        $element = $this->document->createElement('directory', $directory);
-        $element->setAttribute('suffix', self::PHP_SUFFIX);
-        $this->section($section)->appendChild($element);
-        $this->changed = true;
-
-        return true;
-    }
-
     /**
      * @return list<SourceDirectory>
      */
-    private function sourceDirectories(string $section): array
+    private function sourceIncludeDirectories(): array
     {
         return array_map(
             fn (DOMElement $element): SourceDirectory => SourceDirectory::of($element, $this->directory),
-            $this->elements("//source/{$section}/directory"),
+            $this->elements('//source/include/directory'),
         );
     }
 
-    private function section(string $name): DOMElement
+    private function sourceInclude(): DOMElement
     {
         $source = $this->first('//source');
 
@@ -153,14 +140,14 @@ final class PhpunitXml
             $this->document->documentElement?->appendChild($source);
         }
 
-        $section = $this->first("//source/{$name}");
+        $include = $this->first('//source/include');
 
-        if ($section === null) {
-            $section = $this->document->createElement($name);
-            $source->appendChild($section);
+        if ($include === null) {
+            $include = $this->document->createElement('include');
+            $source->appendChild($include);
         }
 
-        return $section;
+        return $include;
     }
 
     private function testSuite(string $name): ?DOMElement
